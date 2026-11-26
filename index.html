@@ -2,127 +2,188 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d2142">
 <title>Petite Ville</title>
 <meta name="description" content="Apprends l'anglais ou le polonais en parlant aux habitants d'une petite ville en 3D.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
-<canvas id="c" aria-label="Scène 3D"></canvas>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <symbol id="i-spk" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+ <symbol id="i-mic" viewBox="0 0 24 24"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v7a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V22h2v-3.1A7 7 0 0 0 19 12h-2z"/></symbol>
+ <symbol id="i-flame" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2s5 4.5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 1-3.5S9 11 11 11c0-4 1-9 1-9z"/></symbol>
+ <symbol id="i-mark" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
+ <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+ <symbol id="i-town" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+ <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6c-2-1.5-5-2-8-1.5V19c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V4.5c-3-.5-6 0-8 1.5zM12 6v14.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+ <symbol id="i-cards" viewBox="0 0 24 24"><rect x="3" y="7" width="14" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 4h11a3 3 0 0 1 3 3v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+ <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+ <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+ <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v5M12 16v.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+ <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+ <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+ <symbol id="i-umbrella" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 18 0z" fill="currentColor"/><path d="M12 12v7a2 2 0 0 1-4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+ <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></symbol>
+ <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 4h4v16H7zM13 4h4v16h-4z" fill="currentColor"/></symbol>
+ <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
 
-<!-- ===== Compte ===== -->
-<div id="auth" class="overlay">
- <div class="ov panel">
-  <div class="logo">Petite Ville</div>
-  <p class="tag" data-i="tagline"></p>
-  <div class="uiSwitch" role="group" aria-label="Langue">
-   <button type="button" data-ui="fr">Français</button><button type="button" data-ui="pl">Polski</button>
-  </div>
-  <form id="authForm" novalidate>
-   <h1 id="authTitle"></h1>
-   <p class="why" id="authWhy" data-i="signupWhy"></p>
-   <label class="f su"><span data-i="pseudo"></span><input id="aPseudo" autocomplete="nickname" maxlength="24"></label>
-   <label class="f"><span data-i="email"></span><input id="aEmail" type="email" autocomplete="email"></label>
-   <label class="f"><span data-i="password"></span><input id="aPass" type="password" autocomplete="current-password" minlength="6"></label>
-   <div class="two su">
-    <label class="f"><span data-i="speak"></span><select id="aUi"></select></label>
-    <label class="f"><span data-i="learn"></span><select id="aT"></select></label>
-   </div>
-   <div class="msg hidden" id="authMsg"></div>
-   <button class="btn pri wide" id="authBtn" type="submit"></button>
-   <button class="link" id="authSwitch" type="button"></button>
-   <div class="mini" id="localNote"></div>
-  </form>
+<canvas id="c" aria-label="Scène 3D"></canvas>
+<div id="hover" class="hidden"></div>
+<div id="toast" class="toast hidden" role="status"></div>
+
+<!-- ===== HUD de la ville ===== -->
+<div id="hud" class="hidden">
+ <button type="button" class="pill me" id="meBtn"><span class="ring" id="ring"><span class="av" id="av">?</span></span><span id="lvlTxt">Niv. 1</span></button>
+ <div class="hudRight">
+  <div class="pill flame" id="streakPill"><svg><use href="#i-flame"/></svg><span id="stN">0</span></div>
+  <button type="button" class="pill" id="goalPill"><span class="goalRing" id="goalRing"><i></i></span><span id="goalTxt">0/15</span></button>
+  <button type="button" class="pill" id="misBtn"><span class="txt" data-i="mission"></span> <b id="misN">0/4</b></button>
  </div>
+ <button type="button" class="pill place" id="placeBtn"><span id="placeName"></span><svg><use href="#i-down"/></svg></button>
 </div>
 
-<!-- ===== HUD ===== -->
-<header id="me" class="hud tl panel hidden">
- <button type="button" id="meBtn" class="meBtn" aria-haspopup="true">
-  <span class="av" id="av">?</span>
-  <span class="meTxt"><b id="meName"></b><small id="meLvl"></small></span>
-  <span class="streak" id="streak" title=""><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2s5 4.5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 1-3.5S9 11 11 11c0-4 1-9 1-9z"/></svg><span id="stN">0</span></span>
- </button>
- <div class="xp"><i id="xpBar"></i></div>
- <div class="daily"><span data-i="daily"></span> <b id="dailyN">0/50 XP</b></div>
- <div id="menu" class="menu hidden">
-  <div class="mh" data-i="menuLang"></div>
-  <div class="two"><label class="f"><span data-i="speak"></span><select id="mUi"></select></label><label class="f"><span data-i="learn"></span><select id="mT"></select></label></div>
-  <button class="btn" id="mSave" type="button" data-i="saveLang"></button>
-  <a class="mi" href="rue/" data-i="menuStreet"></a>
-  <button class="mi" id="mOut" type="button" data-i="logout"></button>
+<!-- ===== feuilles ===== -->
+<section id="card" class="sheet hidden" aria-live="polite">
+ <div class="handle"></div>
+ <button class="x" type="button" data-close="card" aria-label="Fermer">×</button>
+ <div class="wordRow">
+  <div><h3 class="word" id="wT"></h3><div class="wordTr" id="wUi"></div></div>
+  <button class="speakBtn" id="wListen" type="button" aria-label="Écouter"><svg><use href="#i-spk"/></svg></button>
  </div>
-</header>
+ <div class="exBox"><p class="ex" id="wEx"></p><div class="exTr" id="wExUi"></div></div>
+ <div class="note hidden" id="wNote"><svg><use href="#i-info"/></svg><span id="wNoteTxt"></span></div>
+ <div class="pron hidden" id="wPron"></div>
+ <div class="actions">
+  <button class="btn coral" id="wRepeat" type="button"><svg><use href="#i-mic"/></svg><span data-i="repeat"></span></button>
+  <button class="btn line" id="wSave" type="button"><svg><use href="#i-mark"/></svg><span id="wSaveTxt"></span></button>
+ </div>
+</section>
 
-<aside id="mission" class="hud panel hidden" aria-label="Mission">
- <h2><span data-i="mission"></span> <button id="minBtn" type="button" data-i="hide"></button></h2>
- <ol>
+<section id="misSheet" class="sheet hidden">
+ <div class="handle"></div>
+ <button class="x" type="button" data-close="misSheet" aria-label="Fermer">×</button>
+ <h2 data-i="mission"></h2>
+ <ul class="tasks">
   <li data-t="talk" data-i="t_talk"></li>
   <li data-t="order" data-i="t_order"></li>
   <li data-t="pay" data-i="t_pay"></li>
   <li data-t="words" data-i="t_words"></li>
- </ol>
- <div class="prog"><span data-i="found"></span><b id="fc">0</b><div class="bar"><i id="fb"></i></div></div>
-</aside>
-
-<section id="card" class="panel bottom hidden" aria-live="polite">
- <button class="x" type="button" data-close="card" aria-label="×">×</button>
- <h3 class="word" id="wT"></h3>
- <div class="fr" id="wUi"></div>
- <p class="ex" id="wEx"></p><div class="fr" id="wExUi"></div>
- <div class="note hidden" id="wNote"></div>
- <div class="pron hidden" id="wPron"></div>
- <div class="row">
-  <button class="btn pri" id="wListen" type="button"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg><span data-i="listen"></span></button>
-  <button class="btn mic" id="wRepeat" type="button"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v7a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V22h2v-3.1A7 7 0 0 0 19 12h-2z"/></svg><span data-i="repeat"></span></button>
-  <button class="btn" id="wSave" type="button"></button>
- </div>
+ </ul>
+ <div class="progRow"><span data-i="found"></span><b id="fc">0</b></div>
+ <div class="bar"><i id="fb"></i></div>
 </section>
 
-<section id="dlg" class="panel bottom hidden" aria-live="polite">
- <button class="x" type="button" data-close="dlg" aria-label="×">×</button>
- <div class="who"><span id="dWho"></span>
-  <button class="btn sm" id="dReplay" type="button" data-i="replay"></button>
-  <button class="btn sm" id="dTr" type="button" data-i="translate"></button>
+<section id="mapSheet" class="sheet hidden">
+ <div class="handle"></div>
+ <button class="x" type="button" data-close="mapSheet" aria-label="Fermer">×</button>
+ <h2 data-i="mapTitle"></h2>
+ <p class="sub" data-i="mapSub"></p>
+ <div class="places" id="places"></div>
+</section>
+
+<section id="dlg" class="hidden" aria-live="polite">
+ <div class="dTop">
+  <button class="ib" type="button" data-close="dlg" aria-label="Fermer">×</button>
  </div>
- <div class="me2" id="dMe"></div>
- <p class="line" id="dLine"></p><div class="fr" id="dTrTxt"></div>
- <div class="tip hidden" id="dTip"></div>
+ <div class="bubble">
+  <div class="who"><span class="name" id="dWho"></span>
+   <button class="btn sm" id="dReplay" type="button"><svg><use href="#i-spk"/></svg><span data-i="replay"></span></button>
+   <button class="btn sm" id="dTr" type="button" data-i="translate"></button>
+  </div>
+  <p class="line" id="dLine"></p><div class="lineTr" id="dTrTxt"></div>
+  <div class="me2" id="dMe"></div>
+  <div class="tip hidden" id="dTip"></div>
+ </div>
  <div class="talk">
-  <button class="micBig" id="dMic" type="button" aria-label="Parler"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v7a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V22h2v-3.1A7 7 0 0 0 19 12h-2z"/></svg></button>
+  <button class="micBig" id="dMic" type="button" aria-label="Parler"><svg><use href="#i-mic"/></svg></button>
   <div class="heard" id="dHeard"></div>
  </div>
+ <div class="optsLbl" data-i="orTap"></div>
  <div class="opts" id="dOpts"></div>
  <div class="mini" data-i="voiceNote"></div>
 </section>
 
-<button id="deckBtn" class="hud hidden" type="button"><span data-i="cards"></span> <b id="deckN">0</b></button>
-<aside id="deck" class="panel hidden" aria-label="Cartes">
- <button class="x" type="button" data-close="deck" aria-label="×">×</button>
- <h2 data-i="cards"></h2>
- <div class="fr" data-i="cardsSub"></div>
- <div class="row"><button class="btn pri" id="revBtn" type="button" data-i="review"></button></div>
- <div id="flash" class="flash hidden">
-  <div class="fr" data-i="howSay"></div>
+<!-- ===== pages ===== -->
+<main id="pgStories" class="page hidden"><div class="pageIn" id="storiesIn"></div></main>
+<main id="pgWords" class="page hidden"><div class="pageIn">
+ <h1 data-i="wordsTitle"></h1>
+ <p class="lead" data-i="wordsSub"></p>
+ <div class="card flash hidden" id="flash">
+  <div class="sub" data-i="howSay"></div>
   <div class="q" id="fQ"></div>
   <div class="a hidden" id="fA"></div>
-  <div class="row center">
-   <button class="btn pri" id="fShow" type="button" data-i="reveal"></button>
-   <button class="btn hidden" id="fAgain" type="button" data-i="again"></button>
-   <button class="btn pri hidden" id="fKnew" type="button" data-i="knew"></button>
+  <div class="actions" id="fBtns">
+   <button class="btn honey wide" id="fShow" type="button" data-i="reveal" style="grid-column:1/-1"></button>
+   <button class="btn line hidden" id="fAgain" type="button" data-i="again"></button>
+   <button class="btn honey hidden" id="fKnew" type="button" data-i="knew"></button>
   </div>
  </div>
+ <button class="btn honey" id="revBtn" type="button"><svg><use href="#i-cards"/></svg><span id="revTxt"></span></button>
  <ul class="cards" id="cards"></ul>
- <div class="empty" id="emptyDeck" data-i="noCards"></div>
-</aside>
+ <p class="empty" id="emptyDeck" data-i="noCards"></p>
+</div></main>
+<main id="pgProgress" class="page hidden"><div class="pageIn" id="progIn"></div></main>
 
-<div id="hover" class="hidden"></div>
-<div id="toast" class="toast hidden"></div>
+<nav id="nav" class="hidden" aria-label="Navigation">
+ <button type="button" data-tab="town" class="on"><svg><use href="#i-town"/></svg><span data-i="navTown"></span></button>
+ <button type="button" data-tab="stories"><svg><use href="#i-book"/></svg><span data-i="navStories"></span></button>
+ <button type="button" data-tab="words"><svg><use href="#i-cards"/></svg><span data-i="navWords"></span><span class="badge hidden" id="dueBadge"></span></button>
+ <button type="button" data-tab="progress"><svg><use href="#i-star"/></svg><span data-i="navProgress"></span></button>
+</nav>
+
+<!-- ===== accueil (sans compte) ===== -->
+<div id="onb" class="overlay hidden">
+ <div class="ov">
+  <div class="onbScene" aria-hidden="true">
+   <div style="left:290px;top:22px;width:40px;height:40px;border-radius:50%;background:#fff1c9;box-shadow:0 0 40px 10px rgba(255,225,160,.35)"></div>
+   <div style="left:40px;top:40px;width:3px;height:3px;border-radius:50%;background:#fff"></div>
+   <div style="left:150px;top:24px;width:2px;height:2px;border-radius:50%;background:#fff"></div>
+   <div style="left:-20px;bottom:0;width:140px;height:96px;background:#262a55;border-radius:10px 10px 0 0"></div>
+   <div style="right:-16px;bottom:0;width:110px;height:110px;background:#262a55;border-radius:10px 10px 0 0"></div>
+   <div style="left:calc(50% - 100px);bottom:0;width:200px;height:104px;background:#e7a06b;border-radius:14px 14px 0 0"></div>
+   <div style="left:calc(50% - 110px);bottom:90px;width:220px;height:28px;background:repeating-linear-gradient(90deg,#ff7d6b 0 22px,#fff3e2 22px 44px);border-radius:6px 6px 14px 14px"></div>
+   <div style="left:calc(50% - 78px);bottom:16px;width:86px;height:62px;background:#ffd98a;border-radius:10px;box-shadow:0 0 34px 6px rgba(255,190,90,.55)"></div>
+   <div style="left:calc(50% + 30px);bottom:0;width:44px;height:78px;background:#3a4b7a;border-radius:22px 22px 0 0"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+   <div class="logo">Petite Ville</div>
+   <div class="uiSwitch" role="group" aria-label="Langue"><button type="button" data-ui="fr">FR</button><button type="button" data-ui="pl">PL</button></div>
+  </div>
+  <p style="margin-top:6px" data-i="onbText"></p>
+  <div style="font:800 14px Nunito,sans-serif" data-i="learnQ"></div>
+  <div class="learnCards">
+   <button type="button" class="learnCard" data-t="en"><span class="ln"></span><small></small></button>
+   <button type="button" class="learnCard" data-t="pl"><span class="ln"></span><small></small></button>
+  </div>
+  <button class="btn honey wide" id="onbGo" type="button" data-i="enterTown"></button>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap">
+   <span style="font-size:13px;color:var(--muted)" data-i="noAccNeeded"></span>
+   <button class="link" id="onbLogin" type="button" data-i="haveAcc" style="color:var(--coralD)"></button>
+  </div>
+ </div>
+</div>
+
+<!-- ===== compte (facultatif) ===== -->
+<div id="authOv" class="overlay hidden">
+ <form class="ov" id="authForm" novalidate>
+  <button class="x" type="button" id="authClose" aria-label="Fermer">×</button>
+  <h1 id="authTitle"></h1>
+  <p id="authWhy" data-i="signupWhy"></p>
+  <label class="f su"><span data-i="pseudo"></span><input id="aPseudo" autocomplete="nickname" maxlength="24"></label>
+  <label class="f"><span data-i="email"></span><input id="aEmail" type="email" autocomplete="email"></label>
+  <label class="f"><span data-i="password"></span><input id="aPass" type="password" autocomplete="new-password" minlength="6"></label>
+  <div class="msg hidden" id="authMsg"></div>
+  <button class="btn honey wide" id="authBtn" type="submit"></button>
+  <div style="text-align:center"><button class="link" id="authSwitch" type="button" style="color:var(--coralD)"></button></div>
+ </form>
+</div>
 
 <div id="intro" class="overlay hidden">
- <div class="ov panel">
+ <div class="ov">
   <h1><span data-i="introTitle"></span> <em id="shopName"></em></h1>
   <p id="introText"></p>
   <ul class="steps">
@@ -130,26 +191,30 @@
    <li><i>2</i><span data-i="step2"></span></li>
    <li><i>3</i><span id="step3"></span></li>
   </ul>
-  <button class="btn pri wide" id="enter" type="button" data-i="enter"></button>
+  <button class="btn honey wide" id="enter" type="button" data-i="enter"></button>
  </div>
 </div>
 
 <div id="win" class="overlay hidden">
- <div class="ov panel">
-  <h1><span data-i="winTitle"></span></h1>
+ <div class="ov">
+  <div class="bag" aria-hidden="true">
+   <div style="left:5px;top:5px;width:120px;height:120px;border-radius:50%;background:rgba(255,181,71,.18)"></div>
+   <div style="left:60px;top:2px;width:15px;height:64px;border-radius:8px;background:#c9803a;transform:rotate(14deg)"></div>
+   <div style="left:28px;top:40px;width:76px;height:78px;border-radius:8px 8px 16px 16px;background:#e9d2ae"></div>
+   <div style="left:28px;top:40px;width:76px;height:13px;background:#d9bd92;border-radius:8px 8px 0 0"></div>
+   <div style="left:44px;top:72px;width:44px;height:20px;border-radius:6px;background:#ff7d6b"></div>
+  </div>
+  <h1 id="winTitle"></h1>
   <p id="winText"></p>
-  <div class="stats">
+  <div class="stats3 dark" style="background:none;padding:0">
    <div><b id="sW">0</b><span data-i="wWords"></span></div>
    <div><b id="sS">0</b><span data-i="wSpoken"></span></div>
-   <div><b id="sE">0</b><span data-i="wErr"></span></div>
+   <div><b id="sX">0</b><span data-i="wXp"></span></div>
   </div>
-  <div class="lock">
-   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-   <div><b data-i="nextScene"></b><small data-i="plus"></small></div>
-  </div>
-  <div class="row">
-   <button class="btn pri" id="again" type="button" data-i="againBtn"></button>
-   <button class="btn" id="explore" type="button" data-i="explore"></button>
+  <div class="lock"><svg><use href="#i-lock"/></svg><div><b data-i="nextScene"></b><small data-i="plus"></small></div></div>
+  <div class="winBtns">
+   <button class="btn ghost" id="again" type="button" data-i="againBtn"></button>
+   <button class="btn honey" id="explore" type="button" data-i="continueBtn"></button>
   </div>
  </div>
 </div>
@@ -157,9 +222,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="config.js"></script>
-<script src="data.js"></script>
-<script src="scene.js"></script>
-<script src="app.js"></script>
+<script src="config.js?v=3"></script>
+<script src="data.js?v=3"></script>
+<script src="scene.js?v=3"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

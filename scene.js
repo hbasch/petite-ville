@@ -5,7 +5,7 @@ const R=new THREE.WebGLRenderer({canvas,antialias:true});
 R.setPixelRatio(Math.min(devicePixelRatio,2));R.setSize(innerWidth,innerHeight);
 R.outputEncoding=THREE.sRGBEncoding;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.05;
 R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
-const scene=new THREE.Scene();scene.background=new THREE.Color('#2a1a12');scene.fog=new THREE.Fog('#2a1a12',9,18);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#1d2142');scene.fog=new THREE.Fog('#1d2142',10,20);
 const cam=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.05,60);cam.position.set(.9,1.8,4.3);
 const ctl=new THREE.OrbitControls(cam,canvas);ctl.target.set(-.2,1.15,-1.6);ctl.enableDamping=true;ctl.enablePan=false;
 ctl.minDistance=2.4;ctl.maxDistance=6.4;ctl.minPolarAngle=.95;ctl.maxPolarAngle=1.6;ctl.minAzimuthAngle=-.75;ctl.maxAzimuthAngle=.75;ctl.update();

@@ -3,41 +3,48 @@ const $ = id => document.getElementById(id);
 const CFG = window.PV_CONFIG || {};
 const SB = (CFG.url && CFG.key && window.supabase) ? window.supabase.createClient(CFG.url, CFG.key) : null;
 const W = PV.WORDS, IDS = Object.keys(W), GOAL = 12;
-const today = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
-const dayNum = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);
-const store = { get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } } };
+const ymd = d => d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+const today = () => ymd(new Date());
+const dayNum = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5);
+const monthKey = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+const store = { get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* */ } } };
+const fill = (s, o) => s.replace(/\{(\w)\}/g, (m, k) => (o[k] ?? m));
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+const icon = (id) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#i-' + id); s.appendChild(u); return s; };
 
 let ui = store.get('pv_ui') || ((navigator.language || '').toLowerCase().startsWith('pl') ? 'pl' : 'fr');
-let T = 'en', U = PV.UI[ui], S, D, user = null, P = null, L = null;
+let T = 'en', U = PV.UI[ui], S, D, user = null, P = null, L = null, started = false, tab = 'town';
 const tasks = { talk: false, order: false, pay: false };
-let mistakes = 0, spokenSession = 0;
+let mistakes = 0, spokenSession = 0, xpSession = 0;
 
 /* ---------- textes ---------- */
-const fill = (s, o) => s.replace(/\{(\w)\}/g, (m, k) => o[k] ?? m);
 function applyUI() {
   U = PV.UI[ui]; document.documentElement.lang = ui;
-  document.querySelectorAll('[data-i]').forEach(el => { const v = U[el.dataset.i]; if (typeof v === 'string') el.textContent = v; });
+  document.querySelectorAll('[data-i]').forEach(e => { const v = U[e.dataset.i]; if (typeof v === 'string') e.textContent = v; });
   document.querySelectorAll('.uiSwitch button').forEach(b => b.classList.toggle('on', b.dataset.ui === ui));
 }
-function fillSelects(uiSel, tSel, uiVal, tVal) {
-  uiSel.innerHTML = ''; tSel.innerHTML = '';
-  ['fr', 'pl'].forEach(k => uiSel.add(new Option(U.langs[k], k, false, k === uiVal)));
-  ['en', 'pl'].forEach(k => { const o = new Option(U.learnLangs[k], k, false, k === tVal); o.disabled = (k === 'pl' && uiVal === 'pl'); tSel.add(o); });
-  if (uiVal === 'pl' && tVal === 'pl') tSel.value = 'en';
-}
-function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.add('hidden'), 1800); }
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); t.style.animation = 'none'; void t.offsetWidth; t.style.animation = ''; clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.add('hidden'), 2200); }
 
 /* ---------- voix ---------- */
-let voice = null;
-function pickVoice() { try { const v = speechSynthesis.getVoices(), lang = S ? S.voice : 'en-GB'; voice = v.find(x => x.lang === lang) || v.find(x => x.lang.slice(0, 2) === lang.slice(0, 2)) || null; } catch (e) { /* none */ } }
+let voice = null, lastAct = Date.now();
+function pickVoice() { try { const v = speechSynthesis.getVoices(), lang = S ? S.voice : 'en-GB'; voice = v.find(x => x.lang === lang && x.localService) || v.find(x => x.lang === lang) || v.find(x => x.lang.slice(0, 2) === lang.slice(0, 2)) || null; } catch (e) { /* none */ } }
 if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = pickVoice;
-function say(t, o) { o = o || {}; try { if (!o.queue) speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = S.voice; if (voice) u.voice = voice; u.rate = o.rate || .9; u.pitch = o.pitch || 1; speechSynthesis.speak(u); } catch (e) { /* no speech */ } }
+function say(t, o) {
+  o = o || {}; lastAct = Date.now();
+  try {
+    if (!o.queue) speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(t); u.lang = S.voice; if (voice) u.voice = voice; u.rate = o.rate || .9; u.pitch = o.pitch || 1;
+    if (o.onboundary) u.onboundary = o.onboundary;
+    if (o.onend) { u.onend = o.onend; u.onerror = o.onend; }
+    speechSynthesis.speak(u);
+  } catch (e) { if (o.onend) o.onend(); }
+}
 
 /* ---------- reconnaissance vocale ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
 function listen(onInterim, onFinal, onError, onEnd) {
-  if (!SR) { onError('unsupported'); return; }
+  if (!SR) { onError('unsupported'); if (onEnd) onEnd(); return; }
   try { speechSynthesis.cancel(); } catch (e) { /* none */ }
   if (rec) try { rec.abort(); } catch (e) { /* none */ }
   rec = new SR(); rec.lang = S.voice; rec.interimResults = true; rec.maxAlternatives = 4; rec.continuous = false;
@@ -48,14 +55,15 @@ function listen(onInterim, onFinal, onError, onEnd) {
     else onInterim(r[0].transcript);
   };
   rec.onerror = e => { done = true; onError(e.error); };
-  rec.onend = () => { if (!done) onError('no-speech'); onEnd && onEnd(); rec = null; };
-  try { rec.start(); } catch (e) { onError('busy'); }
+  rec.onend = () => { if (!done) onError('no-speech'); if (onEnd) onEnd(); rec = null; };
+  try { rec.start(); lastAct = Date.now(); } catch (e) { onError('busy'); if (onEnd) onEnd(); }
 }
 const NUM = { en: { 1: 'one', 2: 'two', 4: 'four', 5: 'five', 10: 'ten', 20: 'twenty', 50: 'fifty' }, pl: { 2: 'dwa', 5: 'piec', 10: 'dziesiec', 15: 'pietnascie', 20: 'dwadziescia', 50: 'piecdziesiat' } };
 const EXP = { heres: 'here is', thats: 'that is', its: 'it is', whats: 'what is', id: 'i would', ill: 'i will', im: 'i am' };
 function norm(s) {
   return s.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[’']s\b/g, ' is').replace(/[’']ll\b/g, ' will').replace(/[’']d\b/g, ' would').replace(/[’']m\b/g, ' am').replace(/n[’']t\b/g, ' not').replace(/£/g, ' ').replace(/(\d+)[.,](\d+)/g, '$1 $2').replace(/'/g, '').replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/[’']s\b/g, ' is').replace(/[’']ll\b/g, ' will').replace(/[’']d\b/g, ' would').replace(/[’']m\b/g, ' am').replace(/n[’']t\b/g, ' not')
+    .replace(/£/g, ' ').replace(/(\d+)[.,](\d+)/g, '$1 $2').replace(/'/g, '').replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/).filter(Boolean).flatMap(w => (EXP[w] || w).split(' ')).map(w => NUM[T][w] || (w === 'zl' ? 'zlotych' : w));
 }
 const same = (a, b) => a === b || (a.length >= 5 && b.length >= 5 && a.slice(0, 5) === b.slice(0, 5));
@@ -67,158 +75,262 @@ function score(said, opt) {
 }
 function lev(a, b) { const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; }
 function micError(err, out) {
-  if (err === 'unsupported') out.textContent = U.noMic;
-  else if (err === 'not-allowed' || err === 'service-not-allowed') out.textContent = fill(U.micDenied, { b: S.baker });
-  else out.textContent = U.notUnderstood;
+  out.textContent = err === 'unsupported' ? U.noMic : (err === 'not-allowed' || err === 'service-not-allowed') ? fill(U.micDenied, { b: S.baker }) : U.notUnderstood;
 }
 
 /* ---------- progression ---------- */
-const blankLang = () => ({ found: [], cards: {}, pron: {}, missions: 0 });
-function normalizeP(d, meta) {
+const blankLang = () => ({ found: [], cards: {}, pron: {}, missions: 0, stories: {} });
+function normalizeP(d) {
   d = d || {};
-  return { pseudo: d.pseudo || meta.pseudo || 'Moi', ui: d.ui || meta.ui || ui, t: d.t || meta.t || 'en', xp: d.xp || 0, streak: d.streak || 0, lastDay: d.lastDay || '', dailyXp: d.dailyXp || 0, dailyDay: d.dailyDay || '', spoken: d.spoken || 0,
-    L: { en: Object.assign(blankLang(), (d.L || {}).en), pl: Object.assign(blankLang(), (d.L || {}).pl) } };
+  const p = Object.assign({ pseudo: '', ui, t: 'en', xp: 0, streak: 0, lastDay: '', dailyXp: 0, dailyDay: '', spoken: 0, goal: 15, secToday: 0, secDay: '', month: '', monthXp: 0, quizDay: '', quizRes: '', quizPick: '' }, d);
+  p.L = { en: Object.assign(blankLang(), (d.L || {}).en), pl: Object.assign(blankLang(), (d.L || {}).pl) };
+  return p;
 }
+const levelOf = xp => { let i = 0; PV.LEVELS.forEach((t, k) => { if (xp >= t) i = k; }); return i; };
 let saveH = null;
 function save(now) {
   clearTimeout(saveH);
   const run = async () => {
-    if (SB && user) { const { error } = await SB.from('progress').upsert({ user_id: user.id, data: P, updated_at: new Date().toISOString() }); if (error) console.warn(error); }
-    else store.set('pv_local', P);
+    store.set('pv_guest', P);
+    if (SB && user) {
+      const r1 = await SB.from('progress').upsert({ user_id: user.id, data: P, updated_at: new Date().toISOString() });
+      if (r1.error) console.warn(r1.error);
+      const r2 = await SB.from('scores').upsert({ user_id: user.id, pseudo: (P.pseudo || 'Anonyme').slice(0, 24), month: P.month, xp: P.monthXp, updated_at: new Date().toISOString() });
+      if (r2.error) console.warn(r2.error);
+    }
   };
   if (now) return run();
   saveH = setTimeout(run, 1200);
 }
-function touchStreak() {
-  const t = today(), y = new Date(Date.now() - 864e5); const yd = y.getFullYear() + '-' + (y.getMonth() + 1) + '-' + y.getDate();
+function touchDay() {
+  const t = today(), yd = ymd(new Date(Date.now() - 864e5));
   if (P.lastDay !== t) { P.streak = P.lastDay === yd ? P.streak + 1 : 1; P.lastDay = t; }
   if (P.dailyDay !== t) { P.dailyXp = 0; P.dailyDay = t; }
+  if (P.secDay !== t) { P.secToday = 0; P.secDay = t; }
+  if (P.month !== monthKey()) { P.month = monthKey(); P.monthXp = 0; }
 }
-function addXP(n, msg) { P.xp += n; P.dailyXp += n; if (msg) toast(msg); updMe(); save(); }
-function updMe() {
-  const lvl = Math.floor(P.xp / 100) + 1;
-  $('meName').textContent = P.pseudo; $('av').textContent = (P.pseudo[0] || '?').toUpperCase();
-  $('meLvl').textContent = U.level + ' ' + lvl + ' · ' + P.xp + ' XP · ' + U.learnLangs[T];
-  $('xpBar').style.width = (P.xp % 100) + '%';
-  $('stN').textContent = P.streak; $('streak').title = U.streak + ' : ' + P.streak + ' ' + U.days;
-  $('dailyN').textContent = Math.min(P.dailyXp, 50) + '/50 XP';
+function addXP(n, msg) {
+  const before = levelOf(P.xp);
+  P.xp += n; P.dailyXp += n; P.monthXp += n; xpSession += n;
+  const after = levelOf(P.xp);
+  if (msg) toast(msg);
+  if (after > before) setTimeout(() => toast(fill(U.levelUp, { l: U.levelNames[after] })), msg ? 1600 : 0);
+  updHud(); if (tab === 'progress') renderProgress();
+  save();
+}
+function updHud() {
+  const lv = levelOf(P.xp), lo = PV.LEVELS[lv], hi = PV.LEVELS[lv + 1];
+  $('ring').style.setProperty('--p', hi ? Math.round((P.xp - lo) / (hi - lo) * 100) : 100);
+  $('av').textContent = ((P.pseudo || U.levelNames[lv])[0] || '?').toUpperCase();
+  $('lvlTxt').textContent = U.level + ' ' + (lv + 1);
+  $('stN').textContent = P.streak;
+  const min = Math.floor(P.secToday / 60);
+  $('goalTxt').textContent = Math.min(min, P.goal) + '/' + P.goal + ' ' + U.minUnit;
+  $('goalRing').style.setProperty('--p', Math.min(100, Math.round(P.secToday / (P.goal * 60) * 100)));
+  const due = dueCount(); $('dueBadge').textContent = due; $('dueBadge').classList.toggle('hidden', !due);
 }
 function updMission() {
   const n = L.found.length; $('fc').textContent = n + '/' + IDS.length; $('fb').style.width = Math.min(100, n / GOAL * 100) + '%';
   const t = Object.assign({ words: n >= GOAL }, tasks);
-  document.querySelectorAll('#mission li').forEach(li => li.classList.toggle('done', !!t[li.dataset.t]));
-  $('deckN').textContent = Object.keys(L.cards).length;
+  let done = 0;
+  document.querySelectorAll('.tasks li').forEach(li => { const d = !!t[li.dataset.t]; li.classList.toggle('done', d); if (d) done++; });
+  $('misN').textContent = done + '/4';
 }
+/* minutes actives, pour l'objectif du jour */
+['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => addEventListener(ev, () => { lastAct = Date.now(); }, { passive: true }));
+setInterval(() => {
+  if (!P || !started || document.hidden || Date.now() - lastAct > 90000) return;
+  touchDay(); const before = P.secToday; P.secToday += 15;
+  if (before < P.goal * 60 && P.secToday >= P.goal * 60) addXP(20, U.goalDone); else { updHud(); save(); }
+  if (tab === 'progress' && $('bigRing')) renderProgress();
+}, 15000);
 
-/* ---------- compte ---------- */
-let mode = 'signup';
-function renderAuth() {
+/* ---------- accueil sans compte ---------- */
+let onbT = 'en';
+function renderOnb() {
   applyUI();
-  const f = $('authForm'); f.classList.toggle('login', mode === 'login');
+  if (ui === 'pl' && onbT === 'pl') onbT = 'en';
+  document.querySelectorAll('.learnCard').forEach(b => {
+    const t = b.dataset.t; b.querySelector('.ln').textContent = U.learnLangs[t]; b.querySelector('small').textContent = U.learnSub[t];
+    b.disabled = (t === 'pl' && ui === 'pl'); b.classList.toggle('on', t === onbT);
+  });
+}
+document.querySelectorAll('.uiSwitch button').forEach(b => b.onclick = () => { ui = b.dataset.ui; store.set('pv_ui', ui); renderOnb(); });
+document.querySelectorAll('.learnCard').forEach(b => b.onclick = () => { onbT = b.dataset.t; renderOnb(); });
+$('onbGo').onclick = () => { P = normalizeP({ ui, t: onbT }); save(true); start(); };
+$('onbLogin').onclick = () => openAuth('login');
+
+/* ---------- compte facultatif ---------- */
+let mode = 'signup';
+function openAuth(m) { mode = m; authMsg(''); renderAuth(); $('authOv').classList.remove('hidden'); }
+function renderAuth() {
+  document.querySelectorAll('#authForm .su').forEach(e => e.classList.toggle('hidden', mode === 'login'));
   $('authTitle').textContent = mode === 'login' ? U.loginTitle : U.signupTitle;
   $('authWhy').classList.toggle('hidden', mode === 'login');
   $('authBtn').textContent = mode === 'login' ? U.login : U.create;
   $('authSwitch').textContent = mode === 'login' ? U.noAcc : U.haveAcc;
   $('aPass').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
-  $('localNote').textContent = SB ? '' : U.localMode;
-  fillSelects($('aUi'), $('aT'), ui, $('aT').value || (ui === 'pl' ? 'en' : 'en'));
+  if (P && P.pseudo && !$('aPseudo').value) $('aPseudo').value = P.pseudo;
 }
 function authMsg(t, ok) { const m = $('authMsg'); m.textContent = t; m.classList.toggle('ok', !!ok); m.classList.toggle('hidden', !t); }
-document.querySelectorAll('.uiSwitch button').forEach(b => b.onclick = () => { ui = b.dataset.ui; store.set('pv_ui', ui); renderAuth(); });
-$('aUi').onchange = () => { ui = $('aUi').value; store.set('pv_ui', ui); renderAuth(); };
+$('authClose').onclick = () => $('authOv').classList.add('hidden');
 $('authSwitch').onclick = () => { mode = mode === 'login' ? 'signup' : 'login'; authMsg(''); renderAuth(); };
 $('authForm').onsubmit = async e => {
   e.preventDefault(); authMsg('');
+  if (!SB) { authMsg(U.errGeneric + 'offline'); return; }
   const email = $('aEmail').value.trim(), pass = $('aPass').value, pseudo = $('aPseudo').value.trim();
-  const meta = { pseudo, ui, t: $('aT').value };
   if (!email || pass.length < 6 || (mode === 'signup' && !pseudo)) { authMsg(U.errFields); return; }
   const btn = $('authBtn'); btn.disabled = true;
   try {
-    if (!SB) { const old = store.get('pv_local'); P = normalizeP(old && mode === 'login' ? old : null, meta); user = { id: 'local', email }; save(true); return start(); }
+    const before = P ? P.ui + P.t : '';
     if (mode === 'signup') {
-      const { data, error } = await SB.auth.signUp({ email, password: pass, options: { data: meta, emailRedirectTo: location.origin + location.pathname } });
+      const { data, error } = await SB.auth.signUp({ email, password: pass, options: { data: { pseudo } } });
       if (error) throw error;
       if (!data.session) { authMsg(U.checkMail, true); mode = 'login'; renderAuth(); return; }
-      user = data.user; await loadP(meta);
+      user = data.user; if (!P) P = normalizeP({ ui, t: onbT }); P.pseudo = pseudo;
     } else {
       const { data, error } = await SB.auth.signInWithPassword({ email, password: pass });
       if (error) throw error;
-      user = data.user; await loadP(meta);
+      user = data.user;
+      const row = await SB.from('progress').select('data').eq('user_id', user.id).maybeSingle();
+      if (row.data && row.data.data) P = normalizeP(row.data.data);
+      else { if (!P) P = normalizeP({ ui, t: onbT }); if (!P.pseudo) P.pseudo = (user.user_metadata || {}).pseudo || ''; }
     }
-    start();
+    await save(true);
+    $('authOv').classList.add('hidden');
+    if (started && before && before !== P.ui + P.t) { location.reload(); return; }
+    if (!started) start();
+    else { toast(U.accSaved); updHud(); updMission(); renderDeck(); if (tab === 'progress') renderProgress(); }
   } catch (err) { authMsg(U.errGeneric + (err.message || err)); }
   finally { btn.disabled = false; }
 };
-async function loadP(meta) {
-  const { data, error } = await SB.from('progress').select('data').eq('user_id', user.id).maybeSingle();
-  if (error) console.warn(error);
-  P = normalizeP(data && data.data, Object.assign({}, user.user_metadata || {}, meta && data ? {} : meta || {}));
-  if (!data) await save(true);
-}
+
 async function boot() {
-  renderAuth();
+  applyUI();
   if (SB) {
-    const { data } = await SB.auth.getSession();
-    if (data.session) { user = data.session.user; await loadP(null); return start(); }
-  } else {
-    const loc = store.get('pv_local'); if (loc) { P = normalizeP(loc, {}); user = { id: 'local' }; return start(); }
+    try {
+      const { data } = await SB.auth.getSession();
+      if (data.session) {
+        user = data.session.user;
+        const row = await SB.from('progress').select('data').eq('user_id', user.id).maybeSingle();
+        P = normalizeP((row.data && row.data.data) || store.get('pv_guest'));
+        return start();
+      }
+    } catch (e) { console.warn(e); }
   }
+  const g = store.get('pv_guest');
+  if (g) { P = normalizeP(g); return start(); }
+  renderOnb(); $('onb').classList.remove('hidden');
 }
 
-/* ---------- démarrage du jeu ---------- */
+/* ---------- démarrage ---------- */
 function start() {
-  ui = P.ui; T = (P.ui === 'pl' && P.t === 'pl') ? 'en' : P.t; store.set('pv_ui', ui);
+  ui = P.ui; T = (P.ui === 'pl' && P.t === 'pl') ? 'en' : P.t; P.t = T; store.set('pv_ui', ui);
   S = PV.SCENE[T]; D = PV.DLG[T]; L = P.L[T]; pickVoice();
-  touchStreak(); applyUI(); save();
-  $('auth').classList.add('hidden');
-  ['me', 'mission', 'deckBtn'].forEach(id => $(id).classList.remove('hidden'));
-  fillSelects($('mUi'), $('mT'), ui, T);
+  touchDay(); applyUI(); save();
+  $('onb').classList.add('hidden');
+  ['hud', 'nav'].forEach(id => $(id).classList.remove('hidden'));
+  $('placeName').textContent = U.placeBakery;
   $('shopName').textContent = S.shop; $('dWho').textContent = S.baker;
   $('introText').textContent = fill(U.introText, { l: PV.IN_LANG[ui][T], b: S.baker });
   $('step3').textContent = fill(U.step3, { b: S.baker });
-  $('intro').classList.remove('hidden');
+  if (!L.found.length) $('intro').classList.remove('hidden');
   if (!SR) $('dMic').disabled = true;
-  updMe(); updMission(); renderDeck();
-  const H = { board: S.board, open: S.open, flour: S.flour,
-    label: id => L.found.includes(id) ? W[id][T] : '?',
-    pick: id => id === 'baker' ? openDlg() : showWord(id),
-    bubble: () => !tasks.pay };
-  if (window.THREE) (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => window.buildScene(H));
+  updHud(); updMission(); renderDeck(); renderMap();
+  if (!started && window.THREE) {
+    const H = { board: S.board, open: S.open, flour: S.flour,
+      label: id => L.found.includes(id) ? W[id][T] : '?',
+      pick: id => { if (tab !== 'town') return; if (id === 'baker') openDlg(); else showWord(id); },
+      bubble: () => !tasks.pay };
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => window.buildScene(H));
+  }
+  started = true;
 }
 $('enter').onclick = () => { $('intro').classList.add('hidden'); say(T === 'pl' ? 'Dzień dobry!' : 'Welcome!'); };
 
-/* menu profil */
-$('meBtn').onclick = () => $('menu').classList.toggle('hidden');
-$('mUi').onchange = () => fillSelects($('mUi'), $('mT'), $('mUi').value, $('mT').value);
-$('mSave').onclick = async () => { P.ui = $('mUi').value; P.t = $('mT').value; await save(true); location.reload(); };
-$('mOut').onclick = async () => { if (SB) await SB.auth.signOut(); else localStorage.removeItem('pv_local'); location.reload(); };
+/* ---------- onglets ---------- */
+function showTab(t) {
+  tab = t;
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  $('pgStories').classList.toggle('hidden', t !== 'stories');
+  $('pgWords').classList.toggle('hidden', t !== 'words');
+  $('pgProgress').classList.toggle('hidden', t !== 'progress');
+  $('hud').classList.toggle('hidden', t !== 'town');
+  if (t !== 'town') show(null);
+  if (t !== 'stories') stopStory();
+  if (t === 'stories') renderStories();
+  if (t === 'words') renderDeck();
+  if (t === 'progress') renderProgress();
+}
+document.querySelectorAll('#nav button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 
-/* ---------- panneaux ---------- */
-function show(id) { ['card', 'dlg'].forEach(p => $(p).classList.toggle('hidden', p !== id)); document.body.classList.toggle('panel-open', !!id); if (!id && rec) try { rec.abort(); } catch (e) { /* none */ } }
+/* ---------- feuilles ---------- */
+const SHEETS = ['card', 'dlg', 'misSheet', 'mapSheet'];
+function show(id) {
+  SHEETS.forEach(p => $(p).classList.toggle('hidden', p !== id));
+  document.body.classList.toggle('dlg-open', id === 'dlg');
+  if (id !== 'dlg' && id !== 'card' && rec) try { rec.abort(); } catch (e) { /* none */ }
+}
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => show(null));
+$('misBtn').onclick = () => { updMission(); show('misSheet'); };
+$('placeBtn').onclick = () => { renderMap(); show('mapSheet'); };
+$('meBtn').onclick = () => showTab('progress');
+$('goalPill').onclick = () => showTab('progress');
+addEventListener('keydown', e => { if (e.key === 'Escape') { show(null); $('authOv').classList.add('hidden'); } });
+
 function discover(id) { if (!L.found.includes(id)) { L.found.push(id); addXP(5, U.xpWord); updMission(); } }
 
+/* mot */
 let curWord = null;
+function stemOf(w) { const f = w.toLowerCase().split(' ')[0]; return f.length <= 5 ? f.slice(0, Math.max(3, f.length - 1)) : f.slice(0, 5); }
+function markWord(p, sentence, word) {
+  p.textContent = ''; const st = stemOf(word);
+  sentence.split(/(\s+)/).forEach(tok => {
+    const clean = tok.toLowerCase().replace(/[^\p{L}]/gu, '');
+    if (clean && clean.startsWith(st)) p.appendChild(el('mark', null, tok)); else p.appendChild(document.createTextNode(tok));
+  });
+}
 function showWord(id) {
   const w = W[id]; curWord = id; discover(id);
-  $('wT').textContent = w[T]; $('wUi').textContent = w[ui]; $('wEx').textContent = w.ex[T]; $('wExUi').textContent = w.ex[ui];
+  $('wT').textContent = w[T]; $('wUi').textContent = w[ui];
+  markWord($('wEx'), w.ex[T], w[T]); $('wExUi').textContent = w.ex[ui];
   const note = ((PV.NOTES[T] || {})[id] || {})[ui];
-  $('wNote').textContent = note || ''; $('wNote').classList.toggle('hidden', !note);
-  $('wPron').classList.add('hidden'); $('wRepeat').classList.toggle('hidden', !SR);
+  $('wNoteTxt').textContent = note || ''; $('wNote').classList.toggle('hidden', !note);
+  $('wPron').classList.add('hidden'); $('wRepeat').disabled = !SR;
   updSave(); show('card'); say(w[T]);
 }
-function updSave() { $('wSave').textContent = L.cards[curWord] ? U.saved : U.save; }
+function updSave() { $('wSaveTxt').textContent = L.cards[curWord] ? U.saved : U.save; }
 $('wListen').onclick = () => { const w = W[curWord]; say(w[T]); say(w.ex[T], { queue: true }); };
-$('wSave').onclick = () => { if (L.cards[curWord]) delete L.cards[curWord]; else { L.cards[curWord] = { box: 1, due: dayNum() }; } save(); updSave(); updMission(); renderDeck(); };
+$('wSave').onclick = () => { if (L.cards[curWord]) delete L.cards[curWord]; else L.cards[curWord] = { box: 1, due: dayNum() }; save(); updSave(); updHud(); };
 $('wRepeat').onclick = () => {
   const btn = $('wRepeat'), out = $('wPron'), target = norm(W[curWord][T]).join(' ');
   btn.classList.add('on'); out.className = 'pron'; out.textContent = U.listening;
-  listen(t => { out.textContent = t; }, alts => {
+  listen(t => { out.textContent = '« ' + t + ' »'; }, alts => {
     let best = 0, heard = alts[0] || '';
     alts.forEach(a => { const n = norm(a).join(' '); const s = n.includes(target) ? 1 : 1 - lev(n, target) / Math.max(n.length, target.length, 1); if (s > best) { best = s; heard = a; } });
-    if (best >= .75) { out.textContent = U.pronGood; if (!L.pron[curWord]) { L.pron[curWord] = 1; addXP(10, U.xpPron); } }
+    out.textContent = '';
+    if (best >= .75) { out.append(icon('check'), document.createTextNode(U.pronGood)); if (!L.pron[curWord]) { L.pron[curWord] = 1; addXP(10, U.xpPron); } }
     else { out.className = 'pron bad'; out.textContent = fill(U.pronClose, { h: heard }); }
   }, err => { out.className = 'pron bad'; micError(err, out); }, () => btn.classList.remove('on'));
 };
+
+/* plan de la ville */
+function renderMap() {
+  const box = $('places'); box.innerHTML = '';
+  PV.PLACES.forEach(pl => {
+    const b = el('button', 'place' + (pl.id === 'bakery' ? ' cur' : '') + (pl.status !== 'open' ? ' locked' : '')); b.type = 'button';
+    const roof = el('span', 'roof'); roof.style.background = pl.color; b.appendChild(roof);
+    b.appendChild(el('span', 'tag ' + pl.status, pl.status === 'open' ? U.open : pl.status === 'plus' ? U.plusTag : U.soon));
+    b.appendChild(el('b', null, U[pl.key]));
+    b.appendChild(el('small', null, pl.id === 'bakery' ? U.here : ''));
+    b.onclick = () => { if (pl.status === 'open') show(null); else toast(pl.status === 'plus' ? U.plusTag + ' · ' + (ui === 'pl' ? '45 zł' : '10 €') : U.soon); };
+    box.appendChild(b);
+  });
+  if (T === 'en') {
+    const a = el('a', 'place wide'); a.href = 'rue/';
+    a.append(el('b', null, U.placeStreet), el('small', null, U.placeStreetSub)); box.appendChild(a);
+  }
+}
 
 /* ---------- dialogue ---------- */
 let lastLine = '', curOpts = [];
@@ -227,11 +339,12 @@ function render(line, tr, key) {
   curOpts = key ? D.opts[key] : [];
   const box = $('dOpts'); box.innerHTML = '';
   curOpts.forEach(o => {
-    const b = document.createElement('button'); b.className = 'opt'; b.type = 'button';
-    const e = document.createElement('span'); e.textContent = o.t; const f = document.createElement('div'); f.className = 'fr'; f.textContent = o.tr[ui] || '';
-    b.append(e, f); b.onclick = () => choose(o, false); box.appendChild(b);
+    const b = el('button', 'opt'); b.type = 'button';
+    b.append(el('span', null, o.t), el('div', 'fr', o.tr[ui] || ''));
+    b.onclick = () => choose(o, false); box.appendChild(b);
   });
   $('dMic').disabled = !SR || !curOpts.length;
+  $('dHeard').textContent = curOpts.length ? (SR ? U.speakNow : U.noMic) : '';
 }
 function go(id, line, queue) { const n = D.nodes[id]; const l = line ? line[0] : n[0]; render(l, line ? line[1] : n[1], n[2]); say(l, { queue }); }
 function choose(o, spoken) {
@@ -247,47 +360,124 @@ function choose(o, spoken) {
   }
   go(o.to, o.reply, true);
 }
-function openDlg() { tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dHeard').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
+function openDlg() { tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
 $('dReplay').onclick = () => say(lastLine);
 $('dTr').onclick = () => $('dlg').classList.toggle('tr');
 $('dMic').onclick = () => {
   const mic = $('dMic'), out = $('dHeard');
   if (rec) { try { rec.stop(); } catch (e) { /* none */ } return; }
   mic.classList.add('on'); out.textContent = U.listening;
-  listen(t => { out.textContent = t; }, alts => {
+  listen(t => { out.textContent = '« ' + t + ' »'; }, alts => {
     let best = null, bs = 0, second = 0, heard = alts[0] || '';
     alts.forEach(a => curOpts.forEach(o => { const s = score(a, o.t); if (s > bs) { if (best !== o) second = bs; bs = s; best = o; heard = a; } else if (o !== best && s > second) second = s; }));
-    out.innerHTML = ''; const lb = document.createElement('span'); lb.textContent = U.heard + ' : '; const hb = document.createElement('b'); hb.textContent = '« ' + heard + ' »'; out.append(lb, hb);
+    out.textContent = '« ' + heard + ' »'; out.appendChild(el('small', null, U.heard));
     if (best && bs >= .5 && bs - second >= .08) choose(best, true);
-    else { const h = D.nodes.huh; $('dTip').textContent = U.notUnderstood; $('dTip').classList.remove('hidden'); say(h[0]); }
+    else { $('dTip').textContent = U.notUnderstood; $('dTip').classList.remove('hidden'); say(D.nodes.huh[0]); }
   }, err => micError(err, out), () => mic.classList.remove('on'));
 };
 
 function win() {
   show(null); L.missions++; addXP(50, U.xpMission);
-  $('winText').textContent = fill(U.winText, { l: PV.IN_LANG[ui][T] });
-  $('sW').textContent = L.found.length; $('sS').textContent = spokenSession; $('sE').textContent = mistakes;
+  $('winTitle').textContent = fill(U.winTitle, { l: PV.IN_LANG[ui][T] });
+  $('winText').textContent = fill(U.winText, { b: S.baker });
+  $('sW').textContent = L.found.length; $('sS').textContent = spokenSession; $('sX').textContent = '+' + xpSession;
   $('win').classList.remove('hidden'); save(true);
 }
-$('again').onclick = () => { $('win').classList.add('hidden'); tasks.order = tasks.pay = false; mistakes = 0; spokenSession = 0; updMission(); openDlg(); };
+$('again').onclick = () => { $('win').classList.add('hidden'); tasks.order = tasks.pay = false; mistakes = 0; spokenSession = 0; xpSession = 0; updMission(); openDlg(); };
 $('explore').onclick = () => $('win').classList.add('hidden');
 
-/* ---------- cartes (répétition espacée) ---------- */
+/* ---------- histoires lues à voix haute ---------- */
+let reading = null, playing = false, playTok = 0, slow = false, curSent = 0;
+function stopStory() { playing = false; playTok++; try { speechSynthesis.cancel(); } catch (e) { /* none */ } }
+function renderStories() {
+  const box = $('storiesIn'); box.innerHTML = '';
+  if (reading) { renderReader(); return; }
+  box.append(el('h1', null, U.storiesTitle), el('p', 'lead', U.storiesSub));
+  const grid = el('div', 'stories');
+  PV.STORIES[T].forEach(st => {
+    const b = el('button', 'story'); b.type = 'button';
+    const cov = el('div', 'cover'); cov.style.background = st.bg; cov.appendChild(icon(st.icon));
+    if (L.stories[st.id]) cov.appendChild(el('span', 'readTag', U.readDone + ' ✓'));
+    const meta = el('div', 'meta'); meta.append(el('b', null, st.title), el('small', null, (st.tr[ui] || '') + ' · ' + U.beginner + ' · ' + fill(U.minRead, { n: st.min })));
+    b.append(cov, meta); b.onclick = () => { reading = st; curSent = 0; renderStories(); };
+    grid.appendChild(b);
+  });
+  box.appendChild(grid);
+}
+function renderReader() {
+  const box = $('storiesIn'), st = reading; box.innerHTML = '';
+  const top = el('div', 'rTop');
+  const back = el('button', 'btn sm'); back.type = 'button'; back.append(icon('back'), document.createTextNode(U.back));
+  back.onclick = () => { stopStory(); reading = null; renderStories(); };
+  top.append(back, el('h2', null, st.title)); box.appendChild(top);
+  box.appendChild(el('p', 'lead', (st.tr[ui] || '') + ' · ' + U.tapHint));
+  const list = el('div', 'reader');
+  st.s.forEach((s, i) => {
+    const b = el('button', 'sent'); b.type = 'button'; b.dataset.i = i;
+    let pos = 0;
+    s[0].split(/(\s+)/).forEach(tok => {
+      if (!tok || /^\s+$/.test(tok)) b.appendChild(document.createTextNode(tok));
+      else { const w = el('span', 'w', tok); w.dataset.s = pos; b.appendChild(w); }
+      pos += tok.length;
+    });
+    const tr = el('span', 'tr hidden', s[1][ui] || ''); b.appendChild(tr);
+    b.onclick = () => { tr.classList.toggle('hidden'); if (!playing) { curSent = i; speakOne(i); } };
+    list.appendChild(b);
+  });
+  box.appendChild(list);
+  const ctl = el('div', 'rCtl');
+  const pb = el('button', 'btn honey'); pb.type = 'button'; pb.id = 'pPlay';
+  const sb = el('button', 'btn ghost', U.slow); sb.type = 'button'; sb.setAttribute('aria-pressed', String(slow)); if (slow) sb.style.borderColor = 'var(--honey)';
+  sb.onclick = () => { slow = !slow; sb.setAttribute('aria-pressed', String(slow)); sb.style.borderColor = slow ? 'var(--honey)' : ''; };
+  pb.onclick = () => { if (playing) { stopStory(); updPlay(); } else { playing = true; updPlay(); speakFrom(curSent); } };
+  ctl.append(pb, sb); box.appendChild(ctl); updPlay();
+}
+function updPlay() { const pb = $('pPlay'); if (!pb) return; pb.textContent = ''; pb.append(icon(playing ? 'pause' : 'play'), document.createTextNode(playing ? U.pause : U.play)); }
+function sentEl(i) { return document.querySelector('.sent[data-i="' + i + '"]'); }
+function highlightSent(i) {
+  document.querySelectorAll('.sent').forEach(s => s.classList.toggle('cur', +s.dataset.i === i));
+  document.querySelectorAll('.w.hl').forEach(w => w.classList.remove('hl'));
+  const s = sentEl(i); if (s) s.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+function boundary(i) {
+  return e => {
+    if (e.name && e.name !== 'word') return;
+    const s = sentEl(i); if (!s) return; let pick = null;
+    s.querySelectorAll('.w').forEach(w => { if (+w.dataset.s <= e.charIndex) pick = w; });
+    s.querySelectorAll('.w.hl').forEach(w => w.classList.remove('hl')); if (pick) pick.classList.add('hl');
+  };
+}
+function speakOne(i) { highlightSent(i); say(reading.s[i][0], { rate: slow ? .7 : .9, onboundary: boundary(i) }); }
+function speakFrom(i) {
+  if (!reading) return;
+  if (i >= reading.s.length) {
+    playing = false; curSent = 0; updPlay(); highlightSent(-1);
+    if (!L.stories[reading.id]) { L.stories[reading.id] = 1; addXP(20, U.storyDone); }
+    return;
+  }
+  curSent = i; highlightSent(i); const tok = ++playTok;
+  say(reading.s[i][0], { rate: slow ? .7 : .9, onboundary: boundary(i), onend: () => { if (tok !== playTok || !playing) return; setTimeout(() => { if (tok === playTok && playing) speakFrom(i + 1); }, 300); } });
+}
+
+/* ---------- mots : répétition espacée ---------- */
 const GAP = [0, 1, 3, 7, 14, 30];
-const spk = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg>';
+function dueCount() { if (!L) return 0; const d = dayNum(); return Object.values(L.cards).filter(c => c.due <= d).length; }
 function renderDeck() {
   const ul = $('cards'); ul.innerHTML = ''; const ids = Object.keys(L.cards), d = dayNum();
   ids.sort((a, b) => L.cards[a].due - L.cards[b].due).forEach(id => {
-    const w = W[id]; if (!w) return; const li = document.createElement('li');
-    const box = document.createElement('div'); const b = document.createElement('b'); b.textContent = w[T];
-    if (L.cards[id].due <= d) { const s = document.createElement('span'); s.className = 'due'; s.textContent = U.due; b.appendChild(s); }
-    const f = document.createElement('div'); f.className = 'fr'; f.textContent = w[ui]; box.append(b, f);
-    const p = document.createElement('button'); p.className = 'ib'; p.type = 'button'; p.setAttribute('aria-label', U.listen); p.innerHTML = spk; p.onclick = () => say(w[T]);
-    const r = document.createElement('button'); r.className = 'ib'; r.type = 'button'; r.setAttribute('aria-label', '×'); r.textContent = '×';
-    r.onclick = () => { delete L.cards[id]; save(); renderDeck(); updMission(); if (curWord === id) updSave(); };
+    const w = W[id]; if (!w) return; const li = el('li');
+    const box = el('div'); const b = el('b', null, w[T]);
+    if (L.cards[id].due <= d) b.appendChild(el('span', 'due', U.due));
+    box.append(b, el('div', 't', w[ui]));
+    const p = el('button', 'ib'); p.type = 'button'; p.setAttribute('aria-label', U.listen); p.appendChild(icon('spk')); p.onclick = () => say(w[T]);
+    const r = el('button', 'ib', '×'); r.type = 'button'; r.setAttribute('aria-label', U.close);
+    r.onclick = () => { delete L.cards[id]; save(); renderDeck(); if (curWord === id) updSave(); };
     li.append(box, p, r); ul.appendChild(li);
   });
+  const due = dueCount();
   $('emptyDeck').classList.toggle('hidden', ids.length > 0); $('revBtn').classList.toggle('hidden', !ids.length);
+  $('revTxt').textContent = U.review + (due ? ' · ' + fill(U.dueN, { n: due }) : '');
+  updHud();
 }
 let queue = [];
 function flash() {
@@ -295,14 +485,107 @@ function flash() {
   const w = W[queue[0]]; $('fQ').textContent = w[ui]; $('fA').textContent = w[T]; $('fA').classList.add('hidden');
   $('fShow').classList.remove('hidden'); $('fAgain').classList.add('hidden'); $('fKnew').classList.add('hidden');
 }
-$('revBtn').onclick = () => { const d = dayNum(); queue = Object.keys(L.cards).filter(id => L.cards[id].due <= d); $('flash').classList.remove('hidden'); flash(); };
+$('revBtn').onclick = () => { const d = dayNum(); queue = Object.keys(L.cards).filter(id => L.cards[id].due <= d); $('flash').classList.remove('hidden'); flash(); $('flash').scrollIntoView({ behavior: 'smooth' }); };
 $('fShow').onclick = () => { $('fA').classList.remove('hidden'); $('fShow').classList.add('hidden'); $('fAgain').classList.remove('hidden'); $('fKnew').classList.remove('hidden'); say(W[queue[0]][T]); };
 $('fKnew').onclick = () => { const id = queue.shift(), c = L.cards[id]; c.box = Math.min(5, c.box + 1); c.due = dayNum() + GAP[c.box]; addXP(2); renderDeck(); flash(); };
 $('fAgain').onclick = () => { const id = queue.shift(), c = L.cards[id]; c.box = 1; c.due = dayNum(); queue.push(id); save(); renderDeck(); flash(); };
-$('deckBtn').onclick = () => { renderDeck(); $('deck').classList.remove('hidden'); };
-document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { const t = b.dataset.close; if (t === 'deck') $('deck').classList.add('hidden'); else show(null); });
-$('minBtn').onclick = () => { const m = $('mission').classList.toggle('min'); $('minBtn').textContent = m ? U.show : U.hide; };
-addEventListener('keydown', e => { if (e.key === 'Escape') { show(null); $('deck').classList.add('hidden'); $('menu').classList.add('hidden'); } });
 
-boot().catch(err => { console.error(err); authMsg(U.errGeneric + (err.message || err)); });
+/* ---------- progrès ---------- */
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function quizOfDay() {
+  const r = rng(dayNum() * 31 + (T === 'pl' ? 7 : 0)), pool = IDS.slice();
+  const pick = pool.splice(Math.floor(r() * pool.length), 1)[0], opts = [pick];
+  while (opts.length < 4) opts.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
+  return { id: pick, opts: opts.sort(() => r() - .5) };
+}
+function section(title) { const c = el('section', 'card'); if (title) c.appendChild(el('h3', null, title)); return c; }
+function subP(txt, margin) { const p = el('p', 'sub', txt); p.style.margin = margin; return p; }
+function renderProgress() {
+  const box = $('progIn'); box.innerHTML = '';
+  box.appendChild(el('h1', null, U.progTitle));
+  const lv = levelOf(P.xp), lo = PV.LEVELS[lv], hi = PV.LEVELS[lv + 1];
+  /* profil */
+  const pc = section(null); const pr = el('div', 'profile');
+  const av = el('div', 'bigAv', ((P.pseudo || U.levelNames[lv])[0] || '?').toUpperCase());
+  const who = el('div'); who.append(el('b', null, P.pseudo || U.levelNames[lv]), el('span', 'lvl', U.level + ' ' + (lv + 1) + ' · ' + U.levelNames[lv] + ' · ' + P.xp + ' XP'));
+  pr.append(av, who); pc.appendChild(pr);
+  const bar = el('div', 'bar'); const bi = el('i'); bi.style.width = (hi ? (P.xp - lo) / (hi - lo) * 100 : 100) + '%'; bar.appendChild(bi); pc.appendChild(bar);
+  pc.appendChild(subP(hi ? fill(U.nextLevel, { n: hi - P.xp, l: U.levelNames[lv + 1] }) : U.maxLevel, '8px 0 12px'));
+  const s3 = el('div', 'stats3');
+  [[L.found.length, U.wordsLearned], [Object.keys(L.stories).length, U.storiesRead], [L.missions, U.missionsDone]].forEach(([n, t]) => { const d = el('div'); d.append(el('b', null, n), el('span', null, t)); s3.appendChild(d); });
+  pc.appendChild(s3); box.appendChild(pc);
+  /* objectif + série */
+  const two = el('div', 'two');
+  const gc = section(U.goalTitle); const gb = el('div', 'goalBox');
+  const ring = el('div', 'bigRing'); ring.id = 'bigRing'; ring.style.setProperty('--p', Math.min(100, Math.round(P.secToday / (P.goal * 60) * 100)));
+  const rin = el('div'); rin.append(document.createTextNode(Math.floor(P.secToday / 60)), el('small', null, '/ ' + P.goal + ' ' + U.minUnit)); ring.appendChild(rin);
+  gb.appendChild(ring); gc.appendChild(gb);
+  gc.appendChild(subP(U.goalPick, '10px 0 0'));
+  const chips = el('div', 'chips');
+  [5, 10, 15, 20].forEach(m => { const c = el('button', 'chip' + (P.goal === m ? ' on' : ''), m + ' ' + U.minUnit); c.type = 'button'; c.onclick = () => { P.goal = m; save(); updHud(); renderProgress(); }; chips.appendChild(c); });
+  gc.appendChild(chips);
+  const sc = section(null); const sb = el('div', 'streakBox'); sb.appendChild(icon('flame'));
+  const sbt = el('div'); sbt.append(el('b', null, P.streak), el('div', 'sub', U.streakTitle)); sb.appendChild(sbt); sc.appendChild(sb);
+  sc.appendChild(subP(U.streakHint, '10px 0 0'));
+  two.append(gc, sc); box.appendChild(two);
+  /* quiz du jour */
+  const qc = section(U.quizTitle); const q = quizOfDay(), key = dayNum() + '-' + T, doneQ = P.quizDay === key;
+  qc.appendChild(subP(fill(U.quizQ, { w: W[q.id][T] }), '0'));
+  const qo = el('div', 'qOpts');
+  q.opts.forEach(id => {
+    const b = el('button', 'qOpt', W[id][ui]); b.type = 'button';
+    if (doneQ) { b.disabled = true; if (id === q.id) b.classList.add('ok'); else if (id === P.quizPick) b.classList.add('no'); }
+    b.onclick = () => {
+      P.quizDay = key; P.quizPick = id; P.quizRes = id === q.id ? 'ok' : 'no'; say(W[q.id][T]);
+      if (id === q.id) addXP(15, U.quizOk); else { toast(fill(U.quizNo, { a: W[q.id][ui] })); save(); }
+      renderProgress();
+    };
+    qo.appendChild(b);
+  });
+  qc.appendChild(qo); if (doneQ) qc.appendChild(subP(U.quizDone, '10px 0 0'));
+  box.appendChild(qc);
+  /* classement */
+  if (SB) {
+    const bc = section(U.boardTitle); const ol = el('ol', 'board'); ol.id = 'boardList'; ol.appendChild(el('li', null, U.boardLoading));
+    bc.appendChild(ol); if (!user) bc.appendChild(subP(U.boardGuest, '10px 0 0'));
+    box.appendChild(bc); loadBoard();
+  }
+  /* compte */
+  const ac = section(U.accTitle);
+  if (user) {
+    ac.appendChild(subP(fill(U.loggedAs, { e: user.email || '' }), '0 0 10px'));
+    const out = el('button', 'btn line', U.logout); out.type = 'button';
+    out.onclick = async () => { await SB.auth.signOut(); store.del('pv_guest'); location.reload(); };
+    ac.appendChild(out);
+  } else {
+    ac.appendChild(subP(U.guestTxt, '0 0 10px'));
+    const sv = el('button', 'btn honey wide', U.saveProg); sv.type = 'button'; sv.onclick = () => openAuth('signup');
+    const li = el('button', 'link', U.haveAcc); li.type = 'button'; li.style.color = 'var(--coralD)'; li.onclick = () => openAuth('login');
+    ac.append(sv, li);
+  }
+  box.appendChild(ac);
+  /* langues */
+  const lc = section(U.langTitle); const lt = el('div', 'two');
+  const f1 = el('label', 'f'); f1.appendChild(el('span', null, U.speak)); const s1 = el('select'); ['fr', 'pl'].forEach(k => s1.add(new Option(U.langs[k], k, false, k === ui))); f1.appendChild(s1);
+  const f2 = el('label', 'f'); f2.appendChild(el('span', null, U.learn)); const s2 = el('select'); f2.appendChild(s2);
+  const fillT = () => { s2.innerHTML = ''; ['en', 'pl'].forEach(k => { const o = new Option(U.learnLangs[k], k, false, k === T); o.disabled = k === 'pl' && s1.value === 'pl'; s2.add(o); }); if (s1.value === 'pl') s2.value = 'en'; };
+  fillT(); s1.onchange = fillT;
+  lt.append(f1, f2); lc.appendChild(lt);
+  const ch = el('button', 'btn line', U.saveLang); ch.type = 'button';
+  ch.onclick = async () => { P.ui = s1.value; P.t = s2.value; await save(true); location.reload(); };
+  lc.appendChild(ch); box.appendChild(lc);
+}
+async function loadBoard() {
+  let res;
+  try { res = await SB.from('scores').select('user_id,pseudo,xp').eq('month', monthKey()).order('xp', { ascending: false }).limit(20); } catch (e) { res = { error: e }; }
+  const ol = $('boardList'); if (!ol) return; ol.innerHTML = '';
+  if (res.error || !res.data || !res.data.length) { ol.appendChild(el('li', null, U.boardEmpty)); return; }
+  res.data.forEach((r, i) => {
+    const li = el('li', user && r.user_id === user.id ? 'me' : null);
+    li.append(el('span', 'rk', i + 1), el('span', null, r.pseudo || '—'), el('span', 'xp', r.xp + ' XP'));
+    ol.appendChild(li);
+  });
+}
+
+boot().catch(err => { console.error(err); renderOnb(); $('onb').classList.remove('hidden'); });
 }
