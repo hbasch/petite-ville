@@ -3,7 +3,8 @@ const PAL=H.pal||{walls:['#d9774b','#e3a84a','#9db58a','#efe3cf','#d99b8c'],roof
 const $=id=>document.getElementById(id);
 const canvas=$('c');
 const R=new THREE.WebGLRenderer({canvas,antialias:true});
-R.setPixelRatio(Math.min(devicePixelRatio,2));R.setSize(innerWidth,innerHeight);
+const mobile=Math.min(innerWidth,innerHeight)<700;
+R.setPixelRatio(Math.min(devicePixelRatio,mobile?1.5:2));R.setSize(innerWidth,innerHeight);
 R.outputEncoding=THREE.sRGBEncoding;R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.05;
 R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();scene.background=new THREE.Color('#1d2142');scene.fog=new THREE.Fog('#1d2142',10,20);
@@ -12,7 +13,6 @@ const ctl=new THREE.OrbitControls(cam,canvas);ctl.target.set(-.2,1.15,-1.6);ctl.
 ctl.minDistance=2.4;ctl.maxDistance=6.4;ctl.minPolarAngle=.95;ctl.maxPolarAngle=1.6;ctl.minAzimuthAngle=-.75;ctl.maxAzimuthAngle=.75;ctl.update();
 
 function tex(w,h,draw,rep){const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');draw(g,w,h);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=8;if(rep){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rep[0],rep[1])}return t}
-const clayB=(()=>{const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');g.fillStyle='#808080';g.fillRect(0,0,256,256);for(let i=0;i<200;i++){g.strokeStyle=`rgba(${Math.random()<.5?'255,255,255':'0,0,0'},.16)`;g.lineWidth=1+Math.random()*1.5;g.beginPath();g.arc(Math.random()*256,Math.random()*256,4+Math.random()*10,Math.random()*6,Math.random()*6+2);g.stroke()}for(let i=0;i<2400;i++){g.fillStyle=`rgba(${Math.random()<.5?'255,255,255':'0,0,0'},.06)`;g.fillRect(Math.random()*256,Math.random()*256,2,2)}const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1.5,1.5);return t})();
 const M=(c,o)=>{o=Object.assign({},o||{});const a=o.bumpScale===0?0:(o.bumpScale?o.bumpScale*1.9:.028);delete o.bumpScale;return PVClay.apply(new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.6},o)),a);};
 function rbox(w,h,d,r,seg){seg=seg||3;r=Math.min(r,w/2-.001,h/2-.001,d/2-.001);const g=new THREE.BoxGeometry(w,h,d,seg,seg,seg);if(r<=0.004)return new THREE.BoxGeometry(w,h,d);const p=g.attributes.position,v=new THREE.Vector3(),n=new THREE.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i);n.set(Math.max(-w/2+r,Math.min(w/2-r,v.x)),Math.max(-h/2+r,Math.min(h/2-r,v.y)),Math.max(-d/2+r,Math.min(d/2-r,v.z)));const dd=v.clone().sub(n);if(dd.lengthSq()>0){dd.normalize().multiplyScalar(r);v.copy(n).add(dd)}p.setXYZ(i,v.x,v.y,v.z)}g.computeVertexNormals();return g}
 const B=(c)=>new THREE.MeshBasicMaterial({color:c});
@@ -183,17 +183,20 @@ mk(cyl(.038,.038,.004,20),M('#7a4a22',{roughness:.2}),-3.45,.858,1.4,cupI);const
 /* lights */
 scene.add(new THREE.HemisphereLight('#fff1dc','#6b4a35',.55));
 const sun=new THREE.DirectionalLight('#ffe2b8',1.15);sun.position.set(-9,5.5,-.2);sun.target.position.set(0,0,-1);scene.add(sun,sun.target);
-sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-6,right:6,top:5,bottom:-5,near:1,far:20});sun.shadow.bias=-.0005;sun.shadow.normalBias=.02;
+sun.castShadow=true;sun.shadow.mapSize.set(mobile?1024:2048,mobile?1024:2048);Object.assign(sun.shadow.camera,{left:-6,right:6,top:5,bottom:-5,near:1,far:20});sun.shadow.bias=-.0005;sun.shadow.normalBias=.02;
 const fill=new THREE.DirectionalLight('#ffd7c2',.25);fill.position.set(3,3,6);scene.add(fill);
 
-const uvD=new WeakSet();scene.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&o.material&&!Array.isArray(o.material)&&o.material.bumpMap&&!o.material.map&&o.geometry.attributes.normal&&o.geometry.attributes.uv&&!uvD.has(o.geometry)){uvD.add(o.geometry);const p=o.geometry.attributes.position,n=o.geometry.attributes.normal,uv=o.geometry.attributes.uv;for(let i=0;i<p.count;i++){const ax=Math.abs(n.getX(i)),ay=Math.abs(n.getY(i)),az=Math.abs(n.getZ(i));let u,v;if(ax>=ay&&ax>=az){u=p.getZ(i);v=p.getY(i)}else if(ay>=az){u=p.getX(i);v=p.getZ(i)}else{u=p.getX(i);v=p.getY(i)}uv.setXY(i,u/.6,v/.6)}uv.needsUpdate=true}});clayB.repeat.set(1,1);
+[back,lw,rw,floor,ceil].forEach(o=>{o.userData.keep=true});
+/* regroupement des objets fixes ; sur ordinateur on épargne les objets cliquables, qui s'éclairent au survol */
+PVClay.bake(scene,mobile?null:n=>{for(let q=n;q;q=q.parent)if(q.userData.id)return true;return false});
 scene.traverse(o=>{if(o.isMesh&&!o.userData.noShadow&&!o.userData.glow&&o!==back&&o!==lw&&o!==rw&&o!==floor&&o!==ceil){o.castShadow=true;o.receiveShadow=true}});
+if(mobile){R.shadowMap.autoUpdate=false;R.shadowMap.needsUpdate=true}
 
 /* picking */
 const ray=new THREE.Raycaster(),ptr=new THREE.Vector2();let hov=null,down=null;const tip=$('hover');
 function pick(e){const r=canvas.getBoundingClientRect();ptr.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ptr,cam);
  const hs=ray.intersectObjects(hits,true).filter(h=>!h.object.userData.glass);if(!hs.length)return null;let o=hs[0].object;while(o&&!o.userData.id)o=o.parent;return o}
-function hl(g,on){if(!g)return;g.traverse(o=>{if(o.isMesh&&o.material.emissive&&!o.userData.glow){if(on){if(o.userData.e===undefined)o.userData.e=o.material.emissive.getHex();o.material.emissive.setHex(0x3a2410)}else if(o.userData.e!==undefined)o.material.emissive.setHex(o.userData.e)}})}
+function hl(g,on){if(!g)return;g.traverse(o=>{if(o.isMesh&&o.material.emissive&&!o.userData.glow&&!o.userData.baked){if(on){if(o.userData.e===undefined)o.userData.e=o.material.emissive.getHex();o.material.emissive.setHex(0x3a2410)}else if(o.userData.e!==undefined)o.material.emissive.setHex(o.userData.e)}})}
 canvas.addEventListener('pointermove',e=>{const g=e.pointerType==='mouse'?pick(e):null;if(g!==hov){hl(hov,false);hov=g;hl(hov,true)}
  canvas.style.cursor=hov?'pointer':'grab';
  if(hov){const id=hov.userData.id;tip.textContent=H.label(id);tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.classList.remove('hidden')}else tip.classList.add('hidden')});
