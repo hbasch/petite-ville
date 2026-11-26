@@ -712,6 +712,28 @@ addEventListener('resize', () => { if (fp) { fp.setSize(innerWidth, innerHeight)
 let talking = null;
 const camV = new THREE.Vector3();
 function faceTo(o, x, z, k) { const want = Math.atan2(x - o.grp.position.x, z - o.grp.position.z); let d = want - o.grp.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); o.grp.rotation.y += d * k; }
+/* attente debout : le poids passe d'une jambe à l'autre (hanche qui glisse, buste qui compense, genou relâché) */
+function weightShift(o, P, dt) {
+  if (o.ws == null) { o.ws = rnd(0, 10); o.wsp = rnd(.32, .5); }
+  const s = Math.sin(o.t * o.wsp + o.ws), sh = Math.sign(s) * Math.pow(Math.abs(s), .45), k = 1 - Math.exp(-dt * 6);
+  P.body.position.x += (sh * .028 - P.body.position.x) * k;
+  P.body.rotation.z += (-sh * .045 - P.body.rotation.z) * k;
+  P.head.rotation.z += (sh * .06 - P.head.rotation.z) * k;
+  const free = sh > 0 ? 0 : 1, a = Math.abs(sh);
+  P.legs.forEach((l, i) => { const bent = i === free ? -.16 * a : 0; l.rotation.x += (bent - l.rotation.x) * k; l.rotation.z += ((i === free ? (i ? .06 : -.06) * a : 0) - l.rotation.z) * k; });
+}
+/* fin de conversation joyeuse : petit saut, bras levés, yeux rieurs, grand sourire (assis : grand coucou et hochement) */
+function happyPose(o, P, dt) {
+  o.happy -= dt; const u = 1 - Math.max(0, o.happy) / 1.5, env = Math.sin(Math.min(1, u) * Math.PI), sit = o.mode === 'sit';
+  if (!sit) { const hop = Math.abs(Math.sin(u * Math.PI * 3)) * .09 * env; o.c.g.position.y = .03 + hop; P.shadow.position.y = .012 - hop; P.shadow.scale.setScalar(.42 * (1 - hop * 2.5)); }
+  const up = 2.5 * env, wig = Math.sin(o.t * 16) * .18 * env;
+  P.arms[1].rotation.z = .12 + up + wig; P.arms[1].rotation.x = -.15 * env;
+  if (!sit) { P.arms[0].rotation.z = -.12 - up + wig; P.arms[0].rotation.x = -.15 * env; }
+  P.head.rotation.z = Math.sin(u * Math.PI * 2) * .14 * env; if (sit) P.head.rotation.x = -.1 + Math.sin(u * Math.PI * 4) * .12 * env;
+  P.lids.forEach(l => { l.rotation.x = -1.25 + 1.05 * env; });
+  P.open.scale.y = Math.max(P.open.scale.y, .75 * env); P.smile.visible = P.open.scale.y < .3;
+  if (o.happy <= 0) { o.happy = 0; if (!sit) { o.c.g.position.y = .03; P.shadow.position.y = .012; P.shadow.scale.setScalar(.42); } }
+}
 function updatePeople(dt, t) {
   let speaking = false; try { speaking = speechSynthesis.speaking; } catch (e) { /* none */ }
   people.forEach(o => {
@@ -726,8 +748,9 @@ function updatePeople(dt, t) {
       const moving = o.pause <= 0;
       o.grp.position.set(Math.sin(o.a) * o.r, 0, Math.cos(o.a) * o.r);
       if (moving) { o.grp.rotation.y = o.a + (o.sp > 0 ? Math.PI / 2 : -Math.PI / 2); const s = Math.sin(o.t * 8); P.legs[0].rotation.x = s * .55; P.legs[1].rotation.x = -s * .55; P.arms[0].rotation.x = -s * .5; P.arms[1].rotation.x = s * .5; P.body.position.y = .42 + Math.abs(Math.cos(o.t * 8)) * .035; P.body.rotation.z = Math.sin(o.t * 8) * .03; }
-      else { P.legs.forEach(l => { l.rotation.x *= .85; }); P.arms.forEach(a => { a.rotation.x *= .85; }); P.body.position.y = .42; }
-    } else if (o.mode !== 'sit') { P.legs.forEach(l => { l.rotation.x *= .85; }); P.body.position.y = .42 + Math.sin(o.t * 2) * .006; P.body.rotation.z = Math.sin(o.t * .9) * .02; }
+      else { P.arms.forEach(a => { a.rotation.x *= .85; }); P.body.position.y = .42; weightShift(o, P, dt); }
+      if (moving) { P.body.position.x *= .85; P.head.rotation.z *= .85; P.legs.forEach(l => { l.rotation.z *= .85; }); }
+    } else if (o.mode !== 'sit') { P.body.position.y = .42 + Math.sin(o.t * 2) * .006; weightShift(o, P, dt); }
     /* respiration, regard */
     P.body.scale.set(1, 1 + Math.sin(o.t * 2.2) * .015, 1);
     if (isTalk && o.mode !== 'sit') { faceTo(o, pos.x, pos.z, .12); P.head.rotation.y *= .8; P.head.rotation.x = -.12 + Math.sin(o.t * 3) * .04; }
@@ -749,6 +772,7 @@ function updatePeople(dt, t) {
     const mouthOpen = isTalk && speaking ? (.4 + Math.abs(Math.sin(o.t * 14)) * .9) : .01;
     P.open.scale.y += (mouthOpen - P.open.scale.y) * .4; P.smile.visible = P.open.scale.y < .3;
     if (o.bub) { o.bub.visible = !isTalk && dist < 9; o.bub.position.y = 1.78 + Math.sin(o.t * 2.5) * .04; }
+    if (o.happy > 0) happyPose(o, P, dt);
   });
   if (talking) { const want = Math.atan2(-(talking.grp.position.x - pos.x), -(talking.grp.position.z - pos.z)); let d = want - tYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); tYaw += d * .08; tPitch += (-.3 - tPitch) * .08; }
 }
@@ -758,7 +782,7 @@ function talkTo(id) {
   const dx = pos.x - o.grp.position.x, dz = pos.z - o.grp.position.z, d = Math.hypot(dx, dz);
   if (d > 3.2 || d < 1.8) target = new THREE.Vector3(o.grp.position.x + dx / d * 2.5, 1.45, o.grp.position.z + dz / d * 2.5);
 }
-function endTalk() { if (talking) { talking.pause = rnd(1, 2); talking.waved = true; } talking = null; }
+function endTalk() { if (talking) { talking.pause = rnd(2, 3); talking.waved = true; talking.happy = 1.5; } talking = null; }
 function greet(hitObj) { const o = people.find(p => p.grp === hitObj) || people.find(p => p.id === 'passerby'); if (o) { o.wave = 1.6; o.pause = 2.5; } }
 
 /* ---------- effets ---------- */
