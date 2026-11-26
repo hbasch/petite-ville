@@ -636,12 +636,12 @@ function updatePeople(dt, t) {
     P.open.scale.y += (mouthOpen - P.open.scale.y) * .4; P.smile.visible = P.open.scale.y < .3;
     if (o.bub) { o.bub.visible = !isTalk && dist < 9; o.bub.position.y = 1.78 + Math.sin(o.t * 2.5) * .04; }
   });
-  if (talking) { const want = Math.atan2(-(talking.grp.position.x - pos.x), -(talking.grp.position.z - pos.z)); let d = want - yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw += d * .08; pitch += (-.08 - pitch) * .08; }
+  if (talking) { const want = Math.atan2(-(talking.grp.position.x - pos.x), -(talking.grp.position.z - pos.z)); let d = want - yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); yaw += d * .08; pitch += (-.3 - pitch) * .08; }
 }
 function talkTo(id) {
   const o = people.find(p => p.id === id); if (!o) return; talking = o; o.pause = 999;
   const dx = pos.x - o.grp.position.x, dz = pos.z - o.grp.position.z, d = Math.hypot(dx, dz);
-  if (d > 2.6) target = new THREE.Vector3(o.grp.position.x + dx / d * 1.9, 1.45, o.grp.position.z + dz / d * 1.9);
+  if (d > 3.2 || d < 1.8) target = new THREE.Vector3(o.grp.position.x + dx / d * 2.5, 1.45, o.grp.position.z + dz / d * 2.5);
 }
 function endTalk() { if (talking) { talking.pause = rnd(1, 2); talking.waved = true; } talking = null; }
 function greet(hitObj) { const o = people.find(p => p.grp === hitObj) || people.find(p => p.id === 'passerby'); if (o) { o.wave = 1.6; o.pause = 2.5; } }
