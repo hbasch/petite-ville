@@ -1332,7 +1332,7 @@ addEventListener('resize', () => { cam.aspect = innerWidth / innerHeight; cam.up
 const clockT = new THREE.Clock(); let lastHourCheck = 0, lastBadgeCheck = 0;
 /* ?debug : panneau de mesures à l'écran (images par seconde, résolution, appels de dessin, triangles, qualité) */
 const DBG = /[?&]debug\b/.test(location.search) ? document.createElement('div') : null, dbgS = { t: 0, n: 0 };
-if (DBG) { DBG.style.cssText = 'position:fixed;z-index:30;left:8px;bottom:calc(var(--nav) + 8px);background:rgba(20,22,44,.85);color:#9dffb0;font:11px/1.35 monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre'; document.body.appendChild(DBG); R.info.autoReset = false; }
+if (DBG) { DBG.style.cssText = 'position:fixed;z-index:30;right:8px;bottom:calc(var(--nav) + 8px);background:rgba(20,22,44,.85);color:#9dffb0;font:11px/1.35 monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre'; document.body.appendChild(DBG); R.info.autoReset = false; }
 function dbgFrame() {
   const now = performance.now(); if (dbgS.last) dbgS.t += (now - dbgS.last) / 1000; dbgS.last = now; dbgS.n++; if (dbgS.t < .5) return;
   const sz = R.getDrawingBufferSize(new THREE.Vector2()), fps = dbgS.n / dbgS.t;

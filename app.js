@@ -285,6 +285,7 @@ function enterBakery() {
       bubble: () => !tasks.pay, active: () => place === 'bakery' && !document.hidden, exit: () => { if (place === 'bakery') exitBakery(); } };
     window.buildScene(H);
   }
+  if (window.PVBakery && PVBakery.reset) PVBakery.reset();
   if (!L.found.some(id => !TOWN.has(id))) showIntro('bakery');
   say(T === 'pl' ? 'Dzień dobry!' : 'Hello!');
 }
