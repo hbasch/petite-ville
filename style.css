@@ -271,3 +271,16 @@ body.photo #hud,body.photo #nav,body.photo .sheet{display:none!important}
 .phPal span{margin-right:auto}
 .phPal button{width:34px;height:34px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:linear-gradient(135deg,var(--c1) 50%,var(--c2) 50%)}
 .phPal button.on{border-color:#fff}
+
+/* ---------- v6 : téléphone d'abord (encoche, barre d'accueil, cibles tactiles) ---------- */
+:root{--safeT:env(safe-area-inset-top,0px);--safeB:env(safe-area-inset-bottom,0px);--safeL:env(safe-area-inset-left,0px);--safeR:env(safe-area-inset-right,0px);--nav:calc(68px + var(--safeB))}
+#hud{top:calc(12px + var(--safeT));left:calc(12px + var(--safeL));right:calc(12px + var(--safeR))}
+#nav{padding:0 calc(6px + var(--safeR)) var(--safeB) calc(6px + var(--safeL))}
+#dlg{padding-bottom:calc(14px + var(--safeB))}
+.page{padding-top:calc(24px + var(--safeT))}
+.overlay{padding:calc(16px + var(--safeT)) 16px calc(16px + var(--safeB))}
+#photoBar{bottom:calc(16px + var(--safeB))}
+#card .wordRow{padding-right:46px}
+html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+#ct,#c{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+@media(max-width:600px){.pill{min-height:44px}}

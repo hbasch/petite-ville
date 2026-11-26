@@ -692,7 +692,7 @@ function snapshot() {
 }
 
 /* ---------- rendu à la première personne : anticrénelage, halo doux, étalonnage selon l'heure, vignette ---------- */
-let fp = null, fpFailed = false, fxaa = null, perfT = 0, perfN = 0, pr = R.getPixelRatio();
+let fp = null, fpFailed = false, fxaa = null, perfT = 0, perfN = 0, pr = R.getPixelRatio(), slowN = 0;
 function makeFP() {
   if (!THREE.EffectComposer || !THREE.ShaderPass || !THREE.GammaCorrectionShader) return null;
   const size = R.getDrawingBufferSize(new THREE.Vector2());
@@ -843,6 +843,9 @@ function loop() {
   sky.position.copy(cam.position); stars.position.copy(cam.position);
   if (!fp && !fpFailed) { try { fp = makeFP(); } catch (e) { fpFailed = true; console.warn(e); } }
   perfT += dt; perfN++;
+  /* qualité adaptative : on baisse la résolution si l'image rame ; en dernier recours (téléphone faible),
+     on rend directement, sans étalonnage ni anticrénelage */
+  if (perfT > 2 && fp && pr <= 1) { if (perfT / perfN > 1 / 28) { if (++slowN > 1 && !/[?&]debug\b/.test(location.search)) { fp = null; fpFailed = true; } } else slowN = 0; }
   if (perfT > 2) { if (perfT / perfN > 1 / 40 && pr > 1) { pr = Math.max(1, pr - .25); R.setPixelRatio(pr); R.setSize(innerWidth, innerHeight); if (fp) { fp.setPixelRatio(pr); if (fxaa) { const s = R.getDrawingBufferSize(new THREE.Vector2()); fxaa.uniforms.resolution.value.set(1 / s.x, 1 / s.y); } } } perfT = 0; perfN = 0; }
   if (fp) fp.render(); else R.render(scene, cam);
 }
