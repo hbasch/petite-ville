@@ -1,14 +1,22 @@
 /* Matière « pâte à modeler » commune à la ville et à la boulangerie.
    Pas de texture plaquée (donc rien ne peut s'étirer) : le relief est calculé en 3D, dans le repère de chaque objet,
    corrigé de son échelle. Ce sont de larges creux doux, comme des pressions de pouce, plus un grain très fin qui s'efface au loin.
-   S'y ajoutent une légère variation de teinte, un reflet satiné sur les bords et un peu de lumière diffusée dans la matière
-   (atténuée la nuit). */
+   S'y ajoutent une légère variation de teinte, une brillance grasse qui varie d'un endroit à l'autre, une lumière chaude
+   qui « traverse » la pâte au bord des zones éclairées, un assombrissement au contact du sol (creux, pieds des murs)
+   et un reflet doux sur les arêtes (atténués la nuit). */
 (function () {
-  const U = { day: { value: 1 } };
+  const U = { day: { value: 1 }, ground: { value: 1 },
+    /* reflets : couleurs du ciel en haut, à l'horizon et du sol (linéaires), données par la scène */
+    envT: { value: new THREE.Color(.45, .62, .85) }, envH: { value: new THREE.Color(.75, .8, .85) }, envG: { value: new THREE.Color(.3, .22, .16) } };
   const NOISE = `
 varying vec3 vClayP;
+varying float vClayY;
 uniform float clayAmt;
 uniform float clayDay;
+uniform float clayGround;
+uniform vec3 claySSS;
+uniform float clayEnvK;
+uniform vec3 clayEnvT, clayEnvH, clayEnvG;
 float cHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float cNoise(vec3 x) {
   vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
@@ -31,18 +39,26 @@ float clayHeight(vec3 p, float fine) {
   function patch(sh) {
     sh.uniforms.clayAmt = { value: this.userData.clayAmt };
     sh.uniforms.clayDay = U.day;
+    sh.uniforms.clayGround = U.ground;
+    sh.uniforms.claySSS = { value: this.userData.claySSS || SSS0 };
+    sh.uniforms.clayEnvK = { value: this.envMapIntensity };
+    sh.uniforms.clayEnvT = U.envT; sh.uniforms.clayEnvH = U.envH; sh.uniforms.clayEnvG = U.envG;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vClayP;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vClayP;\nvarying float vClayY;')
       .replace('#include <project_vertex>', `#include <project_vertex>
   vec4 clayC = vec4(transformed, 1.0);
   #ifdef USE_INSTANCING
     clayC = instanceMatrix * clayC;
   #endif
-  vClayP = clayC.xyz * vec3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz));`);
+  vClayP = clayC.xyz * vec3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz));
+  vClayY = (modelMatrix * clayC).y;`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\n' + NOISE)
       .replace('#include <color_fragment>', `#include <color_fragment>
   diffuseColor.rgb *= 0.95 + 0.1 * cNoise(vClayP * 1.7 + 7.0);`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+  /* brillance grasse irrégulière : là où le doigt a lissé la pâte, elle brille un peu plus */
+  roughnessFactor = clamp(roughnessFactor + (cNoise(vClayP * 1.9 + 11.0) - 0.5) * 0.34, 0.2, 1.0);`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
   {
     float fine = 1.0 - smoothstep(3.0, 11.0, length(vViewPosition));
@@ -54,20 +70,45 @@ float clayHeight(vec3 p, float fine) {
     normal = normalize(abs(det) * normal - grad);
   }`)
       .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
-  reflectedLight.indirectDiffuse += diffuseColor.rgb * diffuseColor.rgb * 0.32 * clayDay;`)
+  vec3 clayWN = inverseTransformDirection(normal, viewMatrix);
+  {
+    /* contact du sol : ce qui n'est pas tourné vers le ciel s'assombrit dans les 35 premiers cm (pied des murs, creux entre les pavés) */
+    float gk = (1.0 - smoothstep(0.0, 0.35, vClayY)) * smoothstep(-0.45, -0.02, vClayY) * (1.0 - smoothstep(0.5, 0.92, clayWN.y)) * clayGround;
+    /* et le dessous des rebords reçoit moins de lumière renvoyée */
+    float gao = (1.0 - 0.5 * gk) * (1.0 - 0.25 * max(0.0, -clayWN.y));
+    reflectedLight.indirectDiffuse *= gao;
+    reflectedLight.directDiffuse *= mix(1.0, gao, 0.4);
+    reflectedLight.indirectDiffuse += diffuseColor.rgb * diffuseColor.rgb * 0.12 * clayDay * gao;
+    #if NUM_DIR_LIGHTS > 0
+      /* la lumière traverse un peu la pâte au bord de l'ombre : liseré chaud et saturé */
+      float nl = dot(normal, directionalLights[0].direction);
+      float term = smoothstep(-0.5, 0.0, nl) * (1.0 - smoothstep(0.0, 0.45, nl));
+      reflectedLight.indirectDiffuse += term * directionalLights[0].color * diffuseColor.rgb * claySSS;
+    #endif
+    /* reflet du ciel calculé sans texture (dégradé ciel / horizon / sol), flou selon la rugosité :
+       un léger brillant gras sur la pâte, le ciel dans les vitres */
+    vec3 rv = inverseTransformDirection(reflect(-geometry.viewDir, geometry.normal), viewMatrix);
+    float ry = mix(rv.y, clayWN.y, material.specularRoughness * material.specularRoughness);
+    vec3 envC = ry > 0.0 ? mix(clayEnvH, clayEnvT, sqrt(ry)) : mix(clayEnvH, clayEnvG, smoothstep(0.0, 0.2, -ry));
+    reflectedLight.indirectSpecular += envC * BRDF_Specular_GGX_Environment(geometry.viewDir, geometry.normal, material.specularColor, material.specularRoughness) * clayEnvK * gao;
+  }`)
       .replace('#include <tonemapping_fragment>', `{
-    float clayRim = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 2.5);
-    gl_FragColor.rgb += mix(diffuseColor.rgb, vec3(1.0, 0.92, 0.82), 0.35) * (clayRim * 0.16 + 0.02) * clayDay;
+    /* arêtes qui accrochent la lumière du ciel */
+    float clayRim = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 3.0);
+    gl_FragColor.rgb += mix(diffuseColor.rgb, vec3(1.0, 0.93, 0.85), 0.4) * clayRim * (0.05 + 0.1 * max(0.0, clayWN.y)) * clayDay;
   }
   #include <tonemapping_fragment>`);
   }
-  /* amt : profondeur du relief (0 = lisse, pour les yeux, le verre, les ampoules) */
-  function apply(m, amt) {
+  /* lumière diffusée dans la pâte (rouge orangé), plus forte pour la peau */
+  const SSS0 = new THREE.Vector3(.2, .11, .06);
+  /* amt : profondeur du relief (0 = lisse, pour les yeux, le verre, les ampoules) ; sss : [r, v, b] facultatif */
+  function apply(m, amt, sss) {
     if (!amt) return m;
     m.userData.clayAmt = amt;
+    if (sss) m.userData.claySSS = new THREE.Vector3().fromArray(sss);
     m.extensions = Object.assign(m.extensions || {}, { derivatives: true });
     m.onBeforeCompile = patch;
-    m.customProgramCacheKey = () => 'clay2';
+    m.customProgramCacheKey = () => 'clay3';
     return m;
   }
 
@@ -79,8 +120,9 @@ float clayHeight(vec3 p, float fine) {
   const bakedMats = {};
   function bakedMat(m) {
     const amt = m.userData.clayAmt || 0;
-    const key = [m.roughness, m.metalness, m.emissive.getHexString(), m.emissiveIntensity, amt, m.side, m.flatShading].join('|');
-    if (!bakedMats[key]) bakedMats[key] = apply(new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: m.roughness, metalness: m.metalness, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity, side: m.side, flatShading: m.flatShading }), amt);
+    const sss = m.userData.claySSS ? m.userData.claySSS.toArray() : null;
+    const key = [m.roughness, m.metalness, m.emissive.getHexString(), m.emissiveIntensity, amt, m.side, m.flatShading, m.envMapIntensity, sss].join('|');
+    if (!bakedMats[key]) bakedMats[key] = apply(new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: m.roughness, metalness: m.metalness, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity, side: m.side, flatShading: m.flatShading, envMapIntensity: m.envMapIntensity }), amt, sss);
     return { key: 's' + key, mat: bakedMats[key], color: true };
   }
   function bakeable(c) {

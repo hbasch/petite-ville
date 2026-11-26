@@ -46,8 +46,8 @@ function C(color, o) {
   const opts = Object.assign({}, o || {}), uniq = opts.unique; delete opts.unique;
   const key = color + JSON.stringify(opts);
   if (!uniq && matCache[key]) return matCache[key];
-  const amt = opts.bumpScale === 0 ? 0 : (opts.bumpScale ? opts.bumpScale * 1.9 : .04); delete opts.bumpScale;
-  const m = PVClay.apply(new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .5 }, opts)), amt);
+  const amt = opts.bumpScale === 0 ? 0 : (opts.bumpScale ? opts.bumpScale * 1.9 : .04), sss = opts.sss; delete opts.bumpScale; delete opts.sss;
+  const m = PVClay.apply(new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .5 }, opts)), amt, sss);
   if (uniq) m.userData.unique = true; else matCache[key] = m; return m;
 }
 function rbox(w, h, d, r, seg) {
@@ -103,6 +103,7 @@ const GRADE = { uniforms: { tDiffuse: { value: null }, sat: { value: 1.24 }, con
     'void main(){ vec4 c = texture2D(tDiffuse, vUv); vec3 col = c.rgb; float l = dot(col, vec3(.2126,.7152,.0722)); col = mix(vec3(l), col, sat);\n' +
     ' col = max((col - 0.18) * con + 0.18, 0.0) * tint; vec2 d = vUv - .5; col *= mix(.8, 1.0, smoothstep(.95, .25, length(d) * vig * 1.25));\n' +
     ' gl_FragColor = LinearTosRGB(vec4(col, c.a)); }' };
+
 
 /* ---------- lumières ---------- */
 const hemi = new THREE.HemisphereLight('#cfe6ff', '#6b4a35', .6); scene.add(hemi);
@@ -992,9 +993,9 @@ const KF = [
   [0, '#0b1033', '#1f2a5a', '#0e1228', '#9fb2ff', .28, '#3a4680', '#1a1630', .38, '#1a2350', 1, 1],
   [5, '#141a48', '#3d3f78', '#16163a', '#a0a8ff', .3, '#3d4680', '#1a1630', .4, '#2a2d5e', 1, .7],
   [6.5, '#4a5ea8', '#f2a37a', '#a08a9a', '#ffb48a', .8, '#a6a8d0', '#5a4038', .5, '#e8a58a', .55, .1],
-  [8, '#6fa8e8', '#cfe6f5', '#9ab7c9', '#fff1d6', 1.25, '#cfe6ff', '#6b4a35', .62, '#cfe2ee', 0, 0],
-  [13, '#4f92e2', '#d2eafa', '#a8c4d6', '#ffffff', 1.4, '#d6ecff', '#6b4a35', .68, '#d6ecfa', 0, 0],
-  [16.5, '#6d8fd0', '#ffd7a8', '#e2c2aa', '#ffd08a', 1.2, '#d0d6f0', '#6b4a35', .6, '#f3d0aa', .15, 0],
+  [8, '#6fa8e8', '#cfe6f5', '#9ab7c9', '#ffe4c0', 1.25, '#cfe6ff', '#7a5438', .62, '#cfe2ee', 0, 0],
+  [13, '#4f92e2', '#d2eafa', '#a8c4d6', '#fff0dc', 1.4, '#cfe4ff', '#7a5438', .68, '#d6ecfa', 0, 0],
+  [16.5, '#6d8fd0', '#ffd7a8', '#e2c2aa', '#ffd08a', 1.2, '#c8d0f0', '#7a5438', .6, '#f3d0aa', .15, 0],
   [18.3, '#4a5a9a', '#ff9f6a', '#c08a86', '#ff8f5a', .8, '#b0a0c8', '#5a3a3a', .5, '#eba07a', .65, .05],
   [19.6, '#252a68', '#7a5a9a', '#2a2448', '#a6aaff', .38, '#5a5a90', '#2a2030', .42, '#4a4278', 1, .5],
   [21, '#0e1438', '#26305e', '#10142e', '#9fb2ff', .3, '#3a4680', '#1a1630', .38, '#1d2654', 1, .9],
@@ -1007,8 +1008,8 @@ function applyHour(h) {
   hourNow = h; let i = 0; while (i < KF.length - 2 && KF[i + 1][0] <= h) i++;
   const a = KF[i], b = KF[i + 1], t = Math.min(1, Math.max(0, (h - a[0]) / (b[0] - a[0])));
   lerpC(skyU.top.value, a[1], b[1], t).convertSRGBToLinear(); lerpC(skyU.hor.value, a[2], b[2], t).convertSRGBToLinear(); lerpC(skyU.bot.value, a[3], b[3], t).convertSRGBToLinear();
-  lerpC(sun.color, a[4], b[4], t); sun.intensity = (a[5] + (b[5] - a[5]) * t) * 1.18;
-  lerpC(hemi.color, a[6], b[6], t); lerpC(hemi.groundColor, a[7], b[7], t); hemi.intensity = (a[8] + (b[8] - a[8]) * t) * .64;
+  lerpC(sun.color, a[4], b[4], t); sun.intensity = (a[5] + (b[5] - a[5]) * t) * 1.5;
+  lerpC(hemi.color, a[6], b[6], t); lerpC(hemi.groundColor, a[7], b[7], t); hemi.intensity = (a[8] + (b[8] - a[8]) * t) * .58;
   lerpC(scene.fog.color, a[9], b[9], t).convertSRGBToLinear();
   lightsOn = a[10] + (b[10] - a[10]) * t; PVClay.U.day.value = 1 - lightsOn * .75; starMat.opacity = a[11] + (b[11] - a[11]) * t;
   const golden = Math.max(0, 1 - Math.abs(h - 18) / 2.2), dawn = Math.max(0, 1 - Math.abs(h - 7) / 1.5);
@@ -1016,7 +1017,9 @@ function applyHour(h) {
   GRADE.uniforms.sat.value = 1.24 - lightsOn * .14;
   moteMat.color.set(lightsOn > .5 ? '#fff27a' : '#fff2c8'); moteMat.size = lightsOn > .5 ? .13 : .085;
   const day = h >= 6 && h <= 20, el = day ? Math.sin((h - 6) / 14 * Math.PI) : .55, az = (h / 24) * TAU + 1.2;
-  const dir = day ? new THREE.Vector3(Math.cos(az) * Math.cos(el * 1.3), Math.max(.12, Math.sin(el * 1.25)), Math.sin(az) * Math.cos(el * 1.3)) : new THREE.Vector3(-Math.cos(az) * .6, .7, -Math.sin(az) * .6);
+  /* soleil jamais très haut (au plus ~40°) : les façades restent éclairées de biais et les ombres s'allongent sur la place */
+  const e = .1 + el * .62;
+  const dir = day ? new THREE.Vector3(Math.cos(az) * Math.cos(e), Math.sin(e), Math.sin(az) * Math.cos(e)) : new THREE.Vector3(-Math.cos(az) * .6, .7, -Math.sin(az) * .6);
   dir.normalize(); skyU.sunDir.value.copy(dir); sun.position.copy(dir).multiplyScalar(45); sun.target.position.set(0, 0, 0);
   skyU.sunCol.value.copy(day ? sun.color : new THREE.Color('#dfe6ff')).convertSRGBToLinear().multiplyScalar(day ? 1 : .55);
   winMats.forEach(m => { m.emissiveIntensity = lightsOn * .95; }); shopGlass.emissiveIntensity = .22 + lightsOn * 1.05; clockMats.forEach(m => { m.emissiveIntensity = lightsOn * .28; });
@@ -1025,6 +1028,8 @@ function applyHour(h) {
   lampLights.forEach(p => { p.intensity = lightsOn * 1.4; }); poolM.opacity = lightsOn * .5; if (signMat) signMat.emissiveIntensity = .05 + lightsOn * .3;
   R.shadowMap.needsUpdate = true;
   R.toneMappingExposure = .9 + lightsOn * .12;
+  /* reflets de la pâte : ciel, horizon et sol chaud du moment */
+  { const E = PVClay.U, k = 1 - lightsOn * .6; E.envT.value.copy(skyU.top.value).multiplyScalar(k); E.envH.value.copy(skyU.hor.value).multiplyScalar(k); E.envG.value.set(shade(PAL.ground, -.15)).convertSRGBToLinear().multiplyScalar(k * .8); }
   const hm = h % 12, mm = (h * 60) % 60;
   hands.forEach(([hh, mh]) => { hh.rotation.z = -(hm / 12) * TAU; mh.rotation.z = -(mm / 60) * TAU; });
 }
