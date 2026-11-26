@@ -52,7 +52,7 @@ function C(color, o) {
 }
 function rbox(w, h, d, r, seg) {
   seg = seg || SEG; r = Math.min(r, w / 2 - .001, h / 2 - .001, d / 2 - .001);
-  const g = new THREE.BoxGeometry(w, h, d, seg, seg, seg); if (r <= 0) return g;
+  const sg3 = Array.isArray(seg) ? seg : [seg, seg, seg], g = new THREE.BoxGeometry(w, h, d, sg3[0], sg3[1], sg3[2]); if (r <= 0) return g;
   const p = g.attributes.position, v = new THREE.Vector3(), inn = new THREE.Vector3();
   for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); inn.set(Math.max(-w / 2 + r, Math.min(w / 2 - r, v.x)), Math.max(-h / 2 + r, Math.min(h / 2 - r, v.y)), Math.max(-d / 2 + r, Math.min(d / 2 - r, v.z))); const dir = v.clone().sub(inn); if (dir.lengthSq() > 0) { dir.normalize().multiplyScalar(r); v.copy(inn).add(dir); } p.setXYZ(i, v.x, v.y, v.z); }
   g.computeVertexNormals(); return g;
@@ -82,7 +82,7 @@ function sblobAt(obj, lx, lz, sx, sz, yaw) { obj.updateMatrixWorld(true); const 
 /* vitres : lisses et brillantes, elles reflètent le ciel (envMapIntensity sert de force du reflet dans le shader de pâte) */
 const litGlass = C(GLASS, { unique: true, emissive: '#ffa548', emissiveIntensity: 0, roughness: .12, envMapIntensity: 1.7, bumpScale: .008 }); winMats.push(litGlass);
 const darkGlass = C(GLASS, { roughness: .12, envMapIntensity: 1.7, bumpScale: .008 });
-const shopGlass = C('#3a3550', { unique: true, emissive: '#ffbf6e', emissiveIntensity: 0, roughness: .14, envMapIntensity: 2.2, bumpScale: .008 }); winMats.push(shopGlass);
+const shopGlass = C('#2e2832', { unique: true, emissive: '#ffbf6e', emissiveIntensity: 0, roughness: .16, envMapIntensity: 1.1, bumpScale: .008 }); winMats.push(shopGlass);
 
 /* ---------- ciel : dôme dégradé + soleil/lune + étoiles ---------- */
 const skyU = { top: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, bot: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color() } };
@@ -114,7 +114,7 @@ const GRADE = { uniforms: { tDiffuse: { value: null }, sat: { value: 1.24 }, con
 const hemi = new THREE.HemisphereLight('#cfe6ff', '#6b4a35', .6); scene.add(hemi);
 const sun = new THREE.DirectionalLight('#ffffff', 1.2); scene.add(sun, sun.target);
 sun.castShadow = true; sun.shadow.mapSize.set(mobile ? 1024 : 2048, mobile ? 1024 : 2048);
-Object.assign(sun.shadow.camera, { left: -17, right: 17, top: 17, bottom: -17, near: 1, far: 90 }); sun.shadow.bias = -.0006; sun.shadow.normalBias = .03; sun.shadow.radius = 3;
+Object.assign(sun.shadow.camera, { left: -17, right: 17, top: 17, bottom: -17, near: 1, far: 90 }); sun.shadow.bias = -.0006; sun.shadow.normalBias = .045; sun.shadow.radius = 3;
 const lampLights = [];
 const poolM = new THREE.MeshBasicMaterial({ map: null, color: '#ffc77a', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
 
@@ -339,9 +339,14 @@ function building(sp, ang, rad) {
     mk(sph(.06, 8), C('#e8c35a', { metalness: .6, roughness: .3 }), dx + .25, .8, d / 2 + .16, g);
     /* auvent bombé */
     const aw = new THREE.Group(); aw.position.set(sx + .2, 2.12, d / 2 + .1); g.add(aw);
-    const awW = sw + 1.0, nS = 6;
-    for (let k = 0; k < nS; k++) { const seg = mk(rbox(awW / nS + .02, .14, 1.05, .06, 2), C(k % 2 ? TRIM : sp.awning), -awW / 2 + awW * (k + .5) / nS, 0, .5, aw); seg.rotation.x = .42; }
-    for (let k = 0; k < nS; k++) mk(G_('scal', () => sph(.19, 12)), C(k % 2 ? TRIM : sp.awning), -awW / 2 + awW * (k + .5) / nS, -.4, .98, aw).scale.set(1.1, .6, .5);
+    /* bandes de toile bombées : chaque bande suit un arc (presque à plat contre le mur, puis qui plonge) */
+    const awW = sw + 1.0, nS = 6, Rb = 2.2, th0 = .1, Lb = 1.1, th1 = th0 + Lb / Rb;
+    const segG = G_('awn' + awW.toFixed(2), () => { const gg = rbox(awW / nS + .02, .11, Lb, .05, [2, 2, 8]), q = gg.attributes.position;
+      for (let i = 0; i < q.count; i++) { const th = th0 + (q.getZ(i) + Lb / 2) / Rb, rr = Rb + q.getY(i); q.setXYZ(i, q.getX(i), rr * Math.cos(th) - Rb * Math.cos(th0), rr * Math.sin(th) - Rb * Math.sin(th0)); }
+      gg.computeVertexNormals(); return gg; });
+    const fy = Rb * (Math.cos(th1) - Math.cos(th0)), fz = Rb * (Math.sin(th1) - Math.sin(th0));
+    for (let k = 0; k < nS; k++) mk(segG, C(k % 2 ? TRIM : sp.awning), -awW / 2 + awW * (k + .5) / nS, .02, 0, aw);
+    for (let k = 0; k < nS; k++) { const sc = mk(G_('scal', () => sph(.19, 12)), C(k % 2 ? TRIM : sp.awning), -awW / 2 + awW * (k + .5) / nS, fy - .07, fz - .02, aw); sc.scale.set(1.1, .6, .5); sc.rotation.x = th1 * .6; }
     signPost(sp.shop, g, sp.w / 2 - .25, 3.0, d / 2);
   } else if (!sp.hall) {
     mk(rbox(1.08, 1.82, .2, .14, 3), C(TRIM), 0, .91, d / 2, g); mk(rbox(.84, 1.62, .14, .12, 3), C(sp.door || shade(sp.color, -.3)), 0, .82, d / 2 + .06, g);
@@ -1063,7 +1068,7 @@ function applyHour(h) {
   const dir = day ? new THREE.Vector3(Math.cos(az) * Math.cos(e), Math.sin(e), Math.sin(az) * Math.cos(e)) : new THREE.Vector3(-Math.cos(az) * .6, .7, -Math.sin(az) * .6);
   dir.normalize(); skyU.sunDir.value.copy(dir); sun.position.copy(dir).multiplyScalar(45); sun.target.position.set(0, 0, 0);
   skyU.sunCol.value.copy(day ? sun.color : new THREE.Color('#dfe6ff')).convertSRGBToLinear().multiplyScalar(day ? 1 : .55);
-  winMats.forEach(m => { m.emissiveIntensity = lightsOn * .95; }); shopGlass.emissiveIntensity = .06 + lightsOn * 1.15; clockMats.forEach(m => { m.emissiveIntensity = lightsOn * .28; });
+  winMats.forEach(m => { m.emissiveIntensity = lightsOn * .95; }); shopGlass.emissiveIntensity = .1 + lightsOn * 1.15; clockMats.forEach(m => { m.emissiveIntensity = lightsOn * .28; });
   lampMats.forEach(m => { m.emissiveIntensity = .15 + lightsOn * 2.2; });
   halos.forEach(s => { s.material.opacity = lightsOn * .85; });
   lampLights.forEach(p => { p.intensity = lightsOn * 1.4; }); poolM.opacity = lightsOn * .5; if (signMat) signMat.emissiveIntensity = .05 + lightsOn * .3;

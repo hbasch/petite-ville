@@ -28,12 +28,13 @@ float clayPrint(vec3 p) {
   vec3 c = floor(p * 2.2), f = fract(p * 2.2) - 0.5;
   float on = step(0.8, cHash(c + 7.3));
   float r = length(f.xy * vec2(1.0, 1.4) + f.z * 0.3);
-  return on * sin(r * 95.0 + cHash(c) * 6.28) * smoothstep(0.42, 0.12, r);
+  /* arcs partiels (pas des cercles complets), comme une pulpe de doigt qui a glissé */
+  return on * sin(r * 95.0 + cHash(c) * 6.28) * smoothstep(0.42, 0.12, r) * smoothstep(-0.15, 0.25, f.x + f.y * 0.6);
 }
 float clayHeight(vec3 p, float fine) {
   float d = cNoise(p * 2.3);
   d = 1.0 - sqrt((d * 2.0 - 1.0) * (d * 2.0 - 1.0) + 0.02);
-  return d * d * 0.65 + cNoise(p * 1.1 + 5.0) * 0.55 + cNoise(p * 7.0 + 3.1) * 0.25 + cNoise(p * 31.0) * 0.10 * fine + clayPrint(p) * 0.03 * fine * fine * fine;
+  return d * d * 0.65 + cNoise(p * 1.1 + 5.0) * 0.55 + cNoise(p * 7.0 + 3.1) * 0.25 + cNoise(p * 31.0) * 0.07 * fine + clayPrint(p) * 0.018 * fine * fine * fine;
 }
 `;
   function patch(sh) {
