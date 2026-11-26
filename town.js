@@ -1081,13 +1081,47 @@ function setPhoto(on) {
   }
 }
 function stopAuto() { if (ctl) ctl.autoRotate = false; }
+/* carte postale : cadre papier, titre rétro, timbre dessiné, cachet de la poste à la date du jour */
+const POSTCARD = { gb: ['Greetings from', 'Edinburgh'], pl: ['Pozdrowienia z', 'Wrocławia'], fr: ['Bons baisers de', 'Petite Ville'] }[COUNTRY];
+function stampArt(g, x, y, w, h) {
+  g.save(); g.translate(x + w / 2, y + h / 2); const k = w / 100;
+  if (COUNTRY === 'gb') { /* chardon */ g.strokeStyle = '#3f7a4a'; g.lineWidth = 6 * k; g.lineCap = 'round'; g.beginPath(); g.moveTo(0, 40 * k); g.lineTo(0, -2 * k); g.moveTo(0, 22 * k); g.quadraticCurveTo(-26 * k, 14 * k, -30 * k, 26 * k); g.moveTo(0, 16 * k); g.quadraticCurveTo(24 * k, 6 * k, 30 * k, 18 * k); g.stroke(); g.fillStyle = '#6aa05a'; g.beginPath(); g.ellipse(0, -8 * k, 16 * k, 13 * k, 0, 0, TAU); g.fill(); g.fillStyle = '#8a4aa8'; for (let i = -3; i <= 3; i++) { g.beginPath(); g.ellipse(i * 5 * k, -28 * k, 5 * k, 15 * k, i * .18, 0, TAU); g.fill(); } }
+  else if (COUNTRY === 'pl') { /* bonnet et barbe de krasnal */ g.fillStyle = '#d8323c'; g.beginPath(); g.moveTo(-24 * k, -4 * k); g.lineTo(4 * k, -44 * k); g.lineTo(24 * k, -4 * k); g.closePath(); g.fill(); g.fillStyle = '#f2c8a8'; g.beginPath(); g.arc(0, 6 * k, 18 * k, 0, TAU); g.fill(); g.fillStyle = '#fff8ee'; g.beginPath(); g.moveTo(-18 * k, 10 * k); g.quadraticCurveTo(0, 52 * k, 18 * k, 10 * k); g.closePath(); g.fill(); g.fillStyle = '#2a2233'; [-7, 7].forEach(e => { g.beginPath(); g.arc(e * k, 2 * k, 2.6 * k, 0, TAU); g.fill(); }); }
+  else { /* croissant */ g.fillStyle = '#e0a050'; g.strokeStyle = '#a86a2a'; g.lineWidth = 3 * k; for (let i = -2; i <= 2; i++) { g.beginPath(); g.ellipse(i * 13 * k, Math.abs(i) * 7 * k, 11 * k, (18 - Math.abs(i) * 3) * k, i * .5, 0, TAU); g.fill(); g.stroke(); } }
+  g.restore();
+}
 function snapshot() {
   if (composer) composer.render(); else R.render(scene, cam);
-  const src = R.domElement, out = document.createElement('canvas'); out.width = src.width; out.height = src.height;
-  const g = out.getContext('2d'); g.drawImage(src, 0, 0);
-  const s = out.width / 1200; g.font = '800 ' + Math.round(34 * s) + 'px "Baloo 2",Nunito,sans-serif'; g.textAlign = 'right'; g.textBaseline = 'bottom';
-  g.fillStyle = 'rgba(29,33,66,.55)'; g.fillText('Petite Ville', out.width - 26 * s, out.height - 22 * s);
-  g.fillStyle = '#ffb547'; g.fillText('Petite Ville', out.width - 28 * s, out.height - 24 * s);
+  const src = R.domElement, W = src.width, Hh = src.height, m = Math.round(Math.min(W, Hh) * .045);
+  const out = document.createElement('canvas'); out.width = W + m * 2; out.height = Hh + m * 2; const g = out.getContext('2d');
+  g.fillStyle = '#fbf3e4'; g.fillRect(0, 0, out.width, out.height); g.drawImage(src, m, m);
+  g.strokeStyle = 'rgba(42,34,51,.18)'; g.lineWidth = 2; g.strokeRect(m, m, W, Hh);
+  const u = Math.min(W, Hh) / 1000, disp = '"Baloo 2",Nunito,sans-serif';
+  /* titre rétro en deux lignes, ombre portée */
+  const f1 = Math.round(46 * u), f2 = Math.round(118 * u), tx = m + 40 * u, ty = m + 40 * u;
+  g.textAlign = 'left'; g.textBaseline = 'top';
+  g.font = 'italic 700 ' + f1 + 'px Georgia,serif'; g.fillStyle = 'rgba(29,33,66,.55)'; g.fillText(POSTCARD[0], tx + 3 * u, ty + 3 * u); g.fillStyle = '#fff8ee'; g.fillText(POSTCARD[0], tx, ty);
+  g.font = '800 ' + f2 + 'px ' + disp; const y2 = ty + f1 * 1.05;
+  g.lineJoin = 'round'; g.lineWidth = 14 * u; g.strokeStyle = '#1d2142'; g.strokeText(POSTCARD[1], tx, y2);
+  g.fillStyle = '#ffb547'; g.fillText(POSTCARD[1], tx, y2);
+  /* timbre dentelé */
+  const sw = 150 * u, sh = 180 * u, sx = out.width - m - sw - 34 * u, sy = m + 30 * u;
+  g.save(); g.shadowColor = 'rgba(0,0,0,.25)'; g.shadowBlur = 12 * u; g.fillStyle = '#fffaf0'; g.fillRect(sx, sy, sw, sh); g.restore();
+  g.fillStyle = '#fbf3e4'; const r = 7 * u; for (let x = sx; x <= sx + sw; x += r * 2.4) { g.beginPath(); g.arc(x, sy, r, 0, TAU); g.arc(x, sy + sh, r, 0, TAU); g.fill(); } for (let y = sy; y <= sy + sh; y += r * 2.4) { g.beginPath(); g.arc(sx, y, r, 0, TAU); g.arc(sx + sw, y, r, 0, TAU); g.fill(); }
+  g.fillStyle = COUNTRY === 'gb' ? '#dfe8f0' : COUNTRY === 'pl' ? '#f6e0dc' : '#f6ead2'; g.fillRect(sx + 14 * u, sy + 14 * u, sw - 28 * u, sh - 28 * u);
+  stampArt(g, sx + 14 * u, sy + 10 * u, sw - 28 * u, sh - 40 * u);
+  g.fillStyle = '#2a2233'; g.font = '700 ' + Math.round(20 * u) + 'px ' + disp; g.textAlign = 'center'; g.fillText({ gb: '£1.70', pl: '6,20 zł', fr: '1,39 €' }[COUNTRY], sx + sw / 2, sy + sh - 40 * u);
+  /* cachet de la poste */
+  const pcx = sx - 26 * u, pcy = sy + sh * .62, pr = 74 * u, d = new Date();
+  g.save(); g.globalAlpha = .55; g.strokeStyle = '#2f3550'; g.lineWidth = 4 * u; g.beginPath(); g.arc(pcx, pcy, pr, 0, TAU); g.stroke(); g.beginPath(); g.arc(pcx, pcy, pr * .72, 0, TAU); g.stroke();
+  g.fillStyle = '#2f3550'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 ' + Math.round(17 * u) + 'px ' + disp; g.fillText(String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear(), pcx, pcy);
+  g.font = '800 ' + Math.round(15 * u) + 'px ' + disp; g.fillText(POSTCARD[1].toUpperCase(), pcx, pcy - pr * .86);
+  for (let k = 0; k < 4; k++) { g.beginPath(); for (let x = 0; x <= 150 * u; x += 4 * u) { const yy = pcy - 30 * u + k * 20 * u + Math.sin(x / (9 * u)) * 5 * u; x ? g.lineTo(pcx - pr * 3.2 + x, yy) : g.moveTo(pcx - pr * 3.2 + x, yy); } g.stroke(); }
+  g.restore();
+  /* signature discrète du jeu */
+  const s2 = Math.round(28 * u); g.font = '800 ' + s2 + 'px ' + disp; g.textAlign = 'right'; g.textBaseline = 'bottom';
+  g.fillStyle = 'rgba(29,33,66,.55)'; g.fillText('Petite Ville', out.width - m - 18 * u, out.height - m - 14 * u);
+  g.fillStyle = '#ffb547'; g.fillText('Petite Ville', out.width - m - 20 * u, out.height - m - 16 * u);
   return out.toDataURL('image/jpeg', .92);
 }
 
@@ -1290,7 +1324,7 @@ loop();
 
 /* sortir de la boulangerie : devant sa porte, face à la place */
 /* outil de test : ?debug dans l'adresse donne window.PVDBG pour placer la caméra (captures de vérification) */
-if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges };
+if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges };
 function placeAtBakery() { const a = bld.bakery.ang; pos.set(Math.sin(a) * 8.0, 1.45, Math.cos(a) * 8.0); yaw = tYaw = a; pitch = tPitch = -.05; target = null; vel.set(0, 0, 0); }
 
 return {
