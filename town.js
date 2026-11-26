@@ -7,7 +7,7 @@ const canvas = $('ct');
 const mobile = Math.min(innerWidth, innerHeight) < 700;
 const R = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
 R.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.25 : 1.5)); R.setSize(innerWidth, innerHeight);
-R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = .9;
+R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = .86;
 R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 /* plan proche à 0,2 : le tampon de profondeur intermédiaire n'a que 16 bits, il faut le ménager */
@@ -57,6 +57,10 @@ function rbox(w, h, d, r, seg) {
   for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); inn.set(Math.max(-w / 2 + r, Math.min(w / 2 - r, v.x)), Math.max(-h / 2 + r, Math.min(h / 2 - r, v.y)), Math.max(-d / 2 + r, Math.min(d / 2 - r, v.z))); const dir = v.clone().sub(inn); if (dir.lengthSq() > 0) { dir.normalize().multiplyScalar(r); v.copy(inn).add(dir); } p.setXYZ(i, v.x, v.y, v.z); }
   g.computeVertexNormals(); return g;
 }
+/* colle plusieurs géométries en une seule (positions, normales, index) */
+function mergeGeos(list) { const P = [], N = [], I = []; let vo = 0; list.forEach(g => { const p = g.attributes.position, n = g.attributes.normal; for (let i = 0; i < p.count; i++) { P.push(p.getX(i), p.getY(i), p.getZ(i)); N.push(n.getX(i), n.getY(i), n.getZ(i)); } const ix = g.index ? g.index.array : [...Array(p.count).keys()]; for (let i = 0; i < ix.length; i++) I.push(ix[i] + vo); vo += p.count; }); const o = new THREE.BufferGeometry(); o.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); o.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); o.setIndex(I); return o; }
+/* courbe une forme plate autour de l'axe vertical (rayon R) : tablier, poche qui épousent le ventre */
+function bend(g, R, fl) { const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), Ry = R + Math.max(0, -y) * (fl || 0), a = x / Ry, r = Ry + z; p.setXYZ(i, Math.sin(a) * r, p.getY(i), Math.cos(a) * r); } g.computeVertexNormals(); return g; }
 function lump(g, a, f) { f = f || 1.3; const p = g.attributes.position; const s = rnd(0, 10); for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), n = Math.sin(x * 2.1 * f + s) * Math.cos(z * 1.7 * f + y * 1.3 * f + s) + Math.sin(y * 2.7 * f + s) * .5; p.setXYZ(i, x + n * a, y + n * a * .5, z + n * a); } g.computeVertexNormals(); return g; }
 const geoCache = {};
 function G_(key, fn) { return geoCache[key] || (geoCache[key] = fn()); }
@@ -75,9 +79,10 @@ const halos = [], winMats = [], lampMats = [], clockMats = [];
 const sblobs = [];
 function sblob(x, z, sx, sz, yaw) { sblobs.push([x, z, sx, sz == null ? sx : sz, yaw || 0]); }
 function sblobAt(obj, lx, lz, sx, sz, yaw) { obj.updateMatrixWorld(true); const v = obj.localToWorld(new THREE.Vector3(lx, 0, lz)); sblob(v.x, v.z, sx, sz, (yaw || 0) + obj.rotation.y); }
-const litGlass = C(GLASS, { unique: true, emissive: '#ffa548', emissiveIntensity: 0, roughness: .25 }); winMats.push(litGlass);
-const darkGlass = C(GLASS, { roughness: .25 });
-const shopGlass = C('#3a3550', { unique: true, emissive: '#ffbf6e', emissiveIntensity: 0, roughness: .25 }); winMats.push(shopGlass);
+/* vitres : lisses et brillantes, elles reflètent le ciel (envMapIntensity sert de force du reflet dans le shader de pâte) */
+const litGlass = C(GLASS, { unique: true, emissive: '#ffa548', emissiveIntensity: 0, roughness: .12, envMapIntensity: 1.7, bumpScale: .008 }); winMats.push(litGlass);
+const darkGlass = C(GLASS, { roughness: .12, envMapIntensity: 1.7, bumpScale: .008 });
+const shopGlass = C('#3a3550', { unique: true, emissive: '#ffbf6e', emissiveIntensity: 0, roughness: .14, envMapIntensity: 2.2, bumpScale: .008 }); winMats.push(shopGlass);
 
 /* ---------- ciel : dôme dégradé + soleil/lune + étoiles ---------- */
 const skyU = { top: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, bot: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color() } };
@@ -279,6 +284,8 @@ function vitrine(g, sp, d, sx, sw) {
 const CURT = ['#fff4e2', '#f2c6c2', '#cfe0d8', '#f6e3a8', '#d8cfe8', '#e8b9a0'];
 function windowAt(g, x, y, z, sp, lit) {
   if (Math.random() < .6) { const cc = C(CURT[(Math.random() * CURT.length) | 0]); [-1, 1].forEach(sg => mk(G_('curt', () => lump(rbox(.15, .7, .03, .015, 2), .004)), cc, x + sg * .2, y + .02, z + .15, g)); mk(G_('valance', () => rbox(.58, .09, .035, .02, 1)), cc, x, y + .34, z + .15, g); }
+  /* embrasure : un liseré plus sombre autour du cadre, comme la pierre creusée qui l'entoure */
+  mk(G_('reveal', () => rbox(.96, 1.18, .05, .05, 2)), C(shade(sp.color, -.1), { bumpScale: .026 }), x, y - .01, z + .004, g);
   mk(frameG, C(TRIM), x, y, z, g);
   mk(glassG, lit ? litGlass : darkGlass, x, y, z + .085, g);
   if (sp.sash) { mk(G_('sashH', () => rbox(.58, .045, .04, .015, 1)), C(TRIM), x, y + .02, z + .155, g); [-1, 1].forEach(sg => mk(G_('sashV', () => rbox(.025, .76, .03, .01, 1)), C(TRIM), x + sg * .1, y, z + .155, g)); }
@@ -289,7 +296,7 @@ function windowAt(g, x, y, z, sp, lit) {
   if (sp.flowers && Math.random() < .55) { mk(boxG, C('#8a5a3a'), x, y - .66, z + .12, g); for (let j = 0; j < 5; j++) mk(G_('fl', () => sph(.07, 8)), C(['#ff6f91', '#ffd35a', '#fff4e2', PAL.walls[4], PAL.accent][j]), x - .3 + j * .15, y - .5, z + .14, g); }
 }
 function building(sp, ang, rad) {
-  const g = item(sp.id); const d = 3.4, wall = C(sp.color, { bumpScale: .032 });
+  const g = item(sp.id); const d = 3.4, wall = C(sp.color, { bumpScale: .026 });
   g.position.set(Math.sin(ang) * rad, 0, Math.cos(ang) * rad); g.rotation.y = ang + Math.PI;
   mk(lump(rbox(sp.w, sp.h, d, .38, mobile ? 5 : 7), .04, .75), wall, 0, sp.h / 2, 0, g);
   mk(rbox(sp.w + .25, .26, d + .25, .12, 3), C(TRIM), 0, sp.h + .05, 0, g);
@@ -592,8 +599,9 @@ strands.forEach(([a, b]) => {
 });
 const bulbIM = new THREE.InstancedMesh(G_('bulb', () => sph(.06, 8)), bulbM, bulbPts.length), bo = new THREE.Object3D();
 bulbPts.forEach(([p], i) => { bo.position.copy(p); bo.position.y -= .07; bo.updateMatrix(); bulbIM.setMatrixAt(i, bo.matrix); }); scene.add(bulbIM);
-const flagS = new THREE.Shape(); flagS.moveTo(-.13, 0); flagS.lineTo(.13, 0); flagS.lineTo(0, -.26); flagS.lineTo(-.13, 0);
-const flagIM = new THREE.InstancedMesh(new THREE.ExtrudeGeometry(flagS, { depth: .015, bevelEnabled: false }), C('#ffffff', { bumpScale: 0, side: THREE.DoubleSide }), flagPts.length), fc2 = new THREE.Color();
+/* fanions en feutre épais, pointe arrondie (et non plus en papier) */
+const flagS = new THREE.Shape(); flagS.moveTo(-.115, 0); flagS.lineTo(.115, 0); flagS.lineTo(.018, -.215); flagS.quadraticCurveTo(0, -.245, -.018, -.215); flagS.lineTo(-.115, 0);
+const flagIM = new THREE.InstancedMesh(new THREE.ExtrudeGeometry(flagS, { depth: .02, bevelEnabled: true, bevelSize: .014, bevelThickness: .012, bevelSegments: 2, curveSegments: 3 }).translate(0, 0, -.01), C('#ffffff', { roughness: .8 }), flagPts.length), fc2 = new THREE.Color();
 flagPts.forEach(([p, tg], i) => { bo.position.copy(p); bo.rotation.set(0, Math.atan2(tg.x, tg.z) + Math.PI / 2, 0); bo.updateMatrix(); flagIM.setMatrixAt(i, bo.matrix); const BU = CITY.bunting || [PAL.accent, PAL.walls[0], PAL.walls[1], TRIM, PAL.roofs[0]]; fc2.set(BU[i % BU.length]); flagIM.setColorAt(i, fc2); });
 if (flagIM.instanceColor) flagIM.instanceColor.needsUpdate = true; flagIM.castShadow = true; scene.add(flagIM);
 
@@ -808,6 +816,16 @@ for (let i = 0; i < (COUNTRY === 'pl' ? 11 : 6); i++) {
 const EYE_W = C('#ffffff', { roughness: .25, bumpScale: 0 }), PUPIL = C('#120e18', { roughness: .1, bumpScale: 0 }), SHINE = new THREE.MeshBasicMaterial({ color: '#ffffff' });
 function hair(lk, head, m) {
   const cap = mk(G_('hcap2', () => lump(new THREE.SphereGeometry(.305, 26, 16, 0, TAU, 0, Math.PI * .56), .006)), m, 0, .03, -.025, head); cap.rotation.x = -.3;
+  /* mèches en boudins posées sur le crâne, du front vers la nuque, comme roulées entre les doigts */
+  if (['bun', 'bob', 'short', 'curly'].includes(lk.style)) {
+    /* chaque mèche : un arc de boudin à bouts arrondis, à peine en relief sur la calotte */
+    const sg = G_('strand3', () => { const t0 = .62, t1 = 2.72, R0 = .288, r0 = .034, t = new THREE.TorusGeometry(R0, r0, 6, mobile ? 12 : 16, t1 - t0), parts = [t];
+      [t0, t1].forEach(a => { const e = new THREE.SphereGeometry(r0, 8, 6); e.translate(R0 * Math.cos(a - t0), R0 * Math.sin(a - t0), 0); parts.push(e); });
+      const out = mergeGeos(parts); out.rotateZ(t0); out.rotateY(-Math.PI / 2); return lump(out, .003); });
+    /* serrées les unes contre les autres : une masse striée, comme peignée à l'ébauchoir */
+    const n = lk.style === 'short' ? 7 : 9;
+    for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .056, k = Math.sqrt(.288 * .288 - x * x) / .288, st = mk(sg, m, x, .03, -.03, head); st.scale.set(1, k, k); st.rotation.set(-.03 + (i % 2) * .03, 0, -x * .35); }
+  }
   if (lk.fringe) for (let i = 0; i < 5; i++) { const x = -.16 + i * .08, f = mk(G_('fr', () => lump(sph(.07, 10), .004)), m, x, .17 - Math.abs(x) * .3, .2 - Math.abs(x) * .25, head); f.scale.set(.9, .6, .7); f.rotation.z = -x * 1.5; }
   if (lk.style === 'bun') { mk(G_('bun2', () => lump(sph(.13, 16), .008)), m, 0, .27, -.15, head); const coil = mk(G_('coil', () => new THREE.TorusGeometry(.1, .03, 8, 18)), m, 0, .22, -.12, head); coil.rotation.x = Math.PI / 2 - .5; }
   if (lk.style === 'curly') for (let i = 0; i < 16; i++) { const a = i / 16 * TAU, up = i % 2 ? .18 : .06; mk(G_('curl2', () => lump(sph(.105, 10), .006)), m, Math.cos(a) * .25, up + Math.sin(i * 1.3) * .03, Math.sin(a) * .23 - .05, head); }
@@ -820,30 +838,31 @@ function hair(lk, head, m) {
 }
 function makeChar(lk) {
   const g = new THREE.Group(), P = {};
-  const skinM = C(lk.skin, { roughness: .48, emissive: lk.skin, emissiveIntensity: .07 }), clothM = C(lk.shirt), pantM = C(lk.pants || '#3a3a4a'), hairM = C(lk.hair, { roughness: .5 });
+  const SSS_SKIN = [.55, .2, .1], skinM = C(lk.skin, { roughness: .46, emissive: lk.skin, emissiveIntensity: .035, sss: SSS_SKIN }), clothM = C(lk.shirt), pantM = C(lk.pants || '#3a3a4a'), hairM = C(lk.hair, { roughness: .5 });
   const shoeM = C(lk.shoes || '#4a3326'), soleM = C('#f4efe6');
   P.shadow = blob(0, 0, .42, g, .012);
   P.legs = [-1, 1].map(sg => { const pv = new THREE.Group(); pv.position.set(sg * .1, .42, 0); g.add(pv); mk(G_('leg2', () => rbox(.16, .32, .18, .075, 3)), pantM, 0, -.16, 0, pv); const s = new THREE.Group(); s.position.set(0, -.35, .045); pv.add(s); mk(G_('shoe2', () => lump(sph(.11, 14), .004)), shoeM, 0, .025, 0, s).scale.set(1, .62, 1.45); mk(G_('sole', () => cyl(.1, .1, .03, 14)), soleM, 0, -.03, .01, s).scale.set(1, 1, 1.45); return pv; });
   const body = new THREE.Group(); body.position.y = .42; g.add(body); P.body = body;
-  mk(G_('torso2', () => lump(new THREE.CylinderGeometry(.19, .25, .5, 22, 4), .005)), clothM, 0, .3, 0, body).scale.z = .8;
+  /* buste et jupe tournés comme au tour de potier : épaules et ourlet arrondis, pas d'arête vive */
+  mk(G_('torso3', () => lump(new THREE.LatheGeometry([[.2, .04], [.248, .1], [.256, .2], [.243, .32], [.222, .42], [.19, .5], [.14, .56], [.085, .585], [.001, .592]].map(q => new THREE.Vector2(q[0], q[1])), mobile ? 16 : 22), .004)), clothM, 0, 0, 0, body).scale.z = .8;
   mk(G_('belly', () => sph(.25, 20)), clothM, 0, .07, 0, body).scale.set(1, .48, .8);
-  if (lk.outfit === 'dress') mk(G_('skirt', () => lump(new THREE.CylinderGeometry(.24, .37, .32, 22, 2), .005)), clothM, 0, .0, 0, body).scale.z = .86;
+  if (lk.outfit === 'dress') mk(G_('skirt2', () => lump(new THREE.LatheGeometry([[.001, -.17], [.3, -.172], [.355, -.163], [.378, -.14], [.36, -.08], [.31, .02], [.265, .11], [.24, .17]].map(q => new THREE.Vector2(q[0], q[1])), mobile ? 16 : 22), .005)), clothM, 0, 0, 0, body).scale.z = .86;
   if (lk.outfit === 'cardigan') { [-1, 1].forEach(sg => { const l = mk(G_('lapel', () => rbox(.07, .38, .04, .02, 1)), C(shade(lk.shirt, -.08)), sg * .06, .3, .19, body); l.rotation.z = sg * .14; }); mk(rbox(.11, .08, .04, .02, 1), C(shade(lk.shirt, -.1)), .11, .12, .2, body); }
   if (lk.outfit === 'hoodie') { mk(G_('hood', () => lump(sph(.2, 14), .008)), clothM, 0, .55, -.14, body).scale.set(1.15, .65, .75); [-1, 1].forEach(sg => mk(G_('cord', () => cyl(.012, .012, .16, 6)), C('#fff8ee'), sg * .055, .43, .19, body)); mk(rbox(.24, .11, .04, .03, 2), C(shade(lk.shirt, -.08)), 0, .1, .2, body); }
   mk(G_('collar', () => new THREE.TorusGeometry(.12, .035, 8, 18)), C(lk.collar || shade(lk.shirt, .12)), 0, .55, 0, body).rotation.x = Math.PI / 2;
-  if (lk.apron) { mk(rbox(.32, .4, .05, .05, 2), C(lk.apron), 0, .18, .2, body); mk(G_('apronTie', () => new THREE.TorusGeometry(.215, .012, 6, 24)), C(lk.apron), 0, .3, 0, body).rotation.x = Math.PI / 2; }
+  if (lk.apron) { mk(G_('apron2', () => bend(rbox(.34, .42, .055, .026, 6), .262, .4)), C(lk.apron), 0, .18, 0, body).scale.z = .8; mk(G_('apronPk', () => bend(rbox(.16, .09, .04, .018, 4), .333)), C(shade(lk.apron, -.06)), 0, .12, 0, body).scale.z = .8; mk(G_('apronTie', () => new THREE.TorusGeometry(.215, .012, 6, 24)), C(lk.apron), 0, .3, 0, body).rotation.x = Math.PI / 2; }
   if (lk.stripes) for (let i = 0; i < 3; i++) { const y = .16 + i * .12, r = .25 - (y / .5) * .06 + .005; const s = mk(new THREE.TorusGeometry(r, .02, 6, 24), C(lk.stripes), 0, y + .05, 0, body); s.rotation.x = Math.PI / 2; s.scale.y = .8; }
   if (lk.buttons) for (let i = 0; i < 3; i++) mk(G_('btn', () => sph(.022, 6)), C(lk.buttons), 0, .12 + i * .12, .2, body);
   if (lk.scarf) { const sc = mk(G_('scarf', () => lump(new THREE.TorusGeometry(.15, .065, 8, 18), .005)), C(lk.scarf), 0, .56, 0, body); sc.rotation.x = Math.PI / 2; mk(rbox(.11, .28, .05, .04, 2), C(lk.scarf), .09, .4, .19, body).rotation.z = .15; }
   if (lk.backpack) { mk(rbox(.34, .38, .17, .08, 3), C(lk.backpack), 0, .3, -.24, body); [-1, 1].forEach(sg => mk(rbox(.045, .38, .03, .02, 1), C(shade(lk.backpack, -.15)), sg * .12, .32, .19, body)); }
   P.hands = [];
   [-1, 1].forEach(sg => mk(G_('shoulder', () => sph(.085, 12)), clothM, sg * .24, .5, 0, body).scale.set(1, .85, .95));
-  P.arms = [-1, 1].map(sg => { const pv = new THREE.Group(); pv.position.set(sg * .27, .5, 0); body.add(pv); mk(G_('arm2', () => rbox(.12, .34, .13, .055, 3)), clothM, 0, -.15, 0, pv); if (lk.rolled) mk(G_('cuff', () => cyl(.068, .068, .05, 10)), C(shade(lk.shirt, .08)), 0, -.3, 0, pv); const h = new THREE.Group(); h.position.y = -.37; pv.add(h); P.hands.push(h); mk(G_('palm', () => sph(.066, 12)), skinM, 0, 0, 0, h).scale.set(1, 1.1, .8); mk(G_('thumb', () => sph(.03, 8)), skinM, -sg * .045, .03, .03, h); pv.rotation.z = sg * .1; return pv; });
+  P.arms = [-1, 1].map(sg => { const pv = new THREE.Group(); pv.position.set(sg * .27, .5, 0); body.add(pv); mk(G_('arm2', () => rbox(.12, .34, .13, .055, 3)), clothM, 0, -.15, 0, pv); if (lk.rolled) mk(G_('cuff', () => cyl(.068, .068, .05, 10)), C(shade(lk.shirt, .08)), 0, -.3, 0, pv); const h = new THREE.Group(); h.position.y = -.37; pv.add(h); P.hands.push(h); mk(G_('palm', () => sph(.066, 12)), skinM, 0, 0, 0, h).scale.set(1, 1.1, .8); mk(G_('thumb', () => sph(.03, 8)), skinM, -sg * .045, .03, .03, h).scale.set(1, 1.5, 1); [-1, 0, 1].forEach(k => { const fg = mk(G_('finger', () => sph(.024, 8)), skinM, k * .03, -.068 + Math.abs(k) * .008, .012, h); fg.scale.set(1, 1.7, 1); fg.rotation.z = k * .12; }); pv.rotation.z = sg * .1; return pv; });
   if (lk.hold === 'flower') { const f = new THREE.Group(); f.position.set(0, -.4, .06); P.arms[1].add(f); mk(cyl(.012, .012, .32, 6), C(PAL.leaf), 0, .12, 0, f); for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; mk(G_('pet', () => sph(.04, 8)), C('#e2374f'), Math.cos(a) * .04, .3, Math.sin(a) * .04, f); } mk(sph(.03, 8), C('#ffd35a'), 0, .31, 0, f); }
   mk(G_('neck', () => cyl(.07, .08, .1, 12)), skinM, 0, .61, 0, body);
-  const head = new THREE.Group(); head.position.y = .9; body.add(head); P.head = head;
+  const head = new THREE.Group(); head.position.y = .91; head.scale.setScalar(1.08); body.add(head); P.head = head;
   mk(G_('head2', () => { const s = sph(.28, 30), p = s.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i), k = y < 0 ? 1 - (-y / .28) * .14 : 1; p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * k); } s.computeVertexNormals(); return s; }), skinM, 0, 0, 0, head).scale.set(1, .98, .95);
-  [-1, 1].forEach(sg => mk(G_('ear', () => sph(.06, 10)), skinM, sg * .27, -.01, -.01, head).scale.set(.45, 1, .8));
+  [-1, 1].forEach(sg => { mk(G_('ear', () => sph(.06, 10)), skinM, sg * .27, -.01, -.01, head).scale.set(.45, 1, .8); mk(G_('earIn', () => sph(.032, 8)), C(shade(lk.skin, -.1), { roughness: .46, emissive: lk.skin, emissiveIntensity: .035, sss: SSS_SKIN }), sg * .29, -.012, .0, head).scale.set(.35, 1, .75); });
   P.lids = [];
   P.eyes = [-1, 1].map(sg => { const e = new THREE.Group(); e.position.set(sg * .1, .03, .218); head.add(e);
     mk(G_('eyeW2', () => sph(.068, 16)), EYE_W, 0, 0, 0, e).scale.z = .55;
@@ -854,7 +873,7 @@ function makeChar(lk) {
     if (lk.lashes) { const l = mk(G_('lash', () => new THREE.TorusGeometry(.066, .009, 4, 10, Math.PI * .8)), PUPIL, 0, .006, .02, e); l.rotation.z = Math.PI * .1 + (sg < 0 ? 0 : 0); }
     return e; });
   P.brows = [-1, 1].map(sg => { const bg = new THREE.Group(); bg.position.set(sg * .1, .125, .235); head.add(bg); mk(G_('brow2', () => rbox(.1, .028, .025, .012, 1)), C(shade(lk.hair, -.12)), 0, 0, 0, bg).rotation.z = -sg * .18; return bg; });
-  mk(G_('nose2', () => sph(.045, 12)), C(shade(lk.skin, -.05), { roughness: .45, emissive: lk.skin, emissiveIntensity: .07 }), 0, -.035, .265, head).scale.set(1, .9, 1.05);
+  mk(G_('nose2', () => sph(.05, 12)), C(shade(lk.skin, -.05), { roughness: .46, emissive: lk.skin, emissiveIntensity: .035, sss: SSS_SKIN }), 0, -.035, .265, head).scale.set(1.05, .9, 1.1);
   [-1, 1].forEach(sg => mk(G_('cheek', () => sph(.052, 10)), C('#ff8f8f', { roughness: .5 }), sg * .16, -.07, .2, head).scale.set(1, .68, .4));
   const mouth = new THREE.Group(); mouth.position.set(0, -.115, .238); head.add(mouth); P.mouth = mouth;
   const sm = mk(G_('smile2', () => new THREE.TorusGeometry(.05, .013, 6, 14, Math.PI)), C('#7a2a2a', { bumpScale: 0 }), 0, .01, 0, mouth); sm.rotation.z = Math.PI; sm.userData.keep = true; P.smile = sm;
@@ -889,7 +908,7 @@ function person(id, lk, mode, x, z, rot, extra) {
   if (mode === 'sit') { c.P.legs.forEach(l => { l.rotation.x = -1.45; }); c.g.position.y = .12; c.P.shadow.visible = false; } else c.g.position.y = .03;
   people.push(o); return o;
 }
-const SK = ['#f6d3b5', '#e8b48e', '#c98e6a', '#8a5a3c'];
+const SK = ['#eec2a2', '#e0a982', '#c38866', '#86573a'];
 B.forEach((sp, i) => { if (sp.id !== 'florist') return; const a = a0 + span * i / (B.length - 1) + .1; person('rosa', { skin: SK[0], hair: '#c2452e', style: 'bun', fringe: true, lashes: true, eyes: '#3f7a4a', outfit: 'dress', shirt: PAL.walls[4], collar: '#fff8ee', apron: PAL.leaf, pants: '#f6d3b5', shoes: '#7a3a2a', hold: 'flower' }, 'idle', Math.sin(a) * 8.6, Math.cos(a) * 8.6, a + Math.PI); });
 { const a = G + 1.2, bx = Math.sin(a) * 4.15, bz = Math.cos(a) * 4.15; person('leo', { skin: SK[1], hair: '#ece8e0', style: COUNTRY === 'fr' ? 'beret' : 'flatcap', hat: COUNTRY === 'gb' ? '#6a5e48' : COUNTRY === 'pl' ? '#4a4a55' : '#3a4a6a', mustache: true, eyes: '#3a5a8a', outfit: 'cardigan', shirt: '#9a6a44', buttons: '#e8c35a', scarf: PAL.walls[0], pants: '#4a4a5a', shoes: '#3a2a22' }, 'sit', bx, bz, a); }
 person('maya', { skin: SK[3], hair: '#1a1a22', style: 'curly', lashes: true, eyes: '#3a2418', outfit: 'hoodie', shirt: PAL.walls[1], backpack: PAL.accent, pants: '#2f3a5a', shoes: '#f4efe6' }, 'walk', 0, 7.2, 0, { r: 7.2, a: 1.2, sp: .055, pause: 0 });
@@ -1035,12 +1054,12 @@ function applyHour(h) {
   const dir = day ? new THREE.Vector3(Math.cos(az) * Math.cos(e), Math.sin(e), Math.sin(az) * Math.cos(e)) : new THREE.Vector3(-Math.cos(az) * .6, .7, -Math.sin(az) * .6);
   dir.normalize(); skyU.sunDir.value.copy(dir); sun.position.copy(dir).multiplyScalar(45); sun.target.position.set(0, 0, 0);
   skyU.sunCol.value.copy(day ? sun.color : new THREE.Color('#dfe6ff')).convertSRGBToLinear().multiplyScalar(day ? 1 : .55);
-  winMats.forEach(m => { m.emissiveIntensity = lightsOn * .95; }); shopGlass.emissiveIntensity = .22 + lightsOn * 1.05; clockMats.forEach(m => { m.emissiveIntensity = lightsOn * .28; });
+  winMats.forEach(m => { m.emissiveIntensity = lightsOn * .95; }); shopGlass.emissiveIntensity = .06 + lightsOn * 1.15; clockMats.forEach(m => { m.emissiveIntensity = lightsOn * .28; });
   lampMats.forEach(m => { m.emissiveIntensity = .15 + lightsOn * 2.2; });
   halos.forEach(s => { s.material.opacity = lightsOn * .85; });
   lampLights.forEach(p => { p.intensity = lightsOn * 1.4; }); poolM.opacity = lightsOn * .5; if (signMat) signMat.emissiveIntensity = .05 + lightsOn * .3;
   R.shadowMap.needsUpdate = true;
-  R.toneMappingExposure = .9 + lightsOn * .12;
+  R.toneMappingExposure = .86 + lightsOn * .14;
   /* reflets de la pâte : ciel, horizon et sol chaud du moment */
   { const E = PVClay.U, k = 1 - lightsOn * .6; E.envT.value.copy(skyU.top.value).multiplyScalar(k); E.envH.value.copy(skyU.hor.value).multiplyScalar(k); E.envG.value.set(shade(PAL.ground, -.15)).convertSRGBToLinear().multiplyScalar(k * .8); }
   const hm = h % 12, mm = (h * 60) % 60;
