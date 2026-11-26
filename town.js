@@ -741,6 +741,44 @@ collectibles.forEach(([id, x, z, y, ry], n) => {
   }
 });
 
+/* ---------- marché de Noël : du 1er décembre au 6 janvier (ou ?noel dans l'adresse) ---------- */
+const NOEL = /[?&]noel\b/.test(location.search) || (() => { const d = new Date(); return d.getMonth() === 11 || (d.getMonth() === 0 && d.getDate() <= 6); })();
+let snow = null;
+if (NOEL) {
+  const gold = C('#e8c35a', { emissive: '#e8a83a', emissiveIntensity: .35, roughness: .35 });
+  /* le sapin */
+  {
+    const [x, z] = polar(G + Math.PI, 3.6), tr = at('christmastree', x, z, 0), fir = C('#2f6a3a'), firD = C('#285a32');
+    mk(cyl(.16, .22, .9, 10), C('#6a4428'), 0, .45, 0, tr); mk(cyl(.55, .6, .45, 14), C('#a8323c'), 0, .22, 0, tr);
+    [[1.25, 1.5, 1.2], [1.0, 1.3, 2.0], [.75, 1.1, 2.7], [.48, .9, 3.3]].forEach(([r, h, y], k) => mk(lump(new THREE.ConeGeometry(r, h, 14, 3), .04), k % 2 ? firD : fir, 0, y, 0, tr));
+    const ORN = ['#c8323c', '#e8c35a', '#fff8ee', '#2f5fa8'];
+    for (let k = 0; k < 26; k++) { const yy = 1.0 + Math.random() * 2.6, rr = Math.max(.15, 1.15 * (1 - (yy - .9) / 3.2)) * .92, a2 = rnd(0, TAU); mk(G_('orn', () => sph(.07, 10)), C(ORN[k % 4], { roughness: .25, metalness: .2 }), Math.sin(a2) * rr, yy, Math.cos(a2) * rr, tr); }
+    const bulbs = [], NB = 44; for (let k = 0; k < NB; k++) { const u = k / NB, yy = .95 + u * 2.7, rr = Math.max(.12, 1.2 * (1 - (yy - .9) / 3.2)) * .98, a2 = u * TAU * 5; bulbs.push([Math.sin(a2) * rr, yy, Math.cos(a2) * rr]); }
+    const bim = new THREE.InstancedMesh(G_('bulb', () => sph(.06, 8)), bulbM, NB), bo2 = new THREE.Object3D(); bulbs.forEach(([bx, by, bz], k) => { bo2.position.set(bx, by, bz); bo2.updateMatrix(); bim.setMatrixAt(k, bo2.matrix); }); tr.add(bim);
+    const st = new THREE.Shape(); for (let k = 0; k < 10; k++) { const r = k % 2 ? .12 : .28, a2 = k / 10 * TAU; k ? st.lineTo(Math.sin(a2) * r, Math.cos(a2) * r) : st.moveTo(Math.sin(a2) * r, Math.cos(a2) * r); }
+    mk(new THREE.ExtrudeGeometry(st, { depth: .07, bevelEnabled: true, bevelSize: .02, bevelThickness: .02, bevelSegments: 1 }), gold, 0, 3.95, -.035, tr);
+    colliders.push({ x, z, r: 1.3 }); sblob(x, z, 1.5);
+  }
+  /* deux chalets en bois, toits enneigés, guirlandes, spécialités du pays */
+  [G + 1.85, G - 1.85].forEach((a2, n) => {
+    const [x, z] = polar(a2, 5.7), ch = at('stall', x, z, a2 + Math.PI), wood = C('#8a5a3a'), woodD = C('#6a4428'), snowM = C('#fbfbf6', { roughness: .8 });
+    mk(rbox(2.0, .14, 1.4, .05, 2), woodD, 0, .07, 0, ch);
+    mk(rbox(2.0, 1.9, .12, .04, 2), wood, 0, 1.0, -.64, ch); [-1, 1].forEach(sg => mk(rbox(.12, 1.9, 1.4, .04, 2), wood, sg * .94, 1.0, 0, ch));
+    mk(rbox(2.0, .9, .22, .05, 2), wood, 0, .5, .6, ch); mk(rbox(2.1, .08, .4, .03, 1), woodD, 0, .97, .6, ch);
+    [-1, 1].forEach(sg => { const r = mk(rbox(2.5, .12, 1.05, .05, 2), woodD, 0, 2.17, sg * .42, ch); r.rotation.x = sg * .55; const sn = mk(lump(rbox(2.5, .1, 1.0, .05, 3), .02), snowM, 0, 2.25, sg * .44, ch); sn.rotation.x = sg * .55; });
+    for (let k = 0; k < 9; k++) mk(G_('bulb', () => sph(.06, 8)), bulbM, -1.1 + k * .275, 1.82 - Math.abs(Math.sin(k * .7)) * .05, .98, ch);
+    if (COUNTRY === 'pl') { for (let k = 0; k < 5; k++) { const hx = -.7 + k * .35; [-1, 1].forEach(sg => mk(G_('pier', () => sph(.07, 10)), C('#9a5a2a'), hx + sg * .035, 1.1, .62, ch).scale.set(1, 1, .35)); mk(G_('pierT', () => new THREE.ConeGeometry(.085, .1, 10)), C('#9a5a2a'), hx, 1.05, .62, ch).rotation.x = Math.PI; } [-.6, .6].forEach(mx => mk(G_('mug', () => cyl(.06, .055, .12, 10)), C('#c8323c'), mx * .5, 1.07, .45, ch)); }
+    else if (COUNTRY === 'gb') { for (let k = 0; k < 6; k++) { mk(G_('mince', () => cyl(.07, .06, .05, 12)), C('#d8a060'), -.75 + k * .3, 1.04, .6, ch); mk(G_('mstar', () => sph(.025, 6)), C('#fff8ee'), -.75 + k * .3, 1.07, .6, ch); } }
+    else { for (let k = 0; k < 6; k++) mk(G_('mug', () => cyl(.06, .055, .12, 10)), C(k % 2 ? '#c8323c' : '#fff8ee'), -.75 + k * .3, 1.07, .6, ch); }
+    colliders.push({ x, z, r: 1.3 }); sblob(x, z, 1.4, 1.0, a2 + Math.PI);
+  });
+  /* neige qui tombe autour du joueur */
+  const SN = mobile ? 220 : 450, sp2 = new Float32Array(SN * 3), sv = [];
+  for (let k = 0; k < SN; k++) { sp2.set([rnd(-14, 14), rnd(0, 12), rnd(-14, 14)], k * 3); sv.push(rnd(.5, 1.1)); }
+  const sg2 = new THREE.BufferGeometry(); sg2.setAttribute('position', new THREE.BufferAttribute(sp2, 3));
+  snow = new THREE.Points(sg2, new THREE.PointsMaterial({ color: '#ffffff', size: .12, transparent: true, opacity: .9, depthWrite: false })); snow.userData.v = sv; snow.frustumCulled = false; scene.add(snow);
+}
+
 /* ---------- pigeons ---------- */
 const pigeons = [];
 for (let i = 0; i < (COUNTRY === 'pl' ? 11 : 6); i++) {
@@ -905,6 +943,7 @@ for (let i = 0; i < 6; i++) {
 
 /* ---------- ambiance : pollen le jour, lucioles la nuit, feuilles, fumée, oiseaux, gouttes ---------- */
 const dotT = tex(64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.4, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); });
+if (snow) { snow.material.map = dotT; snow.material.needsUpdate = true; }
 const MOTES = mobile ? 90 : 170, moteP = new Float32Array(MOTES * 3), moteS = [];
 for (let i = 0; i < MOTES; i++) { const a = rnd(0, TAU), r = Math.sqrt(Math.random()) * 11; moteP.set([Math.sin(a) * r, rnd(.3, 4.5), Math.cos(a) * r], i * 3); moteS.push(rnd(0, 10)); }
 const moteGeo = new THREE.BufferGeometry(); moteGeo.setAttribute('position', new THREE.BufferAttribute(moteP, 3));
@@ -1282,6 +1321,7 @@ function updateFx(dt, t) {
   leafIM.instanceMatrix.needsUpdate = true;
   puffs.forEach((q, i) => { q.t = (q.t + dt * .12) % 1; const k = q.t; q.p.position.set(Math.sin(k * 6 + i) * .25, .9 + k * 3.2, Math.cos(k * 5 + i) * .2); q.p.scale.setScalar(.6 + k * 2.2); smokeM[i].opacity = Math.sin(k * Math.PI) * .55; });
   birds.forEach(b => { b.a += b.sp * dt; b.b.position.set(Math.sin(b.a) * b.r, b.y + Math.sin(t * .8 + b.ph) * .6, Math.cos(b.a) * b.r); b.b.rotation.y = b.a + Math.PI / 2; const f = Math.sin(t * 9 + b.ph) * .7; b.wings[0].rotation.z = f; b.wings[1].rotation.z = -f; });
+  if (snow) { const p3 = snow.geometry.attributes.position, v = snow.userData.v; for (let k = 0; k < v.length; k++) { let y = p3.getY(k) - v[k] * dt, x = p3.getX(k) + Math.sin(t * .7 + k) * dt * .25, z = p3.getZ(k); if (y < 0) { y = 12; x = pos.x + rnd(-14, 14); z = pos.z + rnd(-14, 14); } p3.setXYZ(k, x, y, z); } p3.needsUpdate = true; }
   const dp = dropGeo.attributes.position;
   drops.forEach((d, i) => { d.t += dt * .9 * d.v; if (d.t > 1) { d.t = 0; d.a = rnd(0, TAU); } const r = .65 + d.t * .95, y = 1.75 + d.t * .5 - d.t * d.t * 1.75; dp.setXYZ(i, Math.sin(d.a) * r, y, Math.cos(d.a) * r); });
   dp.needsUpdate = true;
