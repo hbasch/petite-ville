@@ -566,7 +566,10 @@ mk(sph(.78, 20), stone, 0, 1.6, 0, fountain).scale.set(1, .32, 1);
 mk(cyl(.68, .68, .05, 24), water.material, 0, 1.78, 0, fountain);
 mk(sph(.2, 14), C(PAL.accent), 0, 1.98, 0, fountain);
 const streams = [];
-for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; const s = mk(cyl(.035, .06, 1.25, 8), C('#bfe8f7', { unique: true, transparent: true, opacity: .6, roughness: .1, emissive: '#bfe8f7', emissiveIntensity: .15 }), Math.sin(a) * .62, 1.1, Math.cos(a) * .62, fountain); s.rotation.set(Math.cos(a) * .35, 0, -Math.sin(a) * .35); streams.push(s); }
+/* six filets d'eau en arc, de la vasque au bassin (même parabole que les gouttes), réunis en un seul objet */
+{ const arcs = [];
+  for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + .26, cv = new THREE.Curve(); cv.getPoint = (t, o) => (o || new THREE.Vector3()).set(Math.sin(a) * (.66 + t * .93), 1.73 + t * .5 - t * t * 1.73, Math.cos(a) * (.66 + t * .93)); arcs.push(new THREE.TubeGeometry(cv, 12, .04, 6, false)); }
+  const st = mk(mergeGeos(arcs), C('#bfe8f7', { transparent: true, opacity: .55, roughness: .08, emissive: '#bfe8f7', emissiveIntensity: .15, bumpScale: .01 }), 0, 0, 0, fountain); st.userData.keep = true; st.userData.noCast = true; streams.push(st); }
 const colliders = [{ x: 0, z: 0, r: 2.4 }]; sblob(0, 0, 2.75);
 const woodM = C('#b5794a'), iron = C('#3a3a48', { metalness: .25 });
 [0, 1, 2, 3].forEach(i => {
@@ -664,7 +667,14 @@ function tree(x, z, s) {
   const t = item('tree'); t.position.set(x, 0, z); t.scale.setScalar(s);
   mk(lump(cyl(.14, .22, 1.7, 10), .03), C('#8a5a3a'), 0, .85, 0, t);
   const c = shade(PAL.leaf, rnd(-.05, .08));
-  [[0, 2.15, 0, .95], [.48, 1.75, .2, .66], [-.42, 1.82, -.2, .7], [.08, 2.7, -.08, .58]].forEach(([a, b, cc, r]) => mk(lump(sph(r, 20), .05, 2), C(shade(c, rnd(-.04, .04))), a, b, cc, t));
+  [[0, 2.15, 0, .95], [.48, 1.75, .2, .66], [-.42, 1.82, -.2, .7], [.08, 2.7, -.08, .58]].forEach(([a, b, cc, r]) => {
+    mk(lump(sph(r, 20), .05, 2), C(shade(c, rnd(-.04, .04))), a, b, cc, t);
+    /* petites boules de feuillage pressées sur la masse, un peu plus claires ou plus sombres */
+    for (let k = 0; k < 3; k++) { const th = rnd(0, TAU), ph = rnd(.35, 1.25), lr = r * rnd(.32, .42), d = r * .82;
+      mk(G_('leafball', () => lump(sph(1, 12), .05, 2)), C(shade(c, rnd(-.07, .07))), a + Math.sin(ph) * Math.cos(th) * d, b + Math.cos(ph) * d, cc + Math.sin(ph) * Math.sin(th) * d, t).scale.setScalar(lr); }
+  });
+  /* pied du tronc évasé, comme écrasé sur le sol */
+  mk(G_('troot', () => lump(sph(.3, 12), .02)), C('#7a4e32'), 0, .04, 0, t).scale.set(1, .38, 1);
   colliders.push({ x, z, r: .6 * s }); sblob(x, z, 1.25 * s);
 }
 [[11.2, 2.4], [11.6, -2.5], [13.2, 3.4], [13.0, -3.6], [12.2, 4.7], [12.4, -4.8], [14.0, 2.2], [14.1, -2.3]].forEach(([r, s]) => tree(Math.sin(G) * r + Math.cos(G) * s, Math.cos(G) * r - Math.sin(G) * s, rnd(.9, 1.2)));
@@ -1405,7 +1415,7 @@ function loop() {
     updatePeople(dt, t);
     pigeons.forEach(q => { const s = Math.sin(t * 3 + q.ph); q.head.rotation.x = s > .6 ? .9 : 0; if (Math.random() < .004) { q.p.rotation.y += rnd(-1.5, 1.5); } });
     clouds.forEach(c => { c.a += c.sp * dt; c.c.position.set(Math.sin(c.a) * c.r, c.y + Math.sin(t * .2 + c.r) * .3, Math.cos(c.a) * c.r); });
-    streams.forEach((s, i) => { s.scale.y = 1 + Math.sin(t * 8 + i) * .05; });
+    streams.forEach((s, i) => { const k = 1 + Math.sin(t * 8 + i) * .02; s.scale.set(k, 1, k); });
     water.material.emissiveIntensity = .22 + Math.sin(t * 2) * .05;
   }
   updateFx(dt, t);
