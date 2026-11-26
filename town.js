@@ -822,6 +822,8 @@ function makeChar(lk) {
   return { g, P };
 }
 const bubbleT = tex(128, 128, (g) => { g.fillStyle = '#fff8ee'; g.beginPath(); g.arc(64, 56, 46, 0, TAU); g.fill(); g.beginPath(); g.moveTo(48, 92); g.lineTo(60, 122); g.lineTo(74, 94); g.fill(); g.fillStyle = '#2a2233'; [40, 64, 88].forEach(x => { g.beginPath(); g.arc(x, 56, 8, 0, TAU); g.fill(); }); });
+const questT = tex(128, 128, (g) => { g.fillStyle = '#ffb547'; g.beginPath(); g.arc(64, 56, 48, 0, TAU); g.fill(); g.beginPath(); g.moveTo(48, 94); g.lineTo(60, 124); g.lineTo(76, 96); g.fill(); g.strokeStyle = '#fff8ee'; g.lineWidth = 6; g.beginPath(); g.arc(64, 56, 44, 0, TAU); g.stroke(); g.fillStyle = '#1d2142'; g.font = '800 64px "Baloo 2",Nunito,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('!', 64, 60); });
+const heartT = tex(128, 128, (g) => { g.fillStyle = '#ff6f91'; g.strokeStyle = '#fff8ee'; g.lineWidth = 7; g.beginPath(); g.moveTo(64, 108); g.bezierCurveTo(10, 70, 18, 18, 64, 40); g.bezierCurveTo(110, 18, 118, 70, 64, 108); g.closePath(); g.fill(); g.stroke(); });
 const people = [];
 function person(id, lk, mode, x, z, rot, extra) {
   const c = makeChar(lk), grp = item(id === 'passerby' ? 'npc:passerby' : 'npc:' + id);
@@ -1161,6 +1163,28 @@ function updateDog(o, dt, t) {
   o.c.P.hands[0].getWorldPosition(_hv); D.localToWorld(_hv2.set(0, .4, .2));
   const v = _hv2.clone().sub(_hv); leash.position.copy(_hv); leash.scale.set(1, v.length(), 1); leash.quaternion.setFromUnitVectors(_up, v.normalize());
 }
+function approachStep(o, P, dt) {
+  const A = o.appr, g = o.grp.position; A.t += dt;
+  const walkTo = (tx, tz, spd) => {
+    const dx = tx - g.x, dz = tz - g.z, L = Math.hypot(dx, dz); if (L < .15) return true;
+    const st = Math.min(L, spd * dt); g.x += dx / L * st; g.z += dz / L * st;
+    colliders.forEach(c => { if (Math.hypot(c.x - A.hx, c.z - A.hz) < .3) return; const ex = g.x - c.x, ez = g.z - c.z, dd = Math.hypot(ex, ez), rr = c.r + .3; if (dd < rr && dd > 1e-4) { g.x = c.x + ex / dd * rr; g.z = c.z + ez / dd * rr; } });
+    let dr = Math.atan2(dx, dz) - o.grp.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); o.grp.rotation.y += dr * Math.min(1, dt * 8);
+    const s2 = Math.sin(o.t * 8); P.legs[0].rotation.x = s2 * .55; P.legs[1].rotation.x = -s2 * .55; P.arms[0].rotation.x = -s2 * .5; P.arms[1].rotation.x = s2 * .5; P.body.position.y = .42 + Math.abs(Math.cos(o.t * 8)) * .035;
+    return false;
+  };
+  if (A.state === 'go') {
+    const dx = g.x - pos.x, dz = g.z - pos.z, d = Math.hypot(dx, dz) || 1;
+    if (o.mode === 'sit' || walkTo(pos.x + dx / d * 1.8, pos.z + dz / d * 1.8, 1.5) || A.t > 12) { A.state = 'wait'; A.t = 0; o.wave = 1.6; }
+  } else if (A.state === 'wait') {
+    if (o.mode !== 'sit') { faceTo(o, pos.x, pos.z, .15); P.legs.forEach(l => { l.rotation.x *= .8; }); P.body.position.y = .42; }
+    if (A.t > .8 && A.cb) { const cb = A.cb; A.cb = null; cb(); }
+    if (!A.cb && talking !== o && A.t > 1.6) { A.state = 'back'; A.t = 0; }
+  } else if (o.mode === 'sit' || walkTo(A.hx, A.hz, 1.2) || A.t > 15) {
+    if (o.mode !== 'sit') { g.x = A.hx; g.z = A.hz; if (o.mode === 'idle') o.grp.rotation.y = o.base; }
+    o.appr = null;
+  }
+}
 /* attente debout : le poids passe d'une jambe à l'autre (hanche qui glisse, buste qui compense, genou relâché) */
 function weightShift(o, P, dt) {
   if (o.ws == null) { o.ws = rnd(0, 10); o.wsp = rnd(.32, .5); }
@@ -1190,7 +1214,8 @@ function updatePeople(dt, t) {
     const dx = pos.x - o.grp.position.x, dz = pos.z - o.grp.position.z, dist = Math.hypot(dx, dz);
     const isTalk = talking === o;
     /* marche */
-    if (o.mode === 'walk' && !isTalk) {
+    if (o.appr) approachStep(o, P, dt);
+    else if (o.mode === 'walk' && !isTalk) {
       /* on ne traverse pas le joueur : si on est sur son chemin, il s'arrête et attend */
       if (dist < 1.7) { const ahead = Math.sin(o.grp.rotation.y) * dx + Math.cos(o.grp.rotation.y) * dz; if (ahead > -.2 || dist < 1) o.pause = Math.max(o.pause, .6); }
       if (o.pause > 0) o.pause -= dt; else { o.a += o.sp * dt * 2; if (Math.random() < .0015) o.pause = rnd(1.5, 4); }
@@ -1199,14 +1224,14 @@ function updatePeople(dt, t) {
       if (moving) { o.grp.rotation.y = o.a + (o.sp > 0 ? Math.PI / 2 : -Math.PI / 2); const s = Math.sin(o.t * 8); P.legs[0].rotation.x = s * .55; P.legs[1].rotation.x = -s * .55; P.arms[0].rotation.x = -s * .5; P.arms[1].rotation.x = s * .5; P.body.position.y = .42 + Math.abs(Math.cos(o.t * 8)) * .035; P.body.rotation.z = Math.sin(o.t * 8) * .03; }
       else { P.arms.forEach(a => { a.rotation.x *= .85; }); P.body.position.y = .42; weightShift(o, P, dt); }
       if (moving) { P.body.position.x *= .85; P.head.rotation.z *= .85; P.legs.forEach(l => { l.rotation.z *= .85; }); }
-    } else if (o.mode !== 'sit') { P.body.position.y = .42 + Math.sin(o.t * 2) * .006; weightShift(o, P, dt); }
+    } else if (o.mode !== 'sit' && !(o.appr && o.appr.state !== 'wait')) { P.body.position.y = .42 + Math.sin(o.t * 2) * .006; weightShift(o, P, dt); }
     /* respiration, regard */
     P.body.scale.set(1, 1 + Math.sin(o.t * 2.2) * .015, 1);
     if (isTalk && o.mode !== 'sit') { faceTo(o, pos.x, pos.z, .12); P.head.rotation.y *= .8; P.head.rotation.x = -.12 + Math.sin(o.t * 3) * .04; }
     else if (isTalk) { const want = Math.atan2(dx, dz) - o.grp.rotation.y; const d = Math.atan2(Math.sin(want), Math.cos(want)); P.head.rotation.y += (Math.max(-.9, Math.min(.9, d)) - P.head.rotation.y) * .1; P.head.rotation.x = -.08 + Math.sin(o.t * 3) * .04; }
     else if (dist < 4.5) { const want = Math.atan2(dx, dz) - o.grp.rotation.y; const d = Math.atan2(Math.sin(want), Math.cos(want)); P.head.rotation.y += (Math.max(-1, Math.min(1, d)) - P.head.rotation.y) * .1; P.head.rotation.x += (-.1 - P.head.rotation.x) * .1; }
     else { P.head.rotation.y += (Math.sin(o.t * .4) * .35 - P.head.rotation.y) * .03; P.head.rotation.x += (Math.sin(o.t * .7) * .05 - P.head.rotation.x) * .05; }
-    if (o.mode === 'idle' && !isTalk) faceTo(o, o.grp.position.x + Math.sin(o.base) * 10, o.grp.position.z + Math.cos(o.base) * 10, .04);
+    if (o.mode === 'idle' && !isTalk && !o.appr) faceTo(o, o.grp.position.x + Math.sin(o.base) * 10, o.grp.position.z + Math.cos(o.base) * 10, .04);
     /* coucou quand on s'approche */
     if (dist < 3.2 && !o.waved && !isTalk) { o.waved = true; o.wave = 1.6; }
     if (dist > 6) o.waved = false;
@@ -1220,7 +1245,12 @@ function updatePeople(dt, t) {
     P.lids.forEach(l => { l.rotation.x += ((closed ? 1.45 : -1.25) - l.rotation.x) * .6; });
     const mouthOpen = isTalk && speaking ? (.4 + Math.abs(Math.sin(o.t * 14)) * .9) : .01;
     P.open.scale.y += (mouthOpen - P.open.scale.y) * .4; P.smile.visible = P.open.scale.y < .3;
-    if (o.bub) { o.bub.visible = !isTalk && dist < 9; o.bub.position.y = 1.78 + Math.sin(o.t * 2.5) * .04; }
+    if (o.bub) {
+      const heart = o.heartUntil > t, mp = heart ? heartT : o.quest ? questT : bubbleT;
+      if (o.bub.material.map !== mp) { o.bub.material.map = mp; o.bub.material.needsUpdate = true; }
+      o.bub.visible = !isTalk && (heart || o.quest || dist < 9); const sc = o.quest && !heart ? .58 : .42; o.bub.scale.set(sc, sc, 1);
+      o.bub.position.y = 1.78 + Math.sin(o.t * (o.quest ? 4 : 2.5)) * (o.quest ? .08 : .04);
+    }
     if (o.happy > 0) happyPose(o, P, dt);
     /* sourcils : se lèvent quand on parle ou qu'on est content */
     const brow = (o.happy > 0 ? 1 : 0) + (isTalk && speaking ? .5 + .5 * Math.sin(o.t * 5) : isTalk ? .3 : 0);
@@ -1329,6 +1359,10 @@ function placeAtBakery() { const a = bld.bakery.ang; pos.set(Math.sin(a) * 8.0, 
 
 return {
   setPhoto, snapshot, placeAtBakery, talkTo, endTalk, greet,
+  cheer: id => { const o = people.find(p => p.id === id); if (o) o.happy = 1.5; },
+  marker: (id, kind, secs) => { const o = people.find(p => p.id === id); if (!o) return; if (kind === 'heart') o.heartUntil = clockT.elapsedTime + (secs || 3); else o.quest = kind === 'quest'; },
+  approach: (id, cb) => { const o = people.find(p => p.id === id); if (!o || o.appr || talking || photo) return false; o.appr = { state: 'go', t: 0, cb, hx: o.grp.position.x, hz: o.grp.position.z }; o.pause = 0; return true; },
+  approaching: () => people.some(p => p.appr && p.appr.state !== 'back'),
   setHour: h => { hourOverride = h; applyHour(h == null ? realHour() : h); },
   hour: () => hourNow,
   resize: () => { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); R.setSize(innerWidth, innerHeight); }

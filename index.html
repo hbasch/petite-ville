@@ -8,7 +8,7 @@
 <meta name="description" content="Apprends l'anglais ou le polonais en parlant aux habitants d'une petite ville en 3D.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=16">
 <script>
 /* pas de zoom de la page entière (iPhone) : le pincement sert à zoomer dans la ville */
 document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
@@ -77,9 +77,12 @@ if (/[?&]debug\b/.test(location.search)) {
  </div>
 </section>
 
+<button type="button" class="btn exitBtn hidden" id="exitBtn"><span data-i="exitShop"></span></button>
+
 <section id="misSheet" class="sheet hidden">
  <div class="handle"></div>
  <button class="x" type="button" data-close="misSheet" aria-label="Fermer">×</button>
+ <div class="quest hidden" id="questBox"><small id="questWho"></small><p id="questTxt"></p><b id="questOk"></b></div>
  <h2 data-i="mission"></h2>
  <ul class="tasks">
   <li data-t="talk" data-i="t_talk"></li>
@@ -89,6 +92,7 @@ if (/[?&]debug\b/.test(location.search)) {
  </ul>
  <div class="progRow"><span data-i="found"></span><b id="fc">0</b></div>
  <div class="bar"><i id="fb"></i></div>
+ <div class="progRow hidden" id="collRow"><span id="collName"></span><b id="collN"></b></div>
 </section>
 
 <section id="mapSheet" class="sheet hidden">
@@ -257,10 +261,10 @@ if (/[?&]debug\b/.test(location.search)) {
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="config.js?v=10"></script>
-<script src="data.js?v=12"></script>
+<script src="data.js?v=14"></script>
 <script src="clay.js?v=4"></script>
 <script src="scene.js?v=14"></script>
-<script src="town.js?v=28"></script>
-<script src="app.js?v=11"></script>
+<script src="town.js?v=29"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>

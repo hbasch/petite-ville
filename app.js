@@ -44,11 +44,20 @@ function say(t, o) {
 /* ---------- reconnaissance vocale ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
+/* iPhone : tant qu'un flux micro reste ouvert dans la page, Safari ne redemande plus l'autorisation */
+let recInst = null, micStream = null, micAsked = false;
+function holdMic() {
+  if (micAsked || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return; micAsked = true;
+  navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true } }).then(st => { micStream = st; }).catch(() => { /* refusé : on garde le fonctionnement normal */ });
+}
 function listen(onInterim, onFinal, onError, onEnd) {
   if (!SR) { onError('unsupported'); if (onEnd) onEnd(); return; }
   try { speechSynthesis.cancel(); } catch (e) { /* none */ }
   if (rec) try { rec.abort(); } catch (e) { /* none */ }
-  rec = new SR(); rec.lang = S.voice; rec.interimResults = true; rec.maxAlternatives = 4; rec.continuous = false;
+  /* un seul module d'écoute, réutilisé : sur iPhone, en recréer un redemande la permission à chaque fois */
+  if (!recInst) recInst = new SR();
+  rec = recInst; rec.lang = S.voice; rec.interimResults = true; rec.maxAlternatives = 4; rec.continuous = false;
+  rec.onstart = () => holdMic();
   let done = false;
   rec.onresult = e => {
     const r = e.results[e.results.length - 1];
@@ -57,7 +66,7 @@ function listen(onInterim, onFinal, onError, onEnd) {
   };
   rec.onerror = e => { done = true; onError(e.error); };
   rec.onend = () => { if (!done) onError('no-speech'); if (onEnd) onEnd(); rec = null; };
-  try { rec.start(); lastAct = Date.now(); } catch (e) { onError('busy'); if (onEnd) onEnd(); }
+  try { rec.start(); lastAct = Date.now(); } catch (e) { const r2 = rec; setTimeout(() => { try { r2.start(); lastAct = Date.now(); } catch (e2) { onError('busy'); if (onEnd) onEnd(); } }, 300); }
 }
 const NUM = { en: { 1: 'one', 2: 'two', 4: 'four', 5: 'five', 10: 'ten', 20: 'twenty', 50: 'fifty' }, pl: { 2: 'dwa', 4: 'cztery', 5: 'piec', 10: 'dziesiec', 15: 'pietnascie', 20: 'dwadziescia', 50: 'piecdziesiat' } };
 const EXP = { heres: 'here is', thats: 'that is', its: 'it is', whats: 'what is', id: 'i would', ill: 'i will', im: 'i am' };
@@ -80,7 +89,7 @@ function micError(err, out) {
 }
 
 /* ---------- progression ---------- */
-const blankLang = () => ({ found: [], cards: {}, pron: {}, missions: 0, stories: {}, met: {} });
+const blankLang = () => ({ found: [], cards: {}, pron: {}, missions: 0, stories: {}, met: {}, firstWin: 0, friend: {}, coll: {}, quest: null, talked: {} });
 function normalizeP(d) {
   d = d || {};
   const p = Object.assign({ pseudo: '', ui, t: 'en', xp: 0, streak: 0, lastDay: '', dailyXp: 0, dailyDay: '', spoken: 0, goal: 15, secToday: 0, secDay: '', month: '', monthXp: 0, quizDay: '', quizRes: '', quizPick: '' }, d);
@@ -136,6 +145,10 @@ function updMission() {
   let done = 0;
   document.querySelectorAll('.tasks li').forEach(li => { const d = !!t[li.dataset.t]; li.classList.toggle('done', d); if (d) done++; });
   $('misN').textContent = done + '/4';
+  const q = questToday(), qb = $('questBox');
+  if (qb) { qb.classList.toggle('hidden', !q); if (q) { qb.classList.toggle('done', !!L.quest.done); $('questWho').textContent = U.questTitle + ' · ' + PV.NPCS[q.giver].name; $('questTxt').textContent = L.quest.told || L.quest.done ? questHint() : fill(U.questFrom, { n: PV.NPCS[q.giver].name }); $('questOk').textContent = L.quest.done ? U.questOk : ''; } }
+  const cId = { gb: 'unicorn', pl: 'dwarf' }[country()], cr = $('collRow');
+  if (cr) { cr.classList.toggle('hidden', !cId); if (cId) { $('collName').textContent = U.collTitle + ' · ' + W[cId][T]; $('collN').textContent = Object.keys(L.coll).filter(c => c.startsWith(cId)).length + '/' + (PV.COLLECT[cId] || 5); } }
 }
 /* minutes actives, pour l'objectif du jour */
 ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => addEventListener(ev, () => { lastAct = Date.now(); }, { passive: true }));
@@ -238,9 +251,9 @@ function start() {
   updHud(); updMission(); renderDeck(); renderMap();
   if (!started && window.THREE && window.buildTown) {
     const H = { palette: palette(), country: country(), label: id => L.found.includes(id) ? W[id][T] : '?',
-      pick: (id, obj) => { if (tab !== 'town' || place !== 'town') return; if (id === 'npc:passerby') greetPasserby(obj); else if (id.startsWith('npc:')) openNpc(id.slice(4)); else showWord(id); },
+      pick: (id, obj) => { if (tab !== 'town' || place !== 'town') return; if (id === 'npc:passerby') greetPasserby(obj); else if (id.startsWith('npc:')) openNpc(id.slice(4)); else { showWord(id); const cid = obj && obj.userData && obj.userData.collect; if (cid) setTimeout(() => collect(id, cid), 900); setTimeout(() => questProgress('find', id), cid ? 2200 : 1100); } },
       active: () => place === 'town' && !document.hidden };
-    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); });
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); refreshMarkers(); if (L.firstWin || L.found.length) { L.firstWin = 1; setTimeout(announceQuest, 2500); } });
   }
   started = true;
 }
@@ -253,14 +266,14 @@ function showIntro(kind) {
   $('step3').textContent = fill(t ? U.tstep3 : U.step3, { b: S.baker });
   $('intro').classList.remove('hidden');
 }
-$('enter').onclick = () => { $('intro').classList.add('hidden'); say(T === 'pl' ? 'Dzień dobry!' : 'Hello!'); };
+$('enter').onclick = () => { $('intro').classList.add('hidden'); if (place === 'town' && !L.firstWin) firstWin(); else say(T === 'pl' ? 'Dzień dobry!' : 'Hello!'); };
 
 /* ---------- la place et la boulangerie ---------- */
 function setPlaceUI() {
   const inB = place === 'bakery';
   $('placeName').textContent = inB ? '← ' + U.backToSquare : U.placeSquare;
   $('ct').classList.toggle('hidden', inB); $('c').classList.toggle('hidden', !inB);
-  $('photoBtn').classList.toggle('hidden', inB);
+  $('photoBtn').classList.toggle('hidden', inB); $('exitBtn').classList.toggle('hidden', !inB);
 }
 function enterBakery() {
   place = 'bakery'; show(null); setPlaceUI();
@@ -269,7 +282,7 @@ function enterBakery() {
     const H = { board: S.board, open: S.open, flour: S.flour, pal: (PV.PALS || {})[palette()],
       label: id => L.found.includes(id) ? W[id][T] : '?',
       pick: id => { if (tab !== 'town' || place !== 'bakery') return; if (id === 'baker') openDlg(); else showWord(id); },
-      bubble: () => !tasks.pay, active: () => place === 'bakery' && !document.hidden };
+      bubble: () => !tasks.pay, active: () => place === 'bakery' && !document.hidden, exit: () => { if (place === 'bakery') exitBakery(); } };
     window.buildScene(H);
   }
   if (!L.found.some(id => !TOWN.has(id))) showIntro('bakery');
@@ -323,6 +336,7 @@ function show(id) {
 }
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => show(null));
 $('misBtn').onclick = () => { updMission(); show('misSheet'); };
+$('exitBtn').onclick = () => { if (place === 'bakery') exitBakery(); };
 $('placeBtn').onclick = () => { if (place === 'bakery') exitBakery(); else { renderMap(); show('mapSheet'); } };
 $('meBtn').onclick = () => showTab('progress');
 $('goalPill').onclick = () => showTab('progress');
@@ -363,7 +377,7 @@ $('wRepeat').onclick = () => {
     let best = 0, heard = alts[0] || '';
     alts.forEach(a => { const n = norm(a).join(' '); const s = n.includes(target) ? 1 : 1 - lev(n, target) / Math.max(n.length, target.length, 1); if (s > best) { best = s; heard = a; } });
     out.textContent = '';
-    if (best >= .75) { out.append(icon('check'), document.createTextNode(U.pronGood)); if (!L.pron[curWord]) { L.pron[curWord] = 1; addXP(10, U.xpPron); } }
+    if (best >= .75) { out.append(icon('check'), document.createTextNode(U.pronGood)); praise(true, true); if (!L.pron[curWord]) { L.pron[curWord] = 1; addXP(10); } }
     else { out.className = 'pron bad'; out.textContent = fill(U.pronClose, { h: heard }); }
   }, err => { out.className = 'pron bad'; micError(err, out); }, () => btn.classList.remove('on'));
 };
@@ -389,10 +403,12 @@ function renderMap() {
 
 /* ---------- dialogue ---------- */
 let lastLine = '', curOpts = [], curNpc = null;
-const DD = () => curNpc ? PV.NPCS[curNpc].dlg[T] : D;
+let curDlg = null, dlgMode = null;
+const CV = () => ({ c: PV.CITY_NAME[country()] || 'Petite Ville' });
+const DD = () => curDlg || (curNpc ? PV.NPCS[curNpc].dlg[T] : D);
 const voiceP = () => curNpc ? PV.NPCS[curNpc].pitch : .95;
 function render(line, tr, key) {
-  lastLine = line; $('dLine').textContent = line; $('dTrTxt').textContent = (tr || {})[ui] || '';
+  line = fill(line, CV()); lastLine = line; $('dLine').textContent = line; $('dTrTxt').textContent = fill((tr || {})[ui] || '', CV());
   curOpts = key ? DD().opts[key] : [];
   const box = $('dOpts'); box.innerHTML = '';
   curOpts.forEach(o => {
@@ -403,22 +419,26 @@ function render(line, tr, key) {
   $('dMic').disabled = !SR || !curOpts.length;
   $('dHeard').textContent = curOpts.length ? (SR ? U.speakNow : U.noMic) : '';
 }
-function go(id, line, queue) { const n = DD().nodes[id]; const l = line ? line[0] : n[0]; render(l, line ? line[1] : n[1], n[2]); say(l, { queue, pitch: voiceP() }); }
+function go(id, line, queue) { const n = DD().nodes[id]; const l = fill(line ? line[0] : n[0], CV()); render(l, line ? line[1] : n[1], n[2]); say(l, { queue, pitch: voiceP() }); }
 function choose(o, spoken) {
+  document.querySelectorAll('#dOpts .opt').forEach(b => b.classList.toggle('picked', b.firstChild && b.firstChild.textContent === o.t));
   $('dMe').textContent = U.you + ' : « ' + o.t + ' »';
   if (!spoken) say(o.t, { pitch: 1.25, rate: 1 });
   if (o.task) tasks[o.task] = true;
+  if (o.task === 'order') setTimeout(() => questProgress('bakery'), 2600);
   if (o.tip) { mistakes++; $('dTip').textContent = o.tip[ui]; $('dTip').classList.remove('hidden'); } else $('dTip').classList.add('hidden');
-  if (spoken) { spokenSession++; P.spoken++; if (!o.tip) addXP(5, U.xpSpoken); }
+  if (spoken) { spokenSession++; P.spoken++; if (!o.tip) { addXP(5); praise(true); } setTimeout(() => questProgress('say'), 1500); }
+  else if (!o.tip) praise(false);
   updMission();
   if (o.to === 'END') {
-    const e = o.reply || DD().nodes.end; render(e[0], e[1], null); say(e[0], { queue: true, pitch: voiceP() });
+    const e = o.reply || DD().nodes.end; render(e[0], e[1], null); say(fill(e[0], CV()), { queue: true, pitch: voiceP() });
+    if (dlgMode === 'first') celebrateFirst();
     if (curNpc) { const who = curNpc; setTimeout(() => { if (curNpc === who) { show(null); finishNpc(who); } }, 3200); return; }
     setTimeout(() => { if (tasks.order && tasks.pay) win(); else show(null); }, 2400); return;
   }
   go(o.to, o.reply, true);
 }
-function openDlg() { curNpc = null; $('dWho').textContent = S.baker; tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
+function openDlg() { curNpc = null; curDlg = null; dlgMode = null; $('dWho').textContent = S.baker; tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
 $('dReplay').onclick = () => say(lastLine);
 $('dTr').onclick = () => $('dlg').classList.toggle('tr');
 $('dMic').onclick = () => {
@@ -436,12 +456,115 @@ $('dMic').onclick = () => {
 
 function openNpc(id) {
   const n = PV.NPCS[id]; if (!n) return;
-  curNpc = id; $('dWho').textContent = n.name + ' · ' + (n.role[ui] || '');
+  curNpc = id; curDlg = null; dlgMode = 'npc';
+  const q = questToday();
+  if (q && q.giver === id && !L.quest.told && !L.quest.done) { curDlg = questDlg(q); dlgMode = 'quest'; }
+  else if ((L.friend[id] || 0) >= 1 && L.talked[id] !== today()) { curDlg = PV.FOLLOW[T]; dlgMode = 'follow'; }
+  $('dWho').textContent = n.name + ' · ' + (n.role[ui] || '') + '  ' + hearts(id);
   $('dMe').textContent = ''; $('dTip').classList.add('hidden');
   if (town && town.talkTo) town.talkTo(id);
   show('dlg'); go('start');
 }
-function finishNpc(id) { if (!L.met[id]) { L.met[id] = 1; addXP(15, fill(U.newFriend, { n: PV.NPCS[id].name })); } curNpc = null; }
+function finishNpc(id) {
+  const mode = dlgMode; curNpc = null; curDlg = null; dlgMode = null;
+  if (mode === 'quest') { L.quest.told = true; refreshMarkers(); toast(U.questTitle + ' · ' + questHint()); save(); return; }
+  if (mode === 'first') { if (town && town.marker) town.marker('rosa', 'heart', 4); setTimeout(announceQuest, 3500); return; }
+  const first = !L.met[id];
+  if (first) { L.met[id] = 1; addXP(15, fill(U.newFriend, { n: PV.NPCS[id].name })); }
+  L.talked[id] = today(); friendUp(id, !first);
+  setTimeout(() => questProgress('talk', id), 1400);
+}
+/* ---------- les habitants viennent te voir ---------- */
+let idleT = 0, lastVisit = 0, visits = 0;
+const busyUI = () => SHEETS.some(p => !$(p).classList.contains('hidden')) || ['intro', 'win', 'onb', 'authOv'].some(p => $(p) && !$(p).classList.contains('hidden')) || document.body.classList.contains('photo');
+setInterval(() => {
+  if (!started || !town || !town.approach || place !== 'town' || tab !== 'town' || document.hidden || busyUI() || town.approaching()) { idleT = 0; return; }
+  idleT++;
+  const q = questToday(), pending = q && L.firstWin && !L.quest.told && !L.quest.done;
+  if (pending && idleT >= (visits ? 45 : 8)) { if (town.approach(q.giver, () => { if (!busyUI()) openNpc(q.giver); })) { visits++; idleT = 0; } return; }
+  if (!pending && idleT >= 35 && Date.now() - lastVisit > 150000) {
+    const friends = Object.keys(PV.NPCS).filter(id => (L.friend[id] || 0) >= 1 && L.talked[id] !== today());
+    const id = friends[(Math.random() * friends.length) | 0];
+    if (id && town.approach(id, () => { if (!busyUI()) openNpc(id); })) { lastVisit = Date.now(); idleT = 0; }
+  }
+}, 1000);
+/* ---------- amitié, demande du jour, collection, petite fête ---------- */
+const hearts = id => { const f = (L && L.friend[id]) || 0; return '♥'.repeat(f) + '♡'.repeat(5 - f); };
+function friendUp(id, tell) {
+  const f = L.friend[id] || 0; if (f >= 5) return; L.friend[id] = f + 1; save();
+  if (town && town.marker) town.marker(id, 'heart', 4);
+  if (tell && f >= 1) setTimeout(() => toast(fill(U.friendUp, { n: PV.NPCS[id].name }) + ' ' + hearts(id)), 1800);
+}
+function questToday() {
+  if (!L) return null;
+  const d = dayNum(), c = country();
+  if (!L.quest || L.quest.day !== d || !PV.QUESTS.some(q => q.id === L.quest.id && q[T])) {
+    const pool = PV.QUESTS.filter(q => (q.c === '*' || q.c === c) && q[T]); if (!pool.length) return null;
+    const q = pool[Math.floor(rng(d * 7 + (T === 'pl' ? 3 : 1))() * pool.length)];
+    L.quest = { day: d, id: q.id, told: false, done: false, n: 0 };
+  }
+  return PV.QUESTS.find(q => q.id === L.quest.id);
+}
+function questDlg(q) { const ok = PV.QUEST_OK[T]; return { nodes: { start: [q[T][0], q[T][1], 'a'], end: ok.reply, huh: PV.FOLLOW[T].nodes.huh }, opts: { a: [{ t: ok.t, tr: ok.tr, to: 'END' }] } }; }
+function questHint() {
+  const q = questToday(); if (!q) return '';
+  const w = id => W[id] ? W[id][T] + ' (' + W[id][ui] + ')' : (PV.NPCS[id] ? PV.NPCS[id].name : id);
+  return q.type === 'find' ? fill(U.questFind, { w: w(q.target) }) : q.type === 'talk' ? fill(U.questTalk, { w: w(q.target) }) : q.type === 'say' ? fill(U.questSay, { k: Math.min(L.quest.n || 0, q.n), t: q.n }) : U.questBakery;
+}
+function announceQuest() { const q = questToday(); if (!q || L.quest.told || L.quest.done || place !== 'town') return; refreshMarkers(); toast(fill(U.questFrom, { n: PV.NPCS[q.giver].name })); }
+function refreshMarkers() { if (!town || !town.marker) return; const q = questToday(); Object.keys(PV.NPCS).forEach(id => town.marker(id, q && q.giver === id && !L.quest.told && !L.quest.done ? 'quest' : null)); }
+function questProgress(type, id) {
+  const q = questToday(); if (!q || !L.quest.told || L.quest.done || q.type !== type) return;
+  let ok = false;
+  if (type === 'find' || type === 'talk') ok = q.target === id;
+  else if (type === 'say') { L.quest.n = (L.quest.n || 0) + 1; ok = L.quest.n >= q.n; if (!ok) { save(); updMission(); return; } }
+  else ok = true;
+  if (!ok) return;
+  L.quest.done = true; const g = PV.NPCS[q.giver];
+  addXP(30, fill(U.questDone, { n: g.name })); friendUp(q.giver, false); confetti();
+  if (town && town.cheer) { town.cheer(q.giver); town.marker(q.giver, 'heart', 5); }
+  say(T === 'pl' ? 'Dziękuję!' : 'Thank you!', { pitch: g.pitch }); updMission();
+}
+function collect(id, cid) {
+  if (L.coll[cid]) return; L.coll[cid] = 1;
+  const k = Object.keys(L.coll).filter(c => c.startsWith(id)).length, t = PV.COLLECT[id] || 5;
+  if (k >= t) { addXP(50, U.collDone); confetti(); } else addXP(10, fill(U.collFound, { w: W[id][T], k, t }));
+  updMission();
+}
+/* bravo ! grand mot qui rebondit, +XP qui s'envole, option en vert, petite pluie de confettis, l'habitant saute de joie */
+const PRAISE = { fr: ['Parfait !', 'Super !', 'Excellent !', 'Bien dit !', 'Bravo !'], pl: ['Świetnie!', 'Super!', 'Doskonale!', 'Brawo!', 'Pięknie!'] };
+function praise(spoken, word) {
+  const words = PRAISE[ui] || PRAISE.fr, w = words[(Math.random() * words.length) | 0];
+  const box = el('div', 'praise' + (spoken ? ' big' : '')); box.append(el('b', null, '✓ ' + w)); if (spoken) box.append(el('small', null, '+' + (word ? 10 : 5) + ' XP'));
+  document.body.appendChild(box); setTimeout(() => box.remove(), 1600);
+  const sel = document.querySelector('#dOpts .opt.picked'); if (sel) sel.classList.add('good');
+  if (spoken) { burst(); if (curNpc && town && town.cheer) town.cheer(curNpc); if (navigator.vibrate) try { navigator.vibrate([18, 40, 18]); } catch (e) { /* none */ } }
+}
+function burst() {
+  const box = el('div', 'burst'), C = ['#ffb547', '#7fd99a', '#ff7d6b', '#8ec5ff', '#fff8ee'];
+  for (let i = 0; i < 26; i++) { const c = el('i'), a = Math.random() * Math.PI * 2, d = 60 + Math.random() * 110; c.style.setProperty('--dx', Math.cos(a) * d + 'px'); c.style.setProperty('--dy', Math.sin(a) * d - 40 + 'px'); c.style.background = C[i % C.length]; box.appendChild(c); }
+  document.body.appendChild(box); setTimeout(() => box.remove(), 1200);
+}
+function confetti(title) {
+  const box = el('div', 'confetti'); const C = ['#ffb547', '#ff7d6b', '#7fd99a', '#8ec5ff', '#fff8ee', '#c8b6f0'];
+  for (let i = 0; i < 70; i++) { const c = el('i'); c.style.left = (Math.random() * 100) + '%'; c.style.background = C[i % C.length]; c.style.animationDelay = (Math.random() * .5) + 's'; c.style.animationDuration = (1.6 + Math.random() * 1.4) + 's'; c.style.transform = 'rotate(' + (Math.random() * 360) + 'deg)'; box.appendChild(c); }
+  if (title) { const b = el('b', 'confTitle', title); box.appendChild(b); }
+  document.body.appendChild(box); setTimeout(() => box.remove(), 3400);
+}
+function firstWin() {
+  if (!town) { setTimeout(firstWin, 300); return; }
+  curNpc = 'rosa'; curDlg = PV.FIRST[T]; dlgMode = 'first';
+  $('dWho').textContent = PV.NPCS.rosa.name + ' · ' + (PV.NPCS.rosa.role[ui] || '');
+  $('dMe').textContent = ''; $('dTip').classList.add('hidden');
+  if (town.talkTo) town.talkTo('rosa');
+  setTimeout(() => { show('dlg'); go('start'); }, 900);
+}
+function celebrateFirst() {
+  L.firstWin = 1; L.met.rosa = L.met.rosa || 0;
+  confetti(U.firstWinTitle);
+  if (town && town.cheer) town.cheer('rosa');
+  addXP(10, fill(U.firstWinText, { l: PV.IN_LANG[ui][T] }));
+}
 function greetPasserby(obj) {
   const list = PV.GREET[T] || [], g = list[(Math.random() * list.length) | 0]; if (!g) return;
   if (town && town.greet) town.greet(obj);

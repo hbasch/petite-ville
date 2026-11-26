@@ -471,3 +471,83 @@ PV.GREET = {
 };
 Object.assign(PV.UI.fr, { newFriend: 'Nouvel ami : {n} ! +15 XP', friends: 'amis rencontrés' });
 Object.assign(PV.UI.pl, { newFriend: 'Nowy przyjaciel: {n}! +15 XP', friends: 'poznani przyjaciele' });
+
+/* ---------- v6 : première réussite orale, habitants qui s'intéressent à toi, demande du jour, collections ----------
+   Répliques dans la langue apprise ([texte, {traductions}]) ; {c} = le nom de la ville (Edinburgh, Wrocław…). */
+PV.CITY_NAME = { gb: 'Edinburgh', pl: 'Wrocław', fr: 'Petite Ville' };
+PV.FIRST = {
+ en: { nodes: {
+   start: ['Hi! I\'m Rosa. Welcome! Can you say "Hello"?', { fr: 'Salut ! Je suis Rosa. Bienvenue ! Tu peux dire « Hello » ?', pl: 'Cześć! Jestem Rosa. Witaj! Powiesz „Hello”?' }, 'a'],
+   end: ['Wonderful! You just spoke English!', { fr: 'Génial ! Tu viens de parler anglais !', pl: 'Wspaniale! Właśnie mówisz po angielsku!' }],
+   huh: ['Almost! Try again: "Hello!"', { fr: 'Presque ! Essaie encore : « Hello ! »', pl: 'Prawie! Spróbuj jeszcze raz: „Hello!”' }] },
+  opts: { a: [ { t: 'Hello!', tr: { fr: 'Bonjour !', pl: 'Cześć!' }, to: 'END' } ] } },
+ pl: { nodes: {
+   start: ['Cześć! Jestem Rosa. Witaj! Powiesz „Dzień dobry”?', { fr: 'Salut ! Je suis Rosa. Bienvenue ! Tu peux dire « Dzień dobry » ?' }, 'a'],
+   end: ['Wspaniale! Właśnie mówisz po polsku!', { fr: 'Génial ! Tu viens de parler polonais !' }],
+   huh: ['Prawie! Spróbuj jeszcze raz: „Dzień dobry!”', { fr: 'Presque ! Essaie encore : « Dzień dobry ! »' }] },
+  opts: { a: [ { t: 'Dzień dobry!', tr: { fr: 'Bonjour !' }, to: 'END' } ] } }
+};
+/* quand on connaît déjà un habitant : il prend de tes nouvelles */
+PV.FOLLOW = {
+ en: { nodes: {
+   start: ["Oh, it's you again! How are you today?", { fr: "Oh, c'est encore toi ! Comment ça va aujourd'hui ?", pl: 'O, to znowu ty! Jak się dziś masz?' }, 'a'],
+   q2: ['What are you up to today?', { fr: "Qu'est-ce que tu fais de beau aujourd'hui ?", pl: 'Co dziś porabiasz?' }, 'b'],
+   q3: ['Do you like {c}?', { fr: 'Tu aimes {c} ?', pl: 'Podoba ci się {c}?' }, 'c'],
+   end: ['See you soon!', { fr: 'À bientôt !', pl: 'Do zobaczenia!' }],
+   huh: ['Sorry, can you say that again?', { fr: 'Pardon, tu peux répéter ?', pl: 'Przepraszam, możesz powtórzyć?' }] },
+  opts: {
+   a: [ { t: "I'm great, thanks!", tr: { fr: 'Super bien, merci !', pl: 'Świetnie, dzięki!' }, to: 'q2', reply: ['Great to hear! What are you up to today?', { fr: "Ça fait plaisir ! Qu'est-ce que tu fais de beau aujourd'hui ?", pl: 'Miło to słyszeć! Co dziś porabiasz?' }] },
+        { t: 'Not bad, and you?', tr: { fr: 'Pas mal, et toi ?', pl: 'Nieźle, a ty?' }, to: 'q2', reply: ["I'm very well, thank you for asking! What are you up to today?", { fr: "Très bien, merci de demander ! Qu'est-ce que tu fais de beau aujourd'hui ?", pl: 'Bardzo dobrze, dzięki, że pytasz! Co dziś porabiasz?' }] } ],
+   b: [ { t: 'I am learning new words.', tr: { fr: "J'apprends de nouveaux mots.", pl: 'Uczę się nowych słów.' }, to: 'q3', reply: ['Brilliant! You speak better every day. Do you like {c}?', { fr: 'Bravo ! Tu parles de mieux en mieux. Tu aimes {c} ?', pl: 'Brawo! Mówisz coraz lepiej. Podoba ci się {c}?' }] },
+        { t: 'I am going to the bakery.', tr: { fr: 'Je vais à la boulangerie.', pl: 'Idę do piekarni.' }, to: 'q3', reply: ['Mmm, say hello to Tom for me! Do you like {c}?', { fr: 'Mmm, passe le bonjour à Tom ! Tu aimes {c} ?', pl: 'Mmm, pozdrów ode mnie Toma! Podoba ci się {c}?' }] },
+        { t: 'I am walking around the square.', tr: { fr: 'Je me promène sur la place.', pl: 'Spaceruję po placu.' }, to: 'q3', reply: ['Lovely day for it! Do you like {c}?', { fr: 'Belle journée pour ça ! Tu aimes {c} ?', pl: 'Piękny dzień na spacer! Podoba ci się {c}?' }] } ],
+   c: [ { t: 'Yes, I love it here!', tr: { fr: "Oui, j'adore cet endroit !", pl: 'Tak, uwielbiam to miejsce!' }, to: 'END', reply: ["Me too! I'm so glad you're here. See you soon!", { fr: 'Moi aussi ! Ça me fait plaisir que tu sois là. À bientôt !', pl: 'Ja też! Cieszę się, że tu jesteś. Do zobaczenia!' }] },
+        { t: 'It is beautiful!', tr: { fr: "C'est magnifique !", pl: 'Jest tu pięknie!' }, to: 'END', reply: ['Isn\'t it? See you soon!', { fr: "N'est-ce pas ? À bientôt !", pl: 'Prawda? Do zobaczenia!' }] } ] } },
+ pl: { nodes: {
+   start: ['O, to znowu ty! Jak się dziś masz?', { fr: "Oh, c'est encore toi ! Comment ça va aujourd'hui ?" }, 'a'],
+   q2: ['Co dziś porabiasz?', { fr: "Qu'est-ce que tu fais de beau aujourd'hui ?" }, 'b'],
+   q3: ['Podoba ci się {c}?', { fr: 'Tu aimes {c} ?' }, 'c'],
+   end: ['Do zobaczenia!', { fr: 'À bientôt !' }],
+   huh: ['Przepraszam, możesz powtórzyć?', { fr: 'Pardon, tu peux répéter ?' }] },
+  opts: {
+   a: [ { t: 'Świetnie, dzięki!', tr: { fr: 'Super, merci !' }, to: 'q2', reply: ['Super! Co dziś porabiasz?', { fr: "Super ! Qu'est-ce que tu fais de beau aujourd'hui ?" }] },
+        { t: 'Nieźle, a ty?', tr: { fr: 'Pas mal, et toi ?' }, to: 'q2', reply: ['Bardzo dobrze, dzięki, że pytasz! Co dziś porabiasz?', { fr: "Très bien, merci de demander ! Qu'est-ce que tu fais de beau aujourd'hui ?" }] } ],
+   b: [ { t: 'Uczę się nowych słów.', tr: { fr: "J'apprends de nouveaux mots." }, to: 'q3', reply: ['Brawo! Mówisz coraz lepiej. Podoba ci się {c}?', { fr: 'Bravo ! Tu parles de mieux en mieux. Tu aimes {c} ?' }] },
+        { t: 'Idę do piekarni.', tr: { fr: 'Je vais à la boulangerie.' }, to: 'q3', reply: ['Mmm, pozdrów ode mnie Toma! Podoba ci się {c}?', { fr: 'Mmm, passe le bonjour à Tom ! Tu aimes {c} ?' }] },
+        { t: 'Spaceruję po rynku.', tr: { fr: 'Je me promène sur la place.' }, to: 'q3', reply: ['Piękny dzień na spacer! Podoba ci się {c}?', { fr: 'Belle journée pour se promener ! Tu aimes {c} ?' }] } ],
+   c: [ { t: 'Tak, bardzo mi się podoba!', tr: { fr: 'Oui, ça me plaît beaucoup !' }, to: 'END', reply: ['Cieszę się! Do zobaczenia!', { fr: 'Ça me fait plaisir ! À bientôt !' }] },
+        { t: 'Jest tu pięknie!', tr: { fr: "C'est magnifique ici !" }, to: 'END', reply: ['Prawda? Do zobaczenia!', { fr: "N'est-ce pas ? À bientôt !" }] } ] } }
+};
+/* demande du jour : un habitant a besoin de toi (c : pays concernés, '*' = tous) */
+PV.QUESTS = [
+ { id: 'cat', c: '*', giver: 'leo', type: 'find', target: 'cat', en: ["Have you seen my cat? I think he's sleeping on a bench.", { fr: "Tu as vu mon chat ? Je crois qu'il dort sur un banc.", pl: 'Widzisz gdzieś mojego kota? Chyba śpi na ławce.' }], pl: ['Widzisz gdzieś mojego kota? Chyba śpi na ławce.', { fr: "Tu vois mon chat quelque part ? Je crois qu'il dort sur un banc." }] },
+ { id: 'dog', c: '*', giver: 'maya', type: 'find', target: 'dog', en: ['A little dog is walking around the square. Can you find him?', { fr: 'Un petit chien se promène sur la place. Tu peux le trouver ?', pl: 'Po placu spaceruje mały pies. Znajdziesz go?' }], pl: ['Po rynku spaceruje mały pies. Znajdziesz go?', { fr: 'Un petit chien se promène sur la place. Tu peux le trouver ?' }] },
+ { id: 'talkRosa', c: '*', giver: 'sam', type: 'talk', target: 'rosa', en: ['Rosa the florist wants to meet you. Go and say hello!', { fr: 'Rosa la fleuriste veut te rencontrer. Va lui dire bonjour !', pl: 'Kwiaciarka Rosa chce cię poznać. Idź się przywitać!' }], pl: ['Kwiaciarka Rosa chce cię poznać. Idź się przywitać!', { fr: 'Rosa la fleuriste veut te rencontrer. Va lui dire bonjour !' }] },
+ { id: 'speak5', c: '*', giver: 'rosa', type: 'say', n: 5, en: ["Let's practise! Say five sentences out loud today.", { fr: "On s'entraîne ! Dis cinq phrases à voix haute aujourd'hui.", pl: 'Poćwiczmy! Powiedz dziś na głos pięć zdań.' }], pl: ['Poćwiczmy! Powiedz dziś na głos pięć zdań.', { fr: "On s'entraîne ! Dis cinq phrases à voix haute aujourd'hui." }] },
+ { id: 'bakery', c: '*', giver: 'maya', type: 'bakery', en: ["I'm hungry! Can you buy something at the bakery?", { fr: "J'ai faim ! Tu peux acheter quelque chose à la boulangerie ?", pl: 'Jestem głodna! Kupisz coś w piekarni?' }], pl: ['Jestem głodna! Kupisz coś w piekarni?', { fr: "J'ai faim ! Tu peux acheter quelque chose à la boulangerie ?" }] },
+ { id: 'phone', c: 'gb', giver: 'rosa', type: 'find', target: 'phonebox', en: ['I need to call my mum. Where is the red phone box?', { fr: 'Je dois appeler ma mère. Où est la cabine téléphonique rouge ?', pl: 'Muszę zadzwonić do mamy. Gdzie jest czerwona budka telefoniczna?' }] },
+ { id: 'unicorn', c: 'gb', giver: 'maya', type: 'find', target: 'unicorn', en: ['Little unicorns are hiding in town. Can you find one?', { fr: 'De petites licornes se cachent en ville. Tu peux en trouver une ?', pl: 'W mieście ukrywają się małe jednorożce. Znajdziesz jednego?' }] },
+ { id: 'castle', c: 'gb', giver: 'sam', type: 'find', target: 'castle', en: ['Look up! Can you see the castle on the rock?', { fr: 'Lève les yeux ! Tu vois le château sur le rocher ?', pl: 'Spójrz w górę! Widzisz zamek na skale?' }] },
+ { id: 'statue', c: 'gb', giver: 'leo', type: 'find', target: 'statue', en: ['There is a statue of a loyal little dog near the fountain. Can you find it?', { fr: "Il y a la statue d'un petit chien fidèle près de la fontaine. Tu la trouves ?", pl: 'Przy fontannie stoi pomnik wiernego pieska. Znajdziesz go?' }] },
+ { id: 'dwarf', c: 'pl', giver: 'maya', type: 'find', target: 'dwarf', pl: ['W mieście ukrywają się krasnale. Znajdziesz jednego?', { fr: 'Des krasnale se cachent en ville. Tu peux en trouver un ?' }] },
+ { id: 'kiosk', c: 'pl', giver: 'leo', type: 'find', target: 'kiosk', pl: ['Chcę kupić gazetę. Gdzie jest kiosk?', { fr: 'Je veux acheter le journal. Où est le kiosque ?' }] },
+ { id: 'car', c: 'pl', giver: 'sam', type: 'find', target: 'car', pl: ['Mój stary maluch stoi przy rynku. Znajdziesz go?', { fr: 'Ma vieille Maluch est garée au bord de la place. Tu la trouves ?' }] },
+ { id: 'pillory', c: 'pl', giver: 'leo', type: 'find', target: 'pillory', pl: ['Na rynku stoi stary pręgierz. Wiesz, gdzie?', { fr: 'Sur la place, il y a un vieux pilori. Tu sais où ?' }] }
+];
+PV.QUEST_OK = { en: { t: 'Of course!', tr: { fr: 'Bien sûr !', pl: 'Jasne!' }, reply: ['Thank you so much!', { fr: 'Merci beaucoup !', pl: 'Dziękuję bardzo!' }] }, pl: { t: 'Jasne!', tr: { fr: 'Bien sûr !' }, reply: ['Dziękuję bardzo!', { fr: 'Merci beaucoup !' }] } };
+PV.COLLECT = { unicorn: 5, dwarf: 5 };
+Object.assign(PV.WORDS, { christmastree: { en: 'Christmas tree', pl: 'choinka', fr: 'sapin de Noël', ex: { en: 'The Christmas tree has lots of lights.', pl: 'Choinka ma dużo światełek.', fr: 'Le sapin de Noël a plein de lumières.' } } });
+PV.TOWN_IDS.push('christmastree');
+Object.assign(PV.UI.fr, {
+  firstWinTitle: 'Bravo !', firstWinText: 'Ta première phrase en {l} ! +10 XP',
+  questTitle: 'Demande du jour', questFrom: '{n} a besoin de toi', questDone: 'Demande du jour réussie : {n} te remercie ! +30 XP', questOk: 'Fait !',
+  questFind: 'Trouve : {w}', questTalk: 'Va parler à {w}', questSay: 'Dis des phrases à voix haute : {k}/{t}', questBakery: 'Achète quelque chose à la boulangerie',
+  friendUp: '{n} t\'apprécie de plus en plus', collTitle: 'Collection', collFound: '{w} : {k}/{t}', collDone: 'Collection complète ! +50 XP'
+});
+Object.assign(PV.UI.pl, {
+  firstWinTitle: 'Brawo!', firstWinText: 'Twoje pierwsze zdanie po {l}! +10 XP',
+  questTitle: 'Prośba dnia', questFrom: '{n} potrzebuje twojej pomocy', questDone: 'Prośba dnia wykonana: {n} dziękuje! +30 XP', questOk: 'Zrobione!',
+  questFind: 'Znajdź: {w}', questTalk: 'Porozmawiaj z: {w}', questSay: 'Powiedz zdania na głos: {k}/{t}', questBakery: 'Kup coś w piekarni',
+  friendUp: '{n} coraz bardziej cię lubi', collTitle: 'Kolekcja', collFound: '{w}: {k}/{t}', collDone: 'Kolekcja kompletna! +50 XP'
+});
+Object.assign(PV.UI.fr, { exitShop: 'Sortir' }); Object.assign(PV.UI.pl, { exitShop: 'Wyjdź' });
