@@ -35,7 +35,7 @@ if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = pickVoice;
 let VOX = {}, voxLang = null, voxQ = [], voxBusy = false, voxGen = 0;
 const vox = new Audio(); vox.preload = 'auto';
 const SILENT = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//NwwAAAAAAAAAAAAEluZm8AAAAPAAAABAAAAlgAenp6enp6enp6enp6enp6enp6enp6enp6pqampqampqampqampqampqampqampqamptPT09PT09PT09PT09PT09PT09PT09PT09P/////////////////////////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQCcQAAAAAAAAJY+/rsqgAAAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NCxKMAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
-function loadVox() { if (voxLang === T) return; const l = voxLang = T; VOX = {}; fetch('audio/' + l + '/index.json?v=1').then(r => r.ok ? r.json() : {}).then(j => { if (voxLang === l) VOX = j || {}; }).catch(() => { /* pas de voix enregistrées */ }); }
+function loadVox() { if (voxLang === T) return; const l = voxLang = T; VOX = {}; fetch('audio/' + l + '/index.json?v=2').then(r => r.ok ? r.json() : {}).then(j => { if (voxLang === l) VOX = j || {}; }).catch(() => { /* pas de voix enregistrées */ }); }
 /* iPhone : un lecteur audio « débloqué » par un premier toucher peut ensuite parler tout seul (habitants qui viennent te voir) */
 document.addEventListener('pointerdown', () => { try { vox.src = SILENT; const p = vox.play(); if (p) p.catch(() => { /* none */ }); } catch (e) { /* none */ } }, { once: true, capture: true });
 function tts(t, o, after) {
@@ -441,7 +441,10 @@ function render(line, tr, key) {
   const box = $('dOpts'); box.innerHTML = '';
   curOpts.forEach(o => {
     const b = el('button', 'opt'); b.type = 'button';
-    b.append(el('span', null, o.t), el('div', 'fr', o.tr[ui] || ''));
+    /* petite icône pour entendre comment se dit la réponse (rien ne se lit tout seul) */
+    const sp = el('span', 'optSpk'); sp.setAttribute('role', 'button'); sp.setAttribute('aria-label', U.listen); sp.appendChild(icon('spk'));
+    sp.onclick = e => { e.stopPropagation(); say(o.t, { who: 'you', rate: 1 }); };
+    b.append(el('span', null, o.t), el('div', 'fr', o.tr[ui] || ''), sp);
     b.onclick = () => choose(o, false); box.appendChild(b);
   });
   $('dMic').disabled = !SR || !curOpts.length;
@@ -451,7 +454,6 @@ function go(id, line, queue) { const n = DD().nodes[id]; const l = fill(line ? l
 function choose(o, spoken) {
   document.querySelectorAll('#dOpts .opt').forEach(b => b.classList.toggle('picked', b.firstChild && b.firstChild.textContent === o.t));
   $('dMe').textContent = U.you + ' : « ' + o.t + ' »';
-  if (!spoken) say(o.t, { pitch: 1.25, rate: 1, who: 'you' });
   if (o.task) tasks[o.task] = true;
   if (o.task === 'order') setTimeout(() => questProgress('bakery'), 2600);
   if (o.tip) { mistakes++; $('dTip').textContent = o.tip[ui]; $('dTip').classList.remove('hidden'); } else $('dTip').classList.add('hidden');
