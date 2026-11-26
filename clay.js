@@ -68,13 +68,14 @@ float clayHeight(vec3 p, float fine) {
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\n' + NOISE)
       .replace('#include <color_fragment>', `#include <color_fragment>
-  diffuseColor.rgb *= 0.95 + 0.1 * cNoise(vClayP * 1.7 + 7.0);
+  float clayN = cNoise(vClayP * 1.7 + 7.0);
+  diffuseColor.rgb *= 0.95 + 0.1 * clayN;
   /* joints de pierre (murs d'Édimbourg), effacés au loin pour ne pas scintiller */
   float clayJ = clayStone > 0.0 ? clayJoint(vClayP) * clayStone * (1.0 - smoothstep(9.0, 24.0, length(vViewPosition))) : 0.0;
   diffuseColor.rgb *= 1.0 - 0.22 * clayJ;`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
   /* brillance grasse irrégulière : là où le doigt a lissé la pâte, elle brille un peu plus */
-  roughnessFactor = clamp(roughnessFactor + (cNoise(vClayP * 1.9 + 11.0) - 0.5) * 0.34, 0.2, 1.0);`)
+  roughnessFactor = clamp(roughnessFactor + (0.5 - clayN) * 0.34, 0.2, 1.0);`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
   {
     float fine = 1.0 - smoothstep(3.0, 11.0, length(vViewPosition));
