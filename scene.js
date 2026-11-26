@@ -266,6 +266,9 @@ if(/[?&]debug\b/.test(location.search))window.PVBAK={cam,go(x,z,yw,pt){pos.set(x
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)});
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clock=new THREE.Clock();const tmp=new THREE.Vector3();
+/* reflets de la pâte : intérieur chaud (crème au plafond, bois au sol) au lieu du ciel de la place */
+const envT=new THREE.Color('#f6ead4').convertSRGBToLinear().multiplyScalar(.8),envH=new THREE.Color('#efe0c8').convertSRGBToLinear().multiplyScalar(.75),envG=new THREE.Color('#8a5a3a').convertSRGBToLinear().multiplyScalar(.6);
+function clayEnv(){const E=PVClay.U;E.envT.value.copy(envT);E.envH.value.copy(envH);E.envG.value.copy(envG)}
 function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
  if(H.active&&!H.active()){off=true;return}
  /* revenu après être sorti par la porte : on repart du seuil */
@@ -291,6 +294,6 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  zoomV+=(zoomT-zoomV)*(1-Math.exp(-dt*12));{const f=FOV*zoomV;if(Math.abs(cam.fov-f)>.01){cam.fov=f;cam.updateProjectionMatrix()}}
  /* le boulanger tourne la tête vers nous */
  cam.getWorldPosition(tmp);const dx=tmp.x-baker.position.x,dz=tmp.z-baker.position.z;head.rotation.y+=(Math.max(-.6,Math.min(.6,Math.atan2(dx,dz)))-head.rotation.y)*.08;
- R.render(scene,cam)}
+ clayEnv();R.render(scene,cam)}
 loop();
 };

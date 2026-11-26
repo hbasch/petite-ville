@@ -1036,11 +1036,14 @@ const KF = [
 const cA = new THREE.Color(), cB = new THREE.Color();
 const lerpC = (target, a, b, t) => { cA.set(a); cB.set(b); target.copy(cA.lerp(cB, t)); return target; };
 let lightsOn = 0, hourNow = 12;
+/* couleurs des reflets de la place (la boulangerie met les siennes quand on y entre : on les remet à chaque image) */
+const envT = new THREE.Color(), envH = new THREE.Color(), envG = new THREE.Color();
+function clayEnv() { const E = PVClay.U; E.envT.value.copy(envT); E.envH.value.copy(envH); E.envG.value.copy(envG); }
 function applyHour(h) {
   hourNow = h; let i = 0; while (i < KF.length - 2 && KF[i + 1][0] <= h) i++;
   const a = KF[i], b = KF[i + 1], t = Math.min(1, Math.max(0, (h - a[0]) / (b[0] - a[0])));
   lerpC(skyU.top.value, a[1], b[1], t).convertSRGBToLinear(); lerpC(skyU.hor.value, a[2], b[2], t).convertSRGBToLinear(); lerpC(skyU.bot.value, a[3], b[3], t).convertSRGBToLinear();
-  lerpC(sun.color, a[4], b[4], t); sun.intensity = (a[5] + (b[5] - a[5]) * t) * 1.5;
+  lerpC(sun.color, a[4], b[4], t); sun.intensity = (a[5] + (b[5] - a[5]) * t) * (1.5 - (a[10] + (b[10] - a[10]) * t) * .3);
   lerpC(hemi.color, a[6], b[6], t); lerpC(hemi.groundColor, a[7], b[7], t); hemi.intensity = (a[8] + (b[8] - a[8]) * t) * .58;
   lerpC(scene.fog.color, a[9], b[9], t).convertSRGBToLinear();
   lightsOn = a[10] + (b[10] - a[10]) * t; PVClay.U.day.value = 1 - lightsOn * .75; starMat.opacity = a[11] + (b[11] - a[11]) * t;
@@ -1061,7 +1064,7 @@ function applyHour(h) {
   R.shadowMap.needsUpdate = true;
   R.toneMappingExposure = .86 + lightsOn * .14;
   /* reflets de la pâte : ciel, horizon et sol chaud du moment */
-  { const E = PVClay.U, k = 1 - lightsOn * .6; E.envT.value.copy(skyU.top.value).multiplyScalar(k); E.envH.value.copy(skyU.hor.value).multiplyScalar(k); E.envG.value.set(shade(PAL.ground, -.15)).convertSRGBToLinear().multiplyScalar(k * .8); }
+  { const k = 1 - lightsOn * .6; envT.copy(skyU.top.value).multiplyScalar(k); envH.copy(skyU.hor.value).multiplyScalar(k); envG.set(shade(PAL.ground, -.15)).convertSRGBToLinear().multiplyScalar(k * .8); }
   const hm = h % 12, mm = (h * 60) % 60;
   hands.forEach(([hh, mh]) => { hh.rotation.z = -(hm / 12) * TAU; mh.rotation.z = -(mm / 60) * TAU; });
 }
@@ -1171,7 +1174,7 @@ function stampArt(g, x, y, w, h) {
   g.restore();
 }
 function snapshot() {
-  if (composer) composer.render(); else R.render(scene, cam);
+  clayEnv(); if (composer) composer.render(); else R.render(scene, cam);
   const src = R.domElement, W = src.width, Hh = src.height, m = Math.round(Math.min(W, Hh) * .045);
   const out = document.createElement('canvas'); out.width = W + m * 2; out.height = Hh + m * 2; const g = out.getContext('2d');
   g.fillStyle = '#fbf3e4'; g.fillRect(0, 0, out.width, out.height); g.drawImage(src, m, m);
@@ -1395,7 +1398,7 @@ function loop() {
   updateFx(dt, t);
   badges.forEach((b, i) => { b.spr.position.y = b.y + Math.sin(t * 1.8 + i * 1.3) * .06; });
   if (t - lastBadgeCheck > .7) { lastBadgeCheck = t; badges.forEach(b => { if (H.label(b.id) !== b.lab) drawBadge(b); }); }
-  if (photo) { ctl.update(); if (composer) composer.render(); else R.render(scene, cam); sky.position.copy(cam.position); stars.position.copy(cam.position); return; }
+  if (photo) { ctl.update(); clayEnv(); if (composer) composer.render(); else R.render(scene, cam); sky.position.copy(cam.position); stars.position.copy(cam.position); return; }
   /* marche */
   fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw)); right.set(Math.cos(yaw), 0, -Math.sin(yaw));
   wish.set(0, 0, 0);
@@ -1426,6 +1429,7 @@ function loop() {
      on rend directement, sans étalonnage ni anticrénelage */
   if (perfT > 2 && fp && pr <= 1) { if (perfT / perfN > 1 / 28) { if (++slowN > 1 && !/[?&]debug\b/.test(location.search)) { fp = null; fpFailed = true; } } else slowN = 0; }
   if (perfT > 2) { if (perfT / perfN > 1 / 40 && pr > 1) { pr = Math.max(1, pr - .25); R.setPixelRatio(pr); R.setSize(innerWidth, innerHeight); if (fp) { fp.setPixelRatio(pr); if (fxaa) { const s = R.getDrawingBufferSize(new THREE.Vector2()); fxaa.uniforms.resolution.value.set(1 / s.x, 1 / s.y); } } } perfT = 0; perfN = 0; }
+  clayEnv();
   if (fp) fp.render(); else R.render(scene, cam);
   if (DBG) dbgFrame();
 }
