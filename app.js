@@ -460,7 +460,7 @@ function openNpc(id) {
   curNpc = id; curDlg = null; dlgMode = 'npc';
   const q = questToday();
   if (q && q.giver === id && !L.quest.told && !L.quest.done) { curDlg = questDlg(q); dlgMode = 'quest'; }
-  else if ((L.friend[id] || 0) >= 1 && L.talked[id] !== today()) { curDlg = PV.FOLLOW[T]; dlgMode = 'follow'; }
+  else if ((L.friend[id] || 0) >= 1 && L.talked[id] !== today()) { const vs = [PV.FOLLOW[T]].concat((PV.FOLLOW2 || {})[T] || []); curDlg = vs[(dayNum() + Object.keys(PV.NPCS).indexOf(id)) % vs.length]; dlgMode = 'follow'; }
   $('dWho').textContent = n.name + ' · ' + (n.role[ui] || '') + '  ' + hearts(id);
   $('dMe').textContent = ''; $('dTip').classList.add('hidden');
   if (town && town.talkTo) town.talkTo(id);
@@ -561,7 +561,7 @@ function firstWin() {
   setTimeout(() => { show('dlg'); go('start'); }, 900);
 }
 function celebrateFirst() {
-  L.firstWin = 1; L.met.rosa = L.met.rosa || 0;
+  L.firstWin = 1; L.met.rosa = 1; L.talked.rosa = today(); friendUp('rosa', false);
   confetti(U.firstWinTitle);
   if (town && town.cheer) town.cheer('rosa');
   addXP(10, fill(U.firstWinText, { l: PV.IN_LANG[ui][T] }));
@@ -723,6 +723,18 @@ function renderProgress() {
   const sbt = el('div'); sbt.append(el('b', null, P.streak), el('div', 'sub', U.streakTitle)); sb.appendChild(sbt); sc.appendChild(sb);
   sc.appendChild(subP(U.streakHint, '10px 0 0'));
   two.append(gc, sc); box.appendChild(two);
+  /* amis et collection */
+  const fcs = section(U.friendsTitle), flist = el('div', 'friendList');
+  Object.keys(PV.NPCS).forEach(id => { const known = (L.friend[id] || 0) > 0 || L.met[id]; const row = el('div', 'friendRow' + (known ? '' : ' unknown')); row.append(el('b', null, known ? PV.NPCS[id].name : '?'), el('span', 'sub', PV.NPCS[id].role[ui] || ''), el('span', 'hearts', hearts(id))); flist.appendChild(row); });
+  fcs.appendChild(flist);
+  const cId = { gb: 'unicorn', pl: 'dwarf' }[country()];
+  if (cId) {
+    const tot = PV.COLLECT[cId] || 5, got = Object.keys(L.coll).filter(c => c.startsWith(cId)).length;
+    fcs.appendChild(el('h3', 'collH', U.collTitle + ' · ' + W[cId][T] + ' ' + got + '/' + tot));
+    const slots = el('div', 'collSlots'); for (let i = 0; i < tot; i++) { const on = !!L.coll[cId + i]; slots.appendChild(el('span', 'slot ' + cId + (on ? ' on' : ''), on ? '' : '?')); }
+    fcs.appendChild(slots); fcs.appendChild(subP(got >= tot ? U.collAll : fill(U.collLeft, { n: tot - got }), '8px 0 0'));
+  }
+  box.appendChild(fcs);
   /* quiz du jour */
   const qc = section(U.quizTitle); const q = quizOfDay(), key = dayNum() + '-' + T, doneQ = P.quizDay === key;
   qc.appendChild(subP(fill(U.quizQ, { w: W[q.id][T] }), '0'));

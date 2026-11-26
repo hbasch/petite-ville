@@ -551,3 +551,54 @@ Object.assign(PV.UI.pl, {
   friendUp: '{n} coraz bardziej cię lubi', collTitle: 'Kolekcja', collFound: '{w}: {k}/{t}', collDone: 'Kolekcja kompletna! +50 XP'
 });
 Object.assign(PV.UI.fr, { exitShop: 'Sortir' }); Object.assign(PV.UI.pl, { exitShop: 'Wyjdź' });
+/* autres conversations quand on se connaît déjà (une par jour et par habitant, en alternance) */
+PV.FOLLOW2 = {
+ en: [
+  { nodes: {
+    start: ['Hello again! Tell me, what do you like to eat?', { fr: "Re-bonjour ! Dis-moi, qu'est-ce que tu aimes manger ?", pl: 'Znowu cześć! Powiedz, co lubisz jeść?' }, 'a'],
+    q2: ['Do you cook at home?', { fr: 'Tu cuisines chez toi ?', pl: 'Gotujesz w domu?' }, 'b'],
+    end: ['See you soon!', { fr: 'À bientôt !', pl: 'Do zobaczenia!' }],
+    huh: ['Sorry, can you say that again?', { fr: 'Pardon, tu peux répéter ?', pl: 'Przepraszam, możesz powtórzyć?' }] },
+   opts: {
+    a: [ { t: 'I love cakes!', tr: { fr: "J'adore les gâteaux !", pl: 'Uwielbiam ciasta!' }, to: 'q2', reply: ['Me too! The bakery has amazing cakes. Do you cook at home?', { fr: 'Moi aussi ! La boulangerie a des gâteaux incroyables. Tu cuisines chez toi ?', pl: 'Ja też! W piekarni są świetne ciasta. Gotujesz w domu?' }] },
+         { t: 'I like fruit and vegetables.', tr: { fr: "J'aime les fruits et les légumes.", pl: 'Lubię owoce i warzywa.' }, to: 'q2', reply: ['Very healthy! Sam has fresh apples. Do you cook at home?', { fr: 'Très sain ! Sam a des pommes fraîches. Tu cuisines chez toi ?', pl: 'Bardzo zdrowo! Sam ma świeże jabłka. Gotujesz w domu?' }] },
+         { t: 'I like pizza.', tr: { fr: "J'aime la pizza.", pl: 'Lubię pizzę.' }, to: 'q2', reply: ["Who doesn't? Do you cook at home?", { fr: "Qui n'aime pas ça ? Tu cuisines chez toi ?", pl: 'Kto nie lubi? Gotujesz w domu?' }] } ],
+    b: [ { t: 'Yes, every day.', tr: { fr: 'Oui, tous les jours.', pl: 'Tak, codziennie.' }, to: 'END', reply: ['Lovely! Bring me something to try one day. See you soon!', { fr: 'Super ! Apporte-moi quelque chose à goûter un jour. À bientôt !', pl: 'Super! Przynieś mi kiedyś coś do spróbowania. Do zobaczenia!' }] },
+         { t: 'No, not really.', tr: { fr: 'Non, pas vraiment.', pl: 'Nie, raczej nie.' }, to: 'END', reply: ["Me neither! That's why I love the bakery. See you soon!", { fr: "Moi non plus ! C'est pour ça que j'adore la boulangerie. À bientôt !", pl: 'Ja też nie! Dlatego uwielbiam piekarnię. Do zobaczenia!' }] } ] } },
+  { nodes: {
+    start: ["Hi! Tell me, what's your favourite place here?", { fr: 'Salut ! Dis-moi, quel est ton endroit préféré ici ?', pl: 'Cześć! Powiedz, jakie jest twoje ulubione miejsce tutaj?' }, 'a'],
+    q2: ['Do you come here every day?', { fr: 'Tu viens ici tous les jours ?', pl: 'Przychodzisz tu codziennie?' }, 'b'],
+    end: ['See you soon!', { fr: 'À bientôt !', pl: 'Do zobaczenia!' }],
+    huh: ['Sorry, can you say that again?', { fr: 'Pardon, tu peux répéter ?', pl: 'Przepraszam, możesz powtórzyć?' }] },
+   opts: {
+    a: [ { t: 'The market square.', tr: { fr: 'La place du marché.', pl: 'Rynek.' }, to: 'q2', reply: ['Me too! I love watching people here. Do you come here every day?', { fr: "Moi aussi ! J'adore regarder les gens ici. Tu viens tous les jours ?", pl: 'Ja też! Uwielbiam tu patrzeć na ludzi. Przychodzisz tu codziennie?' }] },
+         { t: 'The bakery.', tr: { fr: 'La boulangerie.', pl: 'Piekarnia.' }, to: 'q2', reply: ['Good choice! It smells so good. Do you come here every day?', { fr: 'Bon choix ! Ça sent si bon. Tu viens tous les jours ?', pl: 'Dobry wybór! Tak tam pięknie pachnie. Przychodzisz tu codziennie?' }] },
+         { t: 'The fountain.', tr: { fr: 'La fontaine.', pl: 'Fontanna.' }, to: 'q2', reply: ["It's so peaceful there. Do you come here every day?", { fr: "C'est si paisible là-bas. Tu viens tous les jours ?", pl: 'Tam jest tak spokojnie. Przychodzisz tu codziennie?' }] } ],
+    b: [ { t: 'Yes, I try!', tr: { fr: "Oui, j'essaie !", pl: 'Tak, staram się!' }, to: 'END', reply: ['Great! Then see you tomorrow!', { fr: 'Super ! Alors à demain !', pl: 'Super! To do jutra!' }] },
+         { t: 'When I have time.', tr: { fr: "Quand j'ai le temps.", pl: 'Kiedy mam czas.' }, to: 'END', reply: ["That's fine. It's always nice to see you!", { fr: 'Pas de souci. Ça me fait toujours plaisir de te voir !', pl: 'W porządku. Zawsze miło cię widzieć!' }] } ] } } ],
+ pl: [
+  { nodes: {
+    start: ['Znowu cześć! Powiedz, co lubisz jeść?', { fr: "Re-bonjour ! Dis-moi, qu'est-ce que tu aimes manger ?" }, 'a'],
+    q2: ['Gotujesz w domu?', { fr: 'Tu cuisines chez toi ?' }, 'b'],
+    end: ['Do zobaczenia!', { fr: 'À bientôt !' }],
+    huh: ['Przepraszam, możesz powtórzyć?', { fr: 'Pardon, tu peux répéter ?' }] },
+   opts: {
+    a: [ { t: 'Uwielbiam ciasta!', tr: { fr: "J'adore les gâteaux !" }, to: 'q2', reply: ['Ja też! W piekarni są świetne ciasta. Gotujesz w domu?', { fr: 'Moi aussi ! La boulangerie a des gâteaux incroyables. Tu cuisines chez toi ?' }] },
+         { t: 'Lubię pierogi.', tr: { fr: "J'aime les pierogi." }, to: 'q2', reply: ['Kto nie lubi pierogów? Najlepsze są w barze mlecznym. Gotujesz w domu?', { fr: "Qui n'aime pas les pierogi ? Les meilleurs sont au bar mleczny. Tu cuisines chez toi ?" }] },
+         { t: 'Lubię owoce i warzywa.', tr: { fr: "J'aime les fruits et les légumes." }, to: 'q2', reply: ['Bardzo zdrowo! Sam ma świeże jabłka. Gotujesz w domu?', { fr: 'Très sain ! Sam a des pommes fraîches. Tu cuisines chez toi ?' }] } ],
+    b: [ { t: 'Tak, codziennie.', tr: { fr: 'Oui, tous les jours.' }, to: 'END', reply: ['Super! Przynieś mi kiedyś coś do spróbowania. Do zobaczenia!', { fr: 'Super ! Apporte-moi quelque chose à goûter un jour. À bientôt !' }] },
+         { t: 'Nie, raczej nie.', tr: { fr: 'Non, pas vraiment.' }, to: 'END', reply: ['Ja też nie! Dlatego uwielbiam piekarnię. Do zobaczenia!', { fr: "Moi non plus ! C'est pour ça que j'adore la boulangerie. À bientôt !" }] } ] } },
+  { nodes: {
+    start: ['Cześć! Powiedz, jakie jest twoje ulubione miejsce tutaj?', { fr: 'Salut ! Dis-moi, quel est ton endroit préféré ici ?' }, 'a'],
+    q2: ['Przychodzisz tu codziennie?', { fr: 'Tu viens ici tous les jours ?' }, 'b'],
+    end: ['Do zobaczenia!', { fr: 'À bientôt !' }],
+    huh: ['Przepraszam, możesz powtórzyć?', { fr: 'Pardon, tu peux répéter ?' }] },
+   opts: {
+    a: [ { t: 'Rynek.', tr: { fr: 'La place du marché.' }, to: 'q2', reply: ['Moje też! Uwielbiam tu patrzeć na ludzi. Przychodzisz tu codziennie?', { fr: "Le mien aussi ! J'adore regarder les gens ici. Tu viens tous les jours ?" }] },
+         { t: 'Piekarnia.', tr: { fr: 'La boulangerie.' }, to: 'q2', reply: ['Dobry wybór! Tak tam pięknie pachnie. Przychodzisz tu codziennie?', { fr: 'Bon choix ! Ça sent si bon. Tu viens tous les jours ?' }] },
+         { t: 'Fontanna.', tr: { fr: 'La fontaine.' }, to: 'q2', reply: ['Tam jest tak spokojnie. Przychodzisz tu codziennie?', { fr: "C'est si paisible là-bas. Tu viens tous les jours ?" }] } ],
+    b: [ { t: 'Tak, staram się!', tr: { fr: "Oui, j'essaie !" }, to: 'END', reply: ['Super! To do jutra!', { fr: 'Super ! Alors à demain !' }] },
+         { t: 'Kiedy mam czas.', tr: { fr: "Quand j'ai le temps." }, to: 'END', reply: ['W porządku. Zawsze miło cię widzieć!', { fr: 'Pas de souci. Ça me fait toujours plaisir de te voir !' }] } ] } } ]
+};
+Object.assign(PV.UI.fr, { friendsTitle: 'Tes amis', collLeft: 'Encore à trouver dans la ville : {n}', collAll: 'Tout est trouvé, bravo !' });
+Object.assign(PV.UI.pl, { friendsTitle: 'Twoi przyjaciele', collLeft: 'Do znalezienia w mieście: {n}', collAll: 'Wszystko znalezione, brawo!' });
