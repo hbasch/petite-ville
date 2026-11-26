@@ -162,7 +162,7 @@ function build(style) {
     [-.08, .08].forEach(x => { const e = new THREE.Mesh(new THREE.CircleGeometry(.03, 10), new THREE.MeshBasicMaterial({ color: '#2a2233' })); e.position.set(x, 1.36, .07); pr.add(e); });
   } else {
     if (style === 'wood') { mesh(new THREE.CylinderGeometry(.24, .3, .9, 24), P.shirt, 0, .45, 0, pr); }
-    else { mesh(new THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(.24, .5, 8, 16) : new THREE.CylinderGeometry(.24, .28, .9, 20), P.shirt, 0, .6, 0, pr); [-.11, .11].forEach(x => B(.12, .3, .14, '#3a3a5a', x, .12, 0, pr)); }
+    else { mesh(THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(.24, .5, 8, 16) : rbox(.5, .9, .44, .2, 6), P.shirt, 0, .6, 0, pr); [-.11, .11].forEach(x => B(.12, .3, .14, '#3a3a5a', x, .12, 0, pr)); }
     mesh(new THREE.SphereGeometry(.3, 32, 24), P.skin, 0, 1.25, 0, pr);
     mesh(new THREE.SphereGeometry(.31, 32, 16, 0, TAU, 0, Math.PI / 2.2), style === 'wood' ? '#6a4a2a' : '#5a3a2a', 0, 1.3, -.02, pr);
     [-.1, .1].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(.035, 12, 10), new THREE.MeshBasicMaterial({ color: '#2a2233' })); e.position.set(x, 1.27, .27); pr.add(e); });
