@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Test splat rue</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: playful game HUD over a photoreal street
+   IDEA: tourist map pins stuck into a real London passage
+   PICTURE: the full-screen splat itself
+   COLOUR and TYPE: chocolate panels, butter accent; Fredoka + Nunito
+   LAYOUT: scene full screen, perf HUD top right, controls bottom */
+:root{color-scheme:dark;--choc:#2a1a12;--ink:#fff8ec;--soft:#e9d7c2;--butter:#ffc845;--rasp:#e2496d}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;height:100%;overflow:hidden;background:#d6d9df;font:16px/1.5 Nunito,system-ui,sans-serif;color:var(--ink)}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.panel{background:rgba(42,26,18,.9);border:1px solid rgba(255,220,170,.14);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.hidden{display:none!important}
+#brand{position:fixed;top:12px;left:12px;padding:8px 14px;z-index:5;font:700 18px/1.15 Fredoka}#brand small{display:block;font:600 13px Nunito;color:var(--soft)}
+#perf{position:fixed;top:12px;right:12px;z-index:5;padding:10px 14px;font-size:13px;min-width:170px}
+#perf b{font:700 26px/1 Fredoka;color:var(--butter)}#perf .r{display:flex;justify-content:space-between;gap:12px;color:var(--soft)}#perf .r span:last-child{color:var(--ink);font-weight:800}
+#perf .good{color:#7fd99a}#perf .mid{color:var(--butter)}#perf .bad{color:#ff7a8c}
+.q{display:flex;gap:6px;margin-top:8px}.q button{flex:1;min-height:36px;border-radius:10px;border:0;background:rgba(255,255,255,.1);color:var(--ink);font:700 13px Nunito;cursor:pointer}.q button.on{background:var(--butter);color:var(--choc)}
+#pins{position:fixed;inset:0;pointer-events:none;z-index:4}
+.pin{position:absolute;left:0;top:0;pointer-events:auto;transform:translate(-50%,-100%);border:0;cursor:pointer;font:700 15px Fredoka;color:var(--choc);background:var(--butter);padding:6px 12px;border-radius:99px;box-shadow:0 4px 14px rgba(0,0,0,.35);white-space:nowrap;min-height:34px}
+.pin::after{content:"";position:absolute;left:50%;bottom:-7px;margin-left:-7px;border:7px solid transparent;border-bottom:0;border-top-color:var(--butter)}
+.pin.seen{background:#fff8ec}.pin.seen::after{border-top-color:#fff8ec}
+#ctl{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:5;display:flex;gap:8px;padding:8px}
+#ctl button{min-width:56px;min-height:48px;border-radius:12px;border:0;background:rgba(255,255,255,.1);color:var(--ink);font:700 15px Nunito;cursor:pointer;touch-action:none;user-select:none}
+#ctl button:active{background:var(--butter);color:var(--choc)}
+#card{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:6;width:min(520px,calc(100% - 24px));padding:16px 18px}
+.word{font:700 34px/1.05 Fredoka;color:var(--butter);margin:0}.fr{color:var(--soft);font-size:15px}.ex{margin:8px 0 0;font-size:17px}
+.x{position:absolute;top:6px;right:8px;width:40px;height:40px;border:0;background:none;color:var(--soft);font-size:24px;cursor:pointer}
+.btn{margin-top:10px;font:700 15px Nunito;min-height:44px;padding:0 16px;border-radius:12px;border:0;cursor:pointer;background:var(--butter);color:var(--choc)}
+#credit{position:fixed;left:12px;bottom:14px;z-index:5;font-size:11px;color:#2a1a12;background:rgba(255,255,255,.7);padding:3px 8px;border-radius:8px;max-width:40%}
+#credit a{color:inherit}
+#load{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:#2a1a12;padding:16px}
+#load .panel{width:min(460px,100%);padding:26px}
+#load h1{font:700 32px/1.1 Fredoka;margin:0 0 8px}#load p{color:var(--soft);margin:0 0 12px}
+.bar{height:10px;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--butter)}
+#st{margin-top:8px;font-size:14px;color:var(--soft)}
+#go{width:100%;margin-top:14px}
+@media(max-width:640px){#brand{font-size:15px;padding:6px 10px}#perf{min-width:0;padding:8px 10px}#perf b{font-size:20px}#credit{bottom:76px;max-width:70%}#card{bottom:76px}}
+</style>
+  <script type="module" crossorigin src="./assets/index-DgWA3wPr.js"></script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="pins"></div>
+<div id="brand" class="panel">Petite Ville · test splat<small>Artillery Passage, Londres</small></div>
+<div id="perf" class="panel">
+ <div><b id="fps">–</b> <span class="fr">images/s</span></div>
+ <div class="r"><span>Téléchargé</span><span id="mb">0 Mo</span></div>
+ <div class="r"><span>Splats</span><span>5,0 M</span></div>
+ <div class="r"><span>Rendu</span><span id="dev">–</span></div>
+ <div class="r"><span>Mots</span><span id="wc">0</span></div>
+ <div class="q"><button type="button" data-q="0.5">Léger</button><button type="button" data-q="1" class="on">Normal</button><button type="button" data-q="2">HD</button></div>
+</div>
+<div id="ctl" class="panel">
+ <button type="button" id="back" aria-label="Reculer">◀ Reculer</button>
+ <button type="button" id="fwd" aria-label="Avancer">Avancer ▶</button>
+</div>
+<section id="card" class="panel hidden">
+ <button class="x" type="button" id="cx" aria-label="Fermer">×</button>
+ <h3 class="word" id="wEn"></h3><div class="fr" id="wFr"></div>
+ <p class="ex" id="wEx"></p><div class="fr" id="wExFr"></div>
+ <button class="btn" id="wL" type="button">Écouter</button>
+</section>
+<div id="credit">Scan : <a href="https://superspl.at/user/artfletch" target="_blank" rel="noopener">David Fletcher</a>, CC BY 4.0</div>
+<div id="load">
+ <div class="panel">
+  <h1>Test : une vraie rue en splat</h1>
+  <p>5 millions de splats, environ 76 Mo. Fais glisser pour regarder autour, avance avec les boutons, touche les étiquettes pour apprendre les mots.</p>
+  <div class="bar"><i id="lb"></i></div>
+  <div id="st">Démarrage…</div>
+  <button class="btn hidden" id="go" type="button">Entrer dans la rue</button>
+ </div>
+</div>
+</body>
+</html>
