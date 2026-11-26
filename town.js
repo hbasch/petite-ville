@@ -121,14 +121,27 @@ mk(lump(cyl(11.5, 6, 3.2, 40, 6), .4), C(shade(EARTH, -.08)), 0, -4.8, 0);
 const tipM = mk(lump(new THREE.ConeGeometry(6, 5, 32, 6), .45), C(shade(EARTH, -.15)), 0, -8.9, 0); tipM.rotation.x = Math.PI;
 [[9, -3, 4], [-7, -4, 9], [3, -5.5, -10]].forEach(([x, y, z]) => mk(lump(sph(1.4, 16), .2), C(shade(EARTH, -.05)), x, y, z));
 const square = item('square');
-const base = mk(cyl(10.1, 10.1, .1, 72), C(shade(PAL.ground, -.3)), 0, -.03, 0, square); base.receiveShadow = true; base.userData.keep = true; base.userData.noCast = true;
-/* pavés posés un à un */
+const base = mk(cyl(10.1, 10.1, .1, 72), C(shade('#' + new THREE.Color(PAL.ground).lerp(new THREE.Color(EARTH), .35).getHexString(), -.27)), 0, -.03, 0, square); base.receiveShadow = true; base.userData.keep = true; base.userData.noCast = true;
+/* pavés posés un à un, en arcs autour de la fontaine : chaque pavé est un coussin de pâte bombé,
+   aux coins arrondis, enfoncé dans un joint sombre (l'ombre de contact du shader creuse les joints) */
 {
-  const cg = new THREE.SphereGeometry(1, mobile ? 7 : 9, mobile ? 3 : 4, 0, TAU, 0, Math.PI / 2); const cm = C('#ffffff', { roughness: .7 });
-  const pts = []; for (let z = -9.7; z <= 9.7; z += .3) for (let x = -9.7 + ((Math.round(z / .3) % 2) ? .17 : 0); x <= 9.7; x += .34) { const d = Math.hypot(x, z); if (d < 9.65 && d > 1.95) pts.push([x + rnd(-.03, .03), z + rnd(-.03, .03)]); }
+  const NP = mobile ? 12 : 16, cg = new THREE.BufferGeometry(), P = [0, 1, 0], I = [];
+  /* contour en « superellipse » (rectangle très arrondi), deux couronnes : haut du dôme puis bord au ras du sol */
+  for (let ring = 0; ring < 2; ring++) for (let k = 0; k < NP; k++) {
+    const a = k / NP * TAU, c = Math.cos(a), s2 = Math.sin(a), e = .45;
+    const rx = Math.sign(c) * Math.pow(Math.abs(c), e), rz = Math.sign(s2) * Math.pow(Math.abs(s2), e), f = ring ? 1 : .62;
+    P.push(rx * f, ring ? -.15 : .82, rz * f);
+  }
+  for (let k = 0; k < NP; k++) { const k2 = (k + 1) % NP; I.push(0, 1 + k2, 1 + k, 1 + k, 1 + k2, 1 + NP + k2, 1 + k, 1 + NP + k2, 1 + NP + k); }
+  cg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); cg.setIndex(I); cg.computeVertexNormals();
+  const cm = C('#ffffff', { roughness: .62 });
+  const pts = [];
+  for (let r = 2.12; r < 9.55; r += .29) { const n = Math.round(TAU * r / .33), off = rnd(0, TAU); for (let k = 0; k < n; k++) { const a = off + (k + rnd(-.08, .08)) / n * TAU, rr = r + rnd(-.02, .02); pts.push([Math.sin(a) * rr, Math.cos(a) * rr, a]); } }
   const im = new THREE.InstancedMesh(cg, cm, pts.length), o = new THREE.Object3D(), col = new THREE.Color();
-  pts.forEach(([x, z], i) => { o.position.set(x, .01, z); o.rotation.set(0, rnd(0, TAU), 0); o.scale.set(rnd(.14, .17), rnd(.03, .045), rnd(.12, .145)); o.updateMatrix(); im.setMatrixAt(i, o.matrix); col.set(shade(PAL.ground, rnd(-.16, .04))); col.offsetHSL(rnd(-.015, .015), rnd(-.04, .04), 0); im.setColorAt(i, col); });
+  pts.forEach(([x, z, a], i) => { o.position.set(x, .012, z); o.rotation.set(rnd(-.04, .04), a + rnd(-.1, .1), rnd(-.04, .04)); o.scale.set(rnd(.145, .162), rnd(.034, .05), rnd(.118, .132)); o.updateMatrix(); im.setMatrixAt(i, o.matrix); col.set(shade(PAL.ground, rnd(-.13, .05))); col.offsetHSL(rnd(-.02, .02), rnd(-.05, .05), 0); im.setColorAt(i, col); });
   im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.receiveShadow = true; im.userData.noCast = true; square.add(im);
+  /* bordure arrondie entre la place et l'herbe, et margelle autour de la fontaine */
+  const curb = mk(new THREE.TorusGeometry(9.86, .16, 6, mobile ? 90 : 140), C(shade(PAL.ground, -.06), { roughness: .55 }), 0, .02, 0, square); curb.rotation.x = Math.PI / 2; curb.scale.z = .55;
 }
 const path = mk(rbox(2.6, .1, 5.2, .05, 2), C(shade(PAL.ground, -.08)), Math.sin(G) * 12.5, -.02, Math.cos(G) * 12.5, square); path.rotation.y = G; path.receiveShadow = true;
 /* touffes d'herbe et fleurs */
