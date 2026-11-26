@@ -15,10 +15,17 @@ float cNoise(vec3 x) {
   return mix(mix(mix(cHash(i), cHash(i + vec3(1., 0., 0.)), f.x), mix(cHash(i + vec3(0., 1., 0.)), cHash(i + vec3(1., 1., 0.)), f.x), f.y),
              mix(mix(cHash(i + vec3(0., 0., 1.)), cHash(i + vec3(1., 0., 1.)), f.x), mix(cHash(i + vec3(0., 1., 1.)), cHash(i + vec3(1., 1., 1.)), f.x), f.y), f.z);
 }
+/* empreintes de doigt : anneaux serrés dans des taches éparses, visibles seulement de près */
+float clayPrint(vec3 p) {
+  vec3 c = floor(p * 2.2), f = fract(p * 2.2) - 0.5;
+  float on = step(0.55, cHash(c + 7.3));
+  float r = length(f.xy * vec2(1.0, 1.4) + f.z * 0.3);
+  return on * sin(r * 95.0 + cHash(c) * 6.28) * smoothstep(0.42, 0.12, r);
+}
 float clayHeight(vec3 p, float fine) {
   float d = cNoise(p * 2.3);
   d = 1.0 - sqrt((d * 2.0 - 1.0) * (d * 2.0 - 1.0) + 0.02);
-  return d * d * 0.65 + cNoise(p * 7.0 + 3.1) * 0.25 + cNoise(p * 31.0) * 0.10 * fine;
+  return d * d * 0.65 + cNoise(p * 1.1 + 5.0) * 0.55 + cNoise(p * 7.0 + 3.1) * 0.25 + cNoise(p * 31.0) * 0.10 * fine + clayPrint(p) * 0.045 * fine;
 }
 `;
   function patch(sh) {
@@ -46,9 +53,11 @@ float clayHeight(vec3 p, float fine) {
     vec3 grad = sign(det) * (dFdx(hh) * r1 + dFdy(hh) * r2) * clayAmt * (1.0 - smoothstep(25.0, 60.0, length(vViewPosition)));
     normal = normalize(abs(det) * normal - grad);
   }`)
+      .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+  reflectedLight.indirectDiffuse += diffuseColor.rgb * diffuseColor.rgb * 0.32 * clayDay;`)
       .replace('#include <tonemapping_fragment>', `{
-    float clayRim = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 3.0);
-    gl_FragColor.rgb += diffuseColor.rgb * (clayRim * 0.12 + 0.035) * clayDay;
+    float clayRim = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 2.5);
+    gl_FragColor.rgb += mix(diffuseColor.rgb, vec3(1.0, 0.92, 0.82), 0.35) * (clayRim * 0.16 + 0.02) * clayDay;
   }
   #include <tonemapping_fragment>`);
   }
@@ -58,7 +67,7 @@ float clayHeight(vec3 p, float fine) {
     m.userData.clayAmt = amt;
     m.extensions = Object.assign(m.extensions || {}, { derivatives: true });
     m.onBeforeCompile = patch;
-    m.customProgramCacheKey = () => 'clay1';
+    m.customProgramCacheKey = () => 'clay2';
     return m;
   }
 

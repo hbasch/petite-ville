@@ -26,8 +26,8 @@ const PALS = {
 /* ---------- pays : la ville dépend de la langue apprise (anglais → Édimbourg, polonais → Wrocław) ---------- */
 const COUNTRY = ['fr', 'gb', 'pl'].includes(H.country) ? H.country : 'fr';
 const CITY_PALS = {
-  gb: { walls: ['#cdbfa6', '#b3a99a', '#e9dfcc', '#c98a64', '#a9b6bc'], roofs: ['#4a505c', '#5e5550'], ground: '#c4bdb0', leaf: '#5f8a4a', accent: '#2f4f8a' },
-  pl: { walls: ['#f0b8a8', '#a8d4b8', '#f2d27c', '#9cc4e0', '#e8a8c8'], roofs: ['#b5452f', '#8a3a2a'], ground: '#ddd2c0', leaf: '#6a9a4a', accent: '#a8323c' }
+  gb: { walls: ['#cdbfa6', '#b3a99a', '#e9dfcc', '#c98a64', '#a9b6bc'], roofs: ['#4a505c', '#5e5550'], ground: '#9d978e', leaf: '#5f8a4a', accent: '#2f4f8a' },
+  pl: { walls: ['#f0b8a8', '#a8d4b8', '#f2d27c', '#9cc4e0', '#e8a8c8'], roofs: ['#b5452f', '#8a3a2a'], ground: '#c2b29c', leaf: '#6a9a4a', accent: '#a8323c' }
 };
 const PAL = CITY_PALS[COUNTRY] || ((window.PV && PV.PALS) || PALS)[H.palette] || PALS.a;
 const SCN = (window.PV && PV.SCENE) || {};
@@ -46,8 +46,8 @@ function C(color, o) {
   const opts = Object.assign({}, o || {}), uniq = opts.unique; delete opts.unique;
   const key = color + JSON.stringify(opts);
   if (!uniq && matCache[key]) return matCache[key];
-  const amt = opts.bumpScale === 0 ? 0 : (opts.bumpScale ? opts.bumpScale * 1.9 : .03); delete opts.bumpScale;
-  const m = PVClay.apply(new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .6 }, opts)), amt);
+  const amt = opts.bumpScale === 0 ? 0 : (opts.bumpScale ? opts.bumpScale * 1.9 : .04); delete opts.bumpScale;
+  const m = PVClay.apply(new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .5 }, opts)), amt);
   if (uniq) m.userData.unique = true; else matCache[key] = m; return m;
 }
 function rbox(w, h, d, r, seg) {
@@ -97,7 +97,7 @@ const starMat = new THREE.PointsMaterial({ color: '#fff6e0', size: 1.6, sizeAtte
 const stars = new THREE.Points(starGeo, starMat); scene.add(stars);
 scene.fog = new THREE.Fog('#d6ecfa', 45, 160);
 
-const GRADE = { uniforms: { tDiffuse: { value: null }, sat: { value: 1.14 }, con: { value: 1.07 }, tint: { value: new THREE.Vector3(1, 1, 1) }, vig: { value: 1.0 } },
+const GRADE = { uniforms: { tDiffuse: { value: null }, sat: { value: 1.24 }, con: { value: 1.11 }, tint: { value: new THREE.Vector3(1, 1, 1) }, vig: { value: 1.0 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: 'uniform sampler2D tDiffuse; uniform float sat; uniform float con; uniform vec3 tint; uniform float vig; varying vec2 vUv;\n' +
     'void main(){ vec4 c = texture2D(tDiffuse, vUv); vec3 col = c.rgb; float l = dot(col, vec3(.2126,.7152,.0722)); col = mix(vec3(l), col, sat);\n' +
@@ -120,13 +120,13 @@ mk(lump(cyl(11.5, 6, 3.2, 40, 6), .4), C(shade(EARTH, -.08)), 0, -4.8, 0);
 const tipM = mk(lump(new THREE.ConeGeometry(6, 5, 32, 6), .45), C(shade(EARTH, -.15)), 0, -8.9, 0); tipM.rotation.x = Math.PI;
 [[9, -3, 4], [-7, -4, 9], [3, -5.5, -10]].forEach(([x, y, z]) => mk(lump(sph(1.4, 16), .2), C(shade(EARTH, -.05)), x, y, z));
 const square = item('square');
-const base = mk(cyl(10.1, 10.1, .1, 72), C(shade(PAL.ground, -.22)), 0, -.03, 0, square); base.receiveShadow = true; base.userData.keep = true; base.userData.noCast = true;
+const base = mk(cyl(10.1, 10.1, .1, 72), C(shade(PAL.ground, -.3)), 0, -.03, 0, square); base.receiveShadow = true; base.userData.keep = true; base.userData.noCast = true;
 /* pavés posés un à un */
 {
   const cg = new THREE.SphereGeometry(1, mobile ? 7 : 9, mobile ? 3 : 4, 0, TAU, 0, Math.PI / 2); const cm = C('#ffffff', { roughness: .7 });
   const pts = []; for (let z = -9.7; z <= 9.7; z += .3) for (let x = -9.7 + ((Math.round(z / .3) % 2) ? .17 : 0); x <= 9.7; x += .34) { const d = Math.hypot(x, z); if (d < 9.65 && d > 1.95) pts.push([x + rnd(-.03, .03), z + rnd(-.03, .03)]); }
   const im = new THREE.InstancedMesh(cg, cm, pts.length), o = new THREE.Object3D(), col = new THREE.Color();
-  pts.forEach(([x, z], i) => { o.position.set(x, .01, z); o.rotation.set(0, rnd(0, TAU), 0); o.scale.set(rnd(.14, .17), rnd(.03, .045), rnd(.12, .145)); o.updateMatrix(); im.setMatrixAt(i, o.matrix); col.set(shade(PAL.ground, rnd(-.12, .0))); im.setColorAt(i, col); });
+  pts.forEach(([x, z], i) => { o.position.set(x, .01, z); o.rotation.set(0, rnd(0, TAU), 0); o.scale.set(rnd(.14, .17), rnd(.03, .045), rnd(.12, .145)); o.updateMatrix(); im.setMatrixAt(i, o.matrix); col.set(shade(PAL.ground, rnd(-.16, .04))); col.offsetHSL(rnd(-.015, .015), rnd(-.04, .04), 0); im.setColorAt(i, col); });
   im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.receiveShadow = true; im.userData.noCast = true; square.add(im);
 }
 const path = mk(rbox(2.6, .1, 5.2, .05, 2), C(shade(PAL.ground, -.08)), Math.sin(G) * 12.5, -.02, Math.cos(G) * 12.5, square); path.rotation.y = G; path.receiveShadow = true;
@@ -275,9 +275,9 @@ function windowAt(g, x, y, z, sp, lit) {
   if (sp.flowers && Math.random() < .55) { mk(boxG, C('#8a5a3a'), x, y - .66, z + .12, g); for (let j = 0; j < 5; j++) mk(G_('fl', () => sph(.07, 8)), C(['#ff6f91', '#ffd35a', '#fff4e2', PAL.walls[4], PAL.accent][j]), x - .3 + j * .15, y - .5, z + .14, g); }
 }
 function building(sp, ang, rad) {
-  const g = item(sp.id); const d = 3.4, wall = C(sp.color);
+  const g = item(sp.id); const d = 3.4, wall = C(sp.color, { bumpScale: .032 });
   g.position.set(Math.sin(ang) * rad, 0, Math.cos(ang) * rad); g.rotation.y = ang + Math.PI;
-  mk(lump(rbox(sp.w, sp.h, d, .32), .025, .7), wall, 0, sp.h / 2, 0, g);
+  mk(lump(rbox(sp.w, sp.h, d, .38, mobile ? 5 : 7), .04, .75), wall, 0, sp.h / 2, 0, g);
   mk(rbox(sp.w + .25, .26, d + .25, .12, 3), C(TRIM), 0, sp.h + .05, 0, g);
   const rh = sp.flat ? 1.1 : 1.7, roofM = C(sp.roof), hw = sp.w / 2 + .25, a = Math.atan2(rh, hw), L = Math.hypot(hw, rh) + .1;
   if (sp.hall) signBoards.push({ id: sp.id, g, x: 0, y: sp.h + .45, z: d / 2 + .015, w: 3.2, h: .4, bg: CITY.sign.bg || '#5f9483' });
@@ -309,7 +309,8 @@ function building(sp, ang, rad) {
   if (sp.shop) {
     const sw = sp.w * .48, sx = -sp.w * .17, FR_ = sp.front || PAL.accent;
     mk(rbox(sw + .2, 1.75, .22, .1, 3), C(FR_), sx, 1.02, d / 2, g);
-    signBoards.push({ id: sp.id, g, x: sx + .2, y: 2.72, z: d / 2 + .125, w: 3.36, h: .42, bg: (CITY.sign.bg) || FR_ });
+    signBoards.push({ id: sp.id, g, x: sx + .2, y: 2.72, z: d / 2 + .17, w: 3.36, h: .42, bg: (CITY.sign.bg) || FR_ });
+    mk(rbox(3.5, .56, .14, .06, 2), C(shade((CITY.sign.bg) || FR_, -.12)), sx + .2, 2.72, d / 2 + .08, g);
     mk(rbox(sw - .12, 1.45, .14, .08, 3), shopGlass, sx, 1.05, d / 2 + .06, g);
     vitrine(g, sp, d, sx, sw);
     mk(rbox(sw + .3, .22, .4, .08, 2), C(FR_), sx, .2, d / 2 + .12, g);
@@ -454,7 +455,8 @@ if (COUNTRY === 'gb') {
   B[4].color = '#c9b896';
 } else if (COUNTRY === 'pl') {
   /* Rynek : kamienice colorées, hauts pignons (à redents ou baroques), encadrements blancs à frontons */
-  B.forEach((sp, i) => { sp.h += 1.0; if (!sp.hall) { sp.flat = false; sp.gable = i % 2 ? 'curve' : 'step'; } sp.shutters = null; sp.pedi = true; sp.front = shade(sp.color, -.3); });
+  const PF = ['#6a4a3e', '#3f5a4a', '#5a4a6a', '#8a6a3a', '#3a4a5a', '#6a4a3e', '#3f5a4a', '#5a4a6a', '#7a2a2e'];
+  B.forEach((sp, i) => { sp.h += 1.0; if (!sp.hall) { sp.flat = false; sp.gable = i % 2 ? 'curve' : 'step'; } sp.shutters = null; sp.pedi = true; sp.front = PF[i]; });
   Object.assign(B[8], { id: 'milkbar', shop: 'pierogi', awning: '#f4e6c8', front: '#7a2a2e', flowers: false });
   B[4].color = '#dccaa8';
 }
@@ -966,13 +968,13 @@ function applyHour(h) {
   hourNow = h; let i = 0; while (i < KF.length - 2 && KF[i + 1][0] <= h) i++;
   const a = KF[i], b = KF[i + 1], t = Math.min(1, Math.max(0, (h - a[0]) / (b[0] - a[0])));
   lerpC(skyU.top.value, a[1], b[1], t).convertSRGBToLinear(); lerpC(skyU.hor.value, a[2], b[2], t).convertSRGBToLinear(); lerpC(skyU.bot.value, a[3], b[3], t).convertSRGBToLinear();
-  lerpC(sun.color, a[4], b[4], t); sun.intensity = a[5] + (b[5] - a[5]) * t;
-  lerpC(hemi.color, a[6], b[6], t); lerpC(hemi.groundColor, a[7], b[7], t); hemi.intensity = (a[8] + (b[8] - a[8]) * t) * .82;
+  lerpC(sun.color, a[4], b[4], t); sun.intensity = (a[5] + (b[5] - a[5]) * t) * 1.18;
+  lerpC(hemi.color, a[6], b[6], t); lerpC(hemi.groundColor, a[7], b[7], t); hemi.intensity = (a[8] + (b[8] - a[8]) * t) * .64;
   lerpC(scene.fog.color, a[9], b[9], t).convertSRGBToLinear();
   lightsOn = a[10] + (b[10] - a[10]) * t; PVClay.U.day.value = 1 - lightsOn * .75; starMat.opacity = a[11] + (b[11] - a[11]) * t;
   const golden = Math.max(0, 1 - Math.abs(h - 18) / 2.2), dawn = Math.max(0, 1 - Math.abs(h - 7) / 1.5);
   GRADE.uniforms.tint.value.set(1 + golden * .06 + dawn * .03 - lightsOn * .06, 1 - lightsOn * .02, 1 - golden * .07 + lightsOn * .07);
-  GRADE.uniforms.sat.value = 1.14 - lightsOn * .12;
+  GRADE.uniforms.sat.value = 1.24 - lightsOn * .14;
   moteMat.color.set(lightsOn > .5 ? '#fff27a' : '#fff2c8'); moteMat.size = lightsOn > .5 ? .13 : .085;
   const day = h >= 6 && h <= 20, el = day ? Math.sin((h - 6) / 14 * Math.PI) : .55, az = (h / 24) * TAU + 1.2;
   const dir = day ? new THREE.Vector3(Math.cos(az) * Math.cos(el * 1.3), Math.max(.12, Math.sin(el * 1.25)), Math.sin(az) * Math.cos(el * 1.3)) : new THREE.Vector3(-Math.cos(az) * .6, .7, -Math.sin(az) * .6);
