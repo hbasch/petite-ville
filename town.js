@@ -806,6 +806,11 @@ const pigeons = [];
 for (let i = 0; i < (COUNTRY === 'pl' ? 11 : 6); i++) {
   const a = rnd(0, TAU), r = rnd(2.6, 3.0), p = item('pigeon'); p.position.set(Math.sin(a) * r, .14, Math.cos(a) * r); p.rotation.y = rnd(0, TAU);
   const body = mk(sph(.13, 14), C('#8a93a8'), 0, .14, 0, p); body.scale.set(1, .85, 1.4);
+  /* ailes repliées, queue, jabot irisé et pattes (fusionnés avec le corps : aucun appel de dessin en plus) */
+  [-1, 1].forEach(sg => { const w = mk(G_('pwing', () => lump(sph(.09, 10), .004)), C('#737c92'), sg * .1, .16, -.03, p); w.scale.set(.38, .72, 1.45); w.rotation.y = sg * .12; mk(G_('pbar', () => rbox(.02, .022, .1, .01, 1)), C('#4a5060'), sg * .135, .17, -.06, p).rotation.y = sg * .12;
+    mk(G_('pleg', () => cyl(.009, .009, .07, 5)), C('#d8705a'), sg * .04, .03, .02, p); mk(G_('ptoe', () => sph(.016, 6)), C('#d8705a'), sg * .04, .0, .045, p).scale.set(1, .5, 1.6); });
+  mk(G_('ptail', () => rbox(.11, .028, .18, .013, 2)), C('#5f6678'), 0, .17, -.21, p).rotation.x = -.35;
+  mk(G_('pneck', () => sph(.08, 10)), C('#5f8a7a'), 0, .21, .1, p).scale.set(1, .8, .9);
   const head = new THREE.Group(); head.position.set(0, .25, .13); p.add(head);
   mk(sph(.075, 12), C('#6f7890'), 0, 0, 0, head); mk(new THREE.ConeGeometry(.025, .07, 6), C('#e8a03a'), 0, -.01, .08, head).rotation.x = Math.PI / 2;
   [-1, 1].forEach(sg => mk(sph(.015, 6), C('#1a1a22'), sg * .04, .02, .055, head));
@@ -813,7 +818,8 @@ for (let i = 0; i < (COUNTRY === 'pl' ? 11 : 6); i++) {
 }
 
 /* ---------- habitants en pâte, version sculptée ---------- */
-const EYE_W = C('#ffffff', { roughness: .25, bumpScale: 0 }), PUPIL = C('#120e18', { roughness: .1, bumpScale: 0 }), SHINE = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+/* blanc, iris et pupille partagent les mêmes réglages : fusionnés en un seul objet par œil */
+const EYE_W = C('#ffffff', { roughness: .2, bumpScale: 0 }), PUPIL = C('#120e18', { roughness: .2, bumpScale: 0 }), SHINE = new THREE.MeshBasicMaterial({ color: '#ffffff' });
 function hair(lk, head, m) {
   const cap = mk(G_('hcap2', () => lump(new THREE.SphereGeometry(.305, 26, 16, 0, TAU, 0, Math.PI * .56), .006)), m, 0, .03, -.025, head); cap.rotation.x = -.3;
   /* mèches en boudins posées sur le crâne, du front vers la nuque, comme roulées entre les doigts */
@@ -841,7 +847,7 @@ function makeChar(lk) {
   const SSS_SKIN = [.55, .2, .1], skinM = C(lk.skin, { roughness: .46, emissive: lk.skin, emissiveIntensity: .035, sss: SSS_SKIN }), clothM = C(lk.shirt), pantM = C(lk.pants || '#3a3a4a'), hairM = C(lk.hair, { roughness: .5 });
   const shoeM = C(lk.shoes || '#4a3326'), soleM = C('#f4efe6');
   P.shadow = blob(0, 0, .42, g, .012);
-  P.legs = [-1, 1].map(sg => { const pv = new THREE.Group(); pv.position.set(sg * .1, .42, 0); g.add(pv); mk(G_('leg2', () => rbox(.16, .32, .18, .075, 3)), pantM, 0, -.16, 0, pv); const s = new THREE.Group(); s.position.set(0, -.35, .045); pv.add(s); mk(G_('shoe2', () => lump(sph(.11, 14), .004)), shoeM, 0, .025, 0, s).scale.set(1, .62, 1.45); mk(G_('sole', () => cyl(.1, .1, .03, 14)), soleM, 0, -.03, .01, s).scale.set(1, 1, 1.45); return pv; });
+  P.legs = [-1, 1].map(sg => { const pv = new THREE.Group(); pv.position.set(sg * .1, .42, 0); g.add(pv); mk(G_('leg2', () => rbox(.16, .32, .18, .075, 3)), pantM, 0, -.16, 0, pv); mk(G_('shoe2', () => lump(sph(.11, 14), .004)), shoeM, 0, -.325, .045, pv).scale.set(1, .62, 1.45); mk(G_('sole', () => cyl(.1, .1, .03, 14)), soleM, 0, -.38, .055, pv).scale.set(1, 1, 1.45); return pv; });
   const body = new THREE.Group(); body.position.y = .42; g.add(body); P.body = body;
   /* buste et jupe tournés comme au tour de potier : épaules et ourlet arrondis, pas d'arête vive */
   mk(G_('torso3', () => lump(new THREE.LatheGeometry([[.2, .04], [.248, .1], [.256, .2], [.243, .32], [.222, .42], [.19, .5], [.14, .56], [.085, .585], [.001, .592]].map(q => new THREE.Vector2(q[0], q[1])), mobile ? 16 : 22), .004)), clothM, 0, 0, 0, body).scale.z = .8;
@@ -866,7 +872,7 @@ function makeChar(lk) {
   P.lids = [];
   P.eyes = [-1, 1].map(sg => { const e = new THREE.Group(); e.position.set(sg * .1, .03, .218); head.add(e);
     mk(G_('eyeW2', () => sph(.068, 16)), EYE_W, 0, 0, 0, e).scale.z = .55;
-    mk(G_('iris', () => sph(.043, 14)), C(lk.eyes || '#5a3a22', { roughness: .15, bumpScale: 0 }), 0, -.004, .026, e).scale.z = .5;
+    mk(G_('iris', () => sph(.043, 14)), C(lk.eyes || '#5a3a22', { roughness: .2, bumpScale: 0 }), 0, -.004, .026, e).scale.z = .5;
     mk(G_('pup2', () => sph(.026, 10)), PUPIL, 0, -.006, .036, e).scale.z = .5;
     mk(G_('shine2', () => sph(.014, 6)), SHINE, .016, .018, .045, e); mk(G_('shine3', () => sph(.007, 6)), SHINE, -.012, -.016, .044, e);
     const lw = new THREE.Group(); lw.scale.z = .85; e.add(lw); const lid = new THREE.Group(); lw.add(lid); mk(G_('lid', () => new THREE.SphereGeometry(.074, 16, 8, 0, TAU, 0, Math.PI / 2)), skinM, 0, 0, 0, lid); lid.rotation.x = -1.25; P.lids.push(lid);

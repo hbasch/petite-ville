@@ -115,7 +115,7 @@ float clayHeight(vec3 p, float fine) {
   /* ---------- regroupement des objets immobiles (gros gain sur téléphone) ----------
      Dans chaque groupe, les objets fixes qui ne diffèrent que par la couleur sont fusionnés en un seul :
      la couleur passe dans les sommets. Les matières « uniques » (vitres qui s'allument, eau…) restent
-     partagées telles quelles. Un objet qui porte des userData (ex. keep: true) n'est jamais fusionné.
+     partagées telles quelles (de même que les matières simples non éclairées, ex. reflets des yeux). Un objet qui porte des userData (ex. keep: true) n'est jamais fusionné.
      skip(groupe) permet d'épargner des groupes entiers (ex. objets surlignés au survol dans la boulangerie). */
   const bakedMats = {};
   function bakedMat(m) {
@@ -128,7 +128,7 @@ float clayHeight(vec3 p, float fine) {
   function bakeable(c) {
     if (!c.isMesh || c.isInstancedMesh || c.isSkinnedMesh || Object.keys(c.userData).length || c.children.length || !c.visible) return false;
     const m = c.material, g = c.geometry;
-    return !!(m && !Array.isArray(m) && m.isMeshStandardMaterial && !m.transparent && !m.map && g && g.attributes.position && g.attributes.normal);
+    return !!(m && !Array.isArray(m) && (m.isMeshStandardMaterial || m.isMeshBasicMaterial) && !m.transparent && !m.map && g && g.attributes.position && g.attributes.normal);
   }
   const _m3 = new THREE.Matrix3(), _v = new THREE.Vector3();
   function mergeList(list, withColor) {
@@ -163,7 +163,7 @@ float clayHeight(vec3 p, float fine) {
     const buckets = new Map();
     node.children.forEach(c => {
       if (!bakeable(c)) return;
-      const m = c.material, b = m.userData.unique ? { key: 'u' + m.uuid, mat: m, color: false } : bakedMat(m);
+      const m = c.material, b = m.userData.unique || !m.isMeshStandardMaterial ? { key: 'u' + m.uuid, mat: m, color: false } : bakedMat(m);
       if (!buckets.has(b.key)) buckets.set(b.key, Object.assign(b, { list: [] }));
       buckets.get(b.key).list.push(c);
     });
