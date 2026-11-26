@@ -641,7 +641,7 @@ function updatePeople(dt, t) {
 }
 function talkTo(id) {
   const o = people.find(p => p.id === id); if (!o) return; talking = o; o.pause = 999;
-  if (o.mode === 'sit') { const f = o.grp.rotation.y; target = new THREE.Vector3(o.grp.position.x + Math.sin(f) * 2.6, 1.45, o.grp.position.z + Math.cos(f) * 2.6); return; }
+  if (o.mode === 'sit') { const f = o.grp.rotation.y; target = new THREE.Vector3(o.grp.position.x + Math.sin(f) * 1.1 + Math.cos(f) * 1.9, 1.45, o.grp.position.z + Math.cos(f) * 1.1 - Math.sin(f) * 1.9); return; }
   const dx = pos.x - o.grp.position.x, dz = pos.z - o.grp.position.z, d = Math.hypot(dx, dz);
   if (d > 3.2 || d < 1.8) target = new THREE.Vector3(o.grp.position.x + dx / d * 2.5, 1.45, o.grp.position.z + dz / d * 2.5);
 }
