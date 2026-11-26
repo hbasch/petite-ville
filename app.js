@@ -68,12 +68,12 @@ function listen(onInterim, onFinal, onError, onEnd) {
   rec.onend = () => { if (!done) onError('no-speech'); if (onEnd) onEnd(); rec = null; };
   try { rec.start(); lastAct = Date.now(); } catch (e) { const r2 = rec; setTimeout(() => { try { r2.start(); lastAct = Date.now(); } catch (e2) { onError('busy'); if (onEnd) onEnd(); } }, 300); }
 }
-const NUM = { en: { 1: 'one', 2: 'two', 4: 'four', 5: 'five', 10: 'ten', 20: 'twenty', 50: 'fifty' }, pl: { 2: 'dwa', 4: 'cztery', 5: 'piec', 10: 'dziesiec', 15: 'pietnascie', 20: 'dwadziescia', 50: 'piecdziesiat' } };
+const NUM = { en: { 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six', 10: 'ten', 20: 'twenty', 50: 'fifty' }, pl: { 2: 'dwa', 3: 'trzy', 4: 'cztery', 5: 'piec', 6: 'szesc', 10: 'dziesiec', 15: 'pietnascie', 20: 'dwadziescia', 50: 'piecdziesiat' } };
 const EXP = { heres: 'here is', thats: 'that is', its: 'it is', whats: 'what is', id: 'i would', ill: 'i will', im: 'i am' };
 function norm(s) {
   return s.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[’']s\b/g, ' is').replace(/[’']ll\b/g, ' will').replace(/[’']d\b/g, ' would').replace(/[’']m\b/g, ' am').replace(/n[’']t\b/g, ' not')
-    .replace(/£/g, ' ').replace(/(\d+)[.,](\d+)/g, '$1 $2').replace(/'/g, '').replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/£\s?(\d+)(?:[.,](\d+))?/g, (m, a, b) => ' ' + a + ' pounds ' + (b || '')).replace(/£/g, ' ').replace(/(\d+)[.,](\d+)/g, '$1 $2').replace(/'/g, '').replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/).filter(Boolean).flatMap(w => (EXP[w] || w).split(' ')).map(w => NUM[T][w] || (w === 'zl' ? 'zlotych' : w));
 }
 const same = (a, b) => a === b || (a.length >= 5 && b.length >= 5 && a.slice(0, 5) === b.slice(0, 5));

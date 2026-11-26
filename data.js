@@ -46,8 +46,8 @@ PV.NOTES = {
 /* ---------- Décor : le même pour toutes les langues (pictogrammes, prix en euros) ---------- */
 PV.BOARD = { rows: [['croissant', '1,20 €'], ['baguette', '2,10 €'], ['loaf', '2,80 €'], ['doughnut', '1,50 €'], ['cupcake', '1,80 €']] };
 PV.SCENE = {
- en: { board: PV.BOARD, open: '', flour: '', voice: 'en-GB', baker: 'Tom', shop: '' },
- pl: { board: PV.BOARD, open: '', flour: '', voice: 'pl-PL', baker: 'Tom', shop: '' }
+ en: { board: { rows: [['croissant', '£1.20'], ['baguette', '£2.10'], ['loaf', '£2.80'], ['doughnut', '£1.50'], ['cupcake', '£1.80']] }, open: '', flour: '', voice: 'en-GB', baker: 'Tom', shop: '' },
+ pl: { board: { rows: [['croissant', '3 zł'], ['baguette', '4 zł'], ['loaf', '6 zł'], ['doughnut', '3 zł'], ['cupcake', '5 zł']] }, open: '', flour: '', voice: 'pl-PL', baker: 'Tom', shop: '' }
 };
 
 /* ---------- Dialogues : [réplique, {fr, pl}] ---------- */
@@ -58,9 +58,9 @@ PV.DLG = {
    start2:['So, what would you like?',{fr:"Alors, qu'est-ce qui vous ferait plaisir ?",pl:'To co podać?'},'order'],
    more:['Of course. Two croissants and a baguette. Anything else?',{fr:'Bien sûr. Deux croissants et une baguette. Autre chose ?',pl:'Oczywiście. Dwa rogaliki i bagietka. Coś jeszcze?'},'more'],
    more2:['Anything else?',{fr:'Autre chose ?',pl:'Coś jeszcze?'},'more'],
-   price:["That's four euros fifty, please.",{fr:"Ça fait quatre euros cinquante, s'il vous plaît.",pl:'Razem cztery euro pięćdziesiąt.'},'pay'],
-   price2:["It's four euros fifty, please.",{fr:"C'est quatre euros cinquante, s'il vous plaît.",pl:'Cztery euro pięćdziesiąt, proszę.'},'pay'],
-   change:["Thank you! Here's your change: fifty cents. Have a lovely day!",{fr:'Merci ! Voici votre monnaie : cinquante centimes. Bonne journée !',pl:'Dziękuję! Pięćdziesiąt centów reszty. Miłego dnia!'},'bye'],
+   price:["That's four pounds fifty, please.",{fr:"Ça fait quatre livres cinquante, s'il vous plaît.",pl:'Razem cztery funty pięćdziesiąt.'},'pay'],
+   price2:["It's four pounds fifty, please.",{fr:"C'est quatre livres cinquante, s'il vous plaît.",pl:'Cztery funty pięćdziesiąt, proszę.'},'pay'],
+   change:["Thank you! Here's your change: fifty pence. Have a lovely day!",{fr:'Merci ! Voici votre monnaie : cinquante pence. Bonne journée !',pl:'Dziękuję! Pięćdziesiąt pensów reszty. Miłego dnia!'},'bye'],
    end:['Bye! See you tomorrow!',{fr:'Au revoir ! À demain !',pl:'Do widzenia! Do jutra!'}],
    huh:['Sorry? I didn\'t catch that.',{fr:"Pardon ? Je n'ai pas compris.",pl:'Przepraszam? Nie zrozumiałem.'}]
   },
@@ -72,13 +72,13 @@ PV.DLG = {
    ],
    more:[
     {t:"No, thank you. That's all.",tr:{fr:"Non merci, c'est tout.",pl:'Nie, dziękuję. To wszystko.'},to:'price'},
-    {t:'How much is a doughnut?',tr:{fr:'Combien coûte un beignet ?',pl:'Ile kosztuje pączek?'},to:'more2',reply:['A doughnut is one euro fifty.',{fr:"Un beignet, c'est un euro cinquante.",pl:'Pączek kosztuje euro pięćdziesiąt.'}]},
+    {t:'How much is a doughnut?',tr:{fr:'Combien coûte un beignet ?',pl:'Ile kosztuje pączek?'},to:'more2',reply:['A doughnut is one pound fifty.',{fr:"Un beignet, c'est une livre cinquante.",pl:'Pączek kosztuje funta pięćdziesiąt.'}]},
     {t:'Can I have that cake, please?',tr:{fr:"Je peux avoir ce gâteau, s'il vous plaît ?",pl:'Czy mogę prosić ten tort?'},to:'more2',reply:['Sorry, that cake is for a birthday order.',{fr:"Désolé, ce gâteau est pour une commande d'anniversaire.",pl:'Przykro mi, ten tort jest na zamówienie urodzinowe.'}]}
    ],
    pay:[
-    {t:"Here's four euros.",tr:{fr:'Voici quatre euros.',pl:'Proszę, cztery euro.'},to:'price2',reply:["Hmm, that's only four euros. It's four euros fifty.",{fr:"Hmm, ça ne fait que quatre euros. C'est quatre euros cinquante.",pl:'Hmm, to tylko cztery euro. Razem cztery euro pięćdziesiąt.'}],tip:{fr:"Regarde l'ardoise : 2 × 1,20 + 2,10 = 4,50 €.",pl:'Spójrz na tablicę: 2 × 1,20 + 2,10 = 4,50 €.'}},
-    {t:"Here's five euros.",tr:{fr:'Voici cinq euros.',pl:'Proszę, pięć euro.'},to:'change',task:'pay'},
-    {t:'Sorry, how much?',tr:{fr:'Pardon, combien ?',pl:'Przepraszam, ile?'},to:'price2',reply:['Four euros fifty.',{fr:'Quatre euros cinquante.',pl:'Cztery euro pięćdziesiąt.'}]}
+    {t:"Here's four pounds.",tr:{fr:'Voici quatre livres.',pl:'Proszę, cztery funty.'},to:'price2',reply:["Hmm, that's only four pounds. It's four pounds fifty.",{fr:"Hmm, ça ne fait que quatre livres. C'est quatre livres cinquante.",pl:'Hmm, to tylko cztery funty. Razem cztery funty pięćdziesiąt.'}],tip:{fr:"Regarde l'ardoise : 2 × £1.20 + £2.10 = £4.50.",pl:'Spójrz na tablicę: 2 × £1.20 + £2.10 = £4.50.'}},
+    {t:"Here's five pounds.",tr:{fr:'Voici cinq livres.',pl:'Proszę, pięć funtów.'},to:'change',task:'pay'},
+    {t:'Sorry, how much?',tr:{fr:'Pardon, combien ?',pl:'Przepraszam, ile?'},to:'price2',reply:['Four pounds fifty.',{fr:'Quatre livres cinquante.',pl:'Cztery funty pięćdziesiąt.'}]}
    ],
    bye:[
     {t:'Thanks, you too! Goodbye!',tr:{fr:'Merci, vous aussi ! Au revoir !',pl:'Dzięki, nawzajem! Do widzenia!'},to:'END'},
@@ -92,9 +92,9 @@ PV.DLG = {
    start2:['To co podać?',{fr:"Alors, qu'est-ce que je vous sers ?"},'order'],
    more:['Oczywiście. Dwa rogaliki i bagietka. Coś jeszcze?',{fr:'Bien sûr. Deux croissants et une baguette. Autre chose ?'},'more'],
    more2:['Coś jeszcze?',{fr:'Autre chose ?'},'more'],
-   price:['Razem cztery euro pięćdziesiąt.',{fr:'Ça fait quatre euros cinquante.'},'pay'],
-   price2:['Cztery euro pięćdziesiąt, proszę.',{fr:"Quatre euros cinquante, s'il vous plaît."},'pay'],
-   change:['Dziękuję! Pięćdziesiąt centów reszty. Miłego dnia!',{fr:'Merci ! Cinquante centimes de monnaie. Bonne journée !'},'bye'],
+   price:['Razem dziesięć złotych.',{fr:'Ça fait dix złotys.'},'pay'],
+   price2:['Dziesięć złotych, proszę.',{fr:"Dix złotys, s'il vous plaît."},'pay'],
+   change:['Dziękuję! Dziesięć złotych reszty. Miłego dnia!',{fr:'Merci ! Dix złotys de monnaie. Bonne journée !'},'bye'],
    end:['Do widzenia! Do jutra!',{fr:'Au revoir ! À demain !'}],
    huh:['Przepraszam? Nie zrozumiałem.',{fr:"Pardon ? Je n'ai pas compris."}]
   },
@@ -106,13 +106,13 @@ PV.DLG = {
    ],
    more:[
     {t:'Nie, dziękuję. To wszystko.',tr:{fr:"Non merci, c'est tout."},to:'price'},
-    {t:'Ile kosztuje pączek?',tr:{fr:'Combien coûte un beignet ?'},to:'more2',reply:['Pączek kosztuje euro pięćdziesiąt.',{fr:'Un beignet coûte un euro cinquante.'}]},
+    {t:'Ile kosztuje pączek?',tr:{fr:'Combien coûte un beignet ?'},to:'more2',reply:['Pączek kosztuje trzy złote.',{fr:'Un beignet coûte trois złotys.'}]},
     {t:'Czy mogę prosić ten tort?',tr:{fr:'Je peux avoir ce gâteau ?'},to:'more2',reply:['Przykro mi, ten tort jest na zamówienie.',{fr:'Désolé, ce gâteau est une commande.'}]}
    ],
    pay:[
-    {t:'Proszę, cztery euro.',tr:{fr:'Voici quatre euros.'},to:'price2',reply:['Hmm, to tylko cztery euro. Razem cztery euro pięćdziesiąt.',{fr:"Hmm, ça ne fait que quatre euros. C'est quatre euros cinquante."}],tip:{fr:"Regarde l'ardoise : 2 × 1,20 + 2,10 = 4,50 €."}},
-    {t:'Proszę, pięć euro.',tr:{fr:'Voici cinq euros.'},to:'change',task:'pay'},
-    {t:'Przepraszam, ile?',tr:{fr:'Pardon, combien ?'},to:'price2',reply:['Cztery euro pięćdziesiąt.',{fr:'Quatre euros cinquante.'}]}
+    {t:'Proszę, pięć złotych.',tr:{fr:'Voici cinq złotys.'},to:'price2',reply:['Hmm, to tylko pięć złotych. Razem dziesięć złotych.',{fr:"Hmm, ça ne fait que cinq złotys. C'est dix złotys."}],tip:{fr:"Regarde l'ardoise : 2 × 3 zł + 4 zł = 10 zł."}},
+    {t:'Proszę, dwadzieścia złotych.',tr:{fr:'Voici vingt złotys.'},to:'change',task:'pay'},
+    {t:'Przepraszam, ile?',tr:{fr:'Pardon, combien ?'},to:'price2',reply:['Dziesięć złotych.',{fr:'Dix złotys.'}]}
    ],
    bye:[
     {t:'Dziękuję, nawzajem! Do widzenia!',tr:{fr:'Merci, vous aussi ! Au revoir !'},to:'END'},
@@ -441,29 +441,29 @@ PV.NPCS = {
  sam: { name: 'Sam', role: { fr: 'le marchand de fruits', pl: 'sprzedawca owoców' }, pitch: .95,
   dlg: {
    en: { nodes: {
-     start: ['Hello! Fresh apples, two for one euro!', { fr: 'Bonjour ! Pommes fraîches, deux pour un euro !', pl: 'Dzień dobry! Świeże jabłka, dwa za euro!' }, 'a'],
-     q1b: ['Two for one euro! How many would you like?', { fr: 'Deux pour un euro ! Tu en veux combien ?', pl: 'Dwa za euro! Ile chcesz?' }, 'a'],
-     q2: ["Here you are. That's two euros.", { fr: 'Voilà. Ça fait deux euros.', pl: 'Proszę bardzo. Razem dwa euro.' }, 'b'],
+     start: ['Hello! Fresh apples, two for a pound!', { fr: 'Bonjour ! Pommes fraîches, deux pour une livre !', pl: 'Dzień dobry! Świeże jabłka, dwa za funta!' }, 'a'],
+     q1b: ['Two for a pound! How many would you like?', { fr: 'Deux pour une livre ! Tu en veux combien ?', pl: 'Dwa za funta! Ile chcesz?' }, 'a'],
+     q2: ["Here you are. That's two pounds.", { fr: 'Voilà. Ça fait deux livres.', pl: 'Proszę bardzo. Razem dwa funty.' }, 'b'],
      end: ['Enjoy your apples!', { fr: 'Bonne dégustation !', pl: 'Smacznego!' }],
      huh: ['Sorry? Apples, how many?', { fr: 'Pardon ? Des pommes, combien ?', pl: 'Słucham? Ile jabłek?' }] },
     opts: {
      a: [ { t: 'Can I have four apples, please?', tr: { fr: "Je peux avoir quatre pommes, s'il vous plaît ?", pl: 'Poproszę cztery jabłka.' }, to: 'q2' },
           { t: 'How much are the apples?', tr: { fr: 'Combien coûtent les pommes ?', pl: 'Ile kosztują jabłka?' }, to: 'q1b' },
-          { t: 'I want banana.', tr: { fr: 'Je veux banane.', pl: 'Chcę banan.' }, to: 'start', reply: ['Sorry, only apples today! Two for one euro!', { fr: "Désolé, que des pommes aujourd'hui ! Deux pour un euro !", pl: 'Przykro mi, dziś tylko jabłka! Dwa za euro!' }], tip: { fr: "Sam vend des pommes (« apples »). Et on dit « a banana ».", pl: 'Sam sprzedaje jabłka („apples”). I mówi się „a banana”.' } } ],
+          { t: 'I want banana.', tr: { fr: 'Je veux banane.', pl: 'Chcę banan.' }, to: 'start', reply: ['Sorry, only apples today! Two for a pound!', { fr: "Désolé, que des pommes aujourd'hui ! Deux pour une livre !", pl: 'Przykro mi, dziś tylko jabłka! Dwa za funta!' }], tip: { fr: "Sam vend des pommes (« apples »). Et on dit « a banana ».", pl: 'Sam sprzedaje jabłka („apples”). I mówi się „a banana”.' } } ],
      b: [ { t: 'Here you are. Thank you!', tr: { fr: 'Voilà. Merci !', pl: 'Proszę. Dziękuję!' }, to: 'END' },
-          { t: 'Two euros? OK, here.', tr: { fr: "Deux euros ? D'accord, voilà.", pl: 'Dwa euro? Dobrze, proszę.' }, to: 'END' } ] } },
+          { t: 'Two pounds? OK, here.', tr: { fr: "Deux livres ? D'accord, voilà.", pl: 'Dwa funty? Dobrze, proszę.' }, to: 'END' } ] } },
    pl: { nodes: {
-     start: ['Dzień dobry! Świeże jabłka, dwa za euro!', { fr: 'Bonjour ! Pommes fraîches, deux pour un euro !' }, 'a'],
-     q1b: ['Dwa za euro! Ile chcesz?', { fr: 'Deux pour un euro ! Tu en veux combien ?' }, 'a'],
-     q2: ['Proszę bardzo. Razem dwa euro.', { fr: 'Voilà. Ça fait deux euros.' }, 'b'],
+     start: ['Dzień dobry! Świeże jabłka, dwa za trzy złote!', { fr: 'Bonjour ! Pommes fraîches, deux pour trois złotys !' }, 'a'],
+     q1b: ['Dwa za trzy złote! Ile chcesz?', { fr: 'Deux pour trois złotys ! Tu en veux combien ?' }, 'a'],
+     q2: ['Proszę bardzo. Razem sześć złotych.', { fr: 'Voilà. Ça fait six złotys.' }, 'b'],
      end: ['Smacznego!', { fr: 'Bon appétit !' }],
      huh: ['Słucham? Ile jabłek?', { fr: 'Pardon ? Combien de pommes ?' }] },
     opts: {
      a: [ { t: 'Poproszę cztery jabłka.', tr: { fr: "Quatre pommes, s'il vous plaît." }, to: 'q2' },
           { t: 'Ile kosztują jabłka?', tr: { fr: 'Combien coûtent les pommes ?' }, to: 'q1b' },
-          { t: 'Chcę banan.', tr: { fr: 'Je veux banane.' }, to: 'start', reply: ['Przykro mi, dziś tylko jabłka! Dwa za euro!', { fr: "Désolé, que des pommes aujourd'hui ! Deux pour un euro !" }], tip: { fr: "Sam vend des pommes (« jabłka »)." } } ],
+          { t: 'Chcę banan.', tr: { fr: 'Je veux banane.' }, to: 'start', reply: ['Przykro mi, dziś tylko jabłka! Dwa za trzy złote!', { fr: "Désolé, que des pommes aujourd'hui ! Deux pour trois złotys !" }], tip: { fr: "Sam vend des pommes (« jabłka »)." } } ],
      b: [ { t: 'Proszę. Dziękuję!', tr: { fr: 'Voilà. Merci !' }, to: 'END' },
-          { t: 'Dwa euro? Dobrze, proszę.', tr: { fr: "Deux euros ? D'accord, voilà." }, to: 'END' } ] } } } }
+          { t: 'Sześć złotych? Dobrze, proszę.', tr: { fr: "Six złotys ? D'accord, voilà." }, to: 'END' } ] } } } }
 };
 PV.GREET = {
  en: [['Hi!', { fr: 'Salut !', pl: 'Cześć!' }], ['Hello there!', { fr: 'Bonjour !', pl: 'Dzień dobry!' }], ['Lovely day, isn’t it?', { fr: 'Belle journée, non ?', pl: 'Piękny dzień, prawda?' }], ['Have a nice day!', { fr: 'Bonne journée !', pl: 'Miłego dnia!' }]],
