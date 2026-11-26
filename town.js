@@ -311,7 +311,7 @@ for (let i = 0; i < 6; i++) {
 /* ---------- nuages et petites îles au loin ---------- */
 const clouds = [];
 for (let i = 0; i < 6; i++) {
-  const c = item('cloud'); const r = rnd(24, 38), a = rnd(0, TAU), y = rnd(9, 17); c.position.set(Math.sin(a) * r, y, Math.cos(a) * r);
+  const c = item('cloud'); const r = rnd(52, 72), a = rnd(0, TAU), y = rnd(8, 22); c.scale.setScalar(rnd(1.3, 1.9)); c.position.set(Math.sin(a) * r, y, Math.cos(a) * r);
   const cm = F('#ffffff', { roughness: 1 });
   for (let j = 0; j < 5; j++) mk(jitter(ico(rnd(1.2, 2.2), 1), .15), cm, rnd(-2.5, 2.5), rnd(-.4, .6), rnd(-1, 1), c);
   clouds.push({ c, r, a, y, sp: rnd(.004, .009) });
