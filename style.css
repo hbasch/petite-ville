@@ -171,7 +171,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .bigAv{width:64px;height:64px;border-radius:50%;background:var(--coral);color:#fff;font:800 30px var(--disp);display:grid;place-items:center;flex:none}
 .profile b{font:800 22px/1.1 var(--disp);display:block}
 .profile .lvl{color:var(--honeyD);font-weight:800}
-.stats3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stats3{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px}
 .stats3 div{background:var(--paper2);border-radius:16px;padding:10px 6px;text-align:center}
 .stats3 b{display:block;font:800 26px/1 var(--disp)}
 .stats3 span{font-size:12px;color:var(--muted)}

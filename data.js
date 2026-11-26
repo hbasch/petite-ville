@@ -347,3 +347,115 @@ PV.PALS = {
   c: { walls: ['#f28c28', '#f2d03b', '#2f5fb3', '#8fd3b6', '#f6efe2'], roofs: ['#23305a', '#c4473a'], ground: '#d8cfc2', leaf: '#5fae4a', accent: '#e84a7a' },
   d: { walls: ['#f0a77a', '#b8cf8f', '#b7a3d6', '#f2d68a', '#eaa3a8'], roofs: ['#7a4a3a', '#6a4a6a'], ground: '#efe0c8', leaf: '#86b86a', accent: '#4a2f2a' }
 };
+
+/* ---------- Les habitants : chacun a un dialogue court (salutations, prénom, météo, directions, nombres) ---------- */
+PV.NPCS = {
+ rosa: { name: 'Rosa', role: { fr: 'la fleuriste', pl: 'kwiaciarka' }, pitch: 1.18,
+  dlg: {
+   en: { nodes: {
+     start: ["Hi! I'm Rosa. What's your name?", { fr: "Salut ! Je suis Rosa. Comment tu t'appelles ?", pl: 'Cześć! Jestem Rosa. Jak masz na imię?' }, 'a'],
+     q2: ['Welcome to Petite Ville! Do you like flowers?', { fr: 'Bienvenue à Petite Ville ! Tu aimes les fleurs ?', pl: 'Witaj w Petite Ville! Lubisz kwiaty?' }, 'b'],
+     end: ['See you soon!', { fr: 'À bientôt !', pl: 'Do zobaczenia!' }],
+     huh: ['Sorry, can you say that again?', { fr: 'Pardon, tu peux répéter ?', pl: 'Przepraszam, możesz powtórzyć?' }] },
+    opts: {
+     a: [ { t: "Nice to meet you, Rosa! I'm new here.", tr: { fr: 'Enchanté, Rosa ! Je suis nouveau ici.', pl: 'Miło mi, Rosa! Jestem tu nowy.' }, to: 'q2' },
+          { t: "Hello! I'm a friend of Tom the baker.", tr: { fr: 'Bonjour ! Je suis un ami de Tom le boulanger.', pl: 'Cześć! Jestem przyjacielem piekarza Toma.' }, to: 'q2', reply: ['Oh, Tom! His croissants are the best! Do you like flowers?', { fr: 'Oh, Tom ! Ses croissants sont les meilleurs ! Tu aimes les fleurs ?', pl: 'O, Tom! Jego rogaliki są najlepsze! Lubisz kwiaty?' }] },
+          { t: "I'm fine, thank you.", tr: { fr: 'Je vais bien, merci.', pl: 'Dobrze, dziękuję.' }, to: 'start', reply: ["Ha ha, good! But what's your name?", { fr: "Ha ha, tant mieux ! Mais comment tu t'appelles ?", pl: 'Ha ha, to dobrze! Ale jak masz na imię?' }], tip: { fr: "On te demande ton prénom : réponds « My name is… » ou « I'm… ».", pl: 'Pyta o imię: odpowiedz „My name is…” albo „I’m…”.' } } ],
+     b: [ { t: 'Yes, I love flowers!', tr: { fr: "Oui, j'adore les fleurs !", pl: 'Tak, uwielbiam kwiaty!' }, to: 'END', reply: ["Me too! Take this rose, it's a gift. See you soon!", { fr: "Moi aussi ! Prends cette rose, c'est un cadeau. À bientôt !", pl: 'Ja też! Weź tę różę, to prezent. Do zobaczenia!' }] },
+          { t: 'Not really.', tr: { fr: 'Pas trop.', pl: 'Nie bardzo.' }, to: 'END', reply: ['Oh! Maybe a cake, then? The bakery is right there. Bye!', { fr: 'Oh ! Alors peut-être un gâteau ? La boulangerie est juste là. Salut !', pl: 'Och! To może ciasto? Piekarnia jest tuż obok. Pa!' }] },
+          { t: 'Yes, I like.', tr: { fr: "Oui, j'aime.", pl: 'Tak, lubię.' }, to: 'q2', reply: ['Sorry? Do you like flowers?', { fr: 'Pardon ? Tu aimes les fleurs ?', pl: 'Słucham? Lubisz kwiaty?' }], tip: { fr: "Il manque un complément : « Yes, I do » ou « I like them ».", pl: 'Brakuje dopełnienia: „Yes, I do” albo „I like them”.' } } ] } },
+   pl: { nodes: {
+     start: ['Cześć! Jestem Rosa. Jak masz na imię?', { fr: "Salut ! Je suis Rosa. Comment tu t'appelles ?" }, 'a'],
+     q2: ['Witaj w Petite Ville! Lubisz kwiaty?', { fr: 'Bienvenue à Petite Ville ! Tu aimes les fleurs ?' }, 'b'],
+     end: ['Do zobaczenia!', { fr: 'À bientôt !' }],
+     huh: ['Przepraszam, możesz powtórzyć?', { fr: 'Pardon, tu peux répéter ?' }] },
+    opts: {
+     a: [ { t: 'Miło mi, Rosa! Jestem tu nowy.', tr: { fr: 'Enchanté, Rosa ! Je suis nouveau ici.' }, to: 'q2' },
+          { t: 'Cześć! Jestem przyjacielem piekarza Toma.', tr: { fr: 'Salut ! Je suis un ami de Tom le boulanger.' }, to: 'q2', reply: ['O, Tom! Jego rogaliki są najlepsze! Lubisz kwiaty?', { fr: 'Oh, Tom ! Ses croissants sont les meilleurs ! Tu aimes les fleurs ?' }] },
+          { t: 'Dobrze, dziękuję.', tr: { fr: 'Bien, merci.' }, to: 'start', reply: ['Ha ha, to dobrze! Ale jak masz na imię?', { fr: "Ha ha, tant mieux ! Mais comment tu t'appelles ?" }], tip: { fr: "On te demande ton prénom : « Mam na imię… » ou « Jestem… »." } } ],
+     b: [ { t: 'Tak, uwielbiam kwiaty!', tr: { fr: "Oui, j'adore les fleurs !" }, to: 'END', reply: ['Ja też! Weź tę różę, to prezent. Do zobaczenia!', { fr: "Moi aussi ! Prends cette rose, c'est un cadeau. À bientôt !" }] },
+          { t: 'Nie bardzo.', tr: { fr: 'Pas trop.' }, to: 'END', reply: ['Och! To może ciasto? Piekarnia jest tuż obok. Pa!', { fr: 'Oh ! Alors peut-être un gâteau ? La boulangerie est juste là. Salut !' }] },
+          { t: 'Ja lubić.', tr: { fr: 'Moi aimer.' }, to: 'q2', reply: ['Słucham? Lubisz kwiaty?', { fr: 'Pardon ? Tu aimes les fleurs ?' }], tip: { fr: "Conjugue le verbe : « Tak, lubię » (oui, j'aime)." } } ] } } } },
+ leo: { name: 'Leo', role: { fr: 'le grand-père du banc', pl: 'dziadek z ławki' }, pitch: .78,
+  dlg: {
+   en: { nodes: {
+     start: ['Good afternoon! How are you today?', { fr: "Bonjour ! Comment allez-vous aujourd'hui ?", pl: 'Dzień dobry! Jak się dziś masz?' }, 'a'],
+     q2: ["Very well, thank you. Lovely weather, isn't it?", { fr: "Très bien, merci. Il fait beau, n'est-ce pas ?", pl: 'Bardzo dobrze, dziękuję. Piękna pogoda, prawda?' }, 'b'],
+     end: ['Have a nice walk!', { fr: 'Bonne promenade !', pl: 'Miłego spaceru!' }],
+     huh: ['Eh? My ears are old, say it again!', { fr: 'Hein ? Mes oreilles sont vieilles, répète !', pl: 'Co? Mam stare uszy, powtórz!' }] },
+    opts: {
+     a: [ { t: "I'm fine, thanks. And you?", tr: { fr: 'Je vais bien, merci. Et vous ?', pl: 'Dobrze, dziękuję. A pan?' }, to: 'q2' },
+          { t: 'Not bad, thank you!', tr: { fr: 'Pas mal, merci !', pl: 'Nieźle, dziękuję!' }, to: 'q2' },
+          { t: "I'm Leo.", tr: { fr: 'Je suis Leo.', pl: 'Jestem Leo.' }, to: 'start', reply: ["Ha ha! No, I'm Leo! How are you?", { fr: "Ha ha ! Non, c'est moi Leo ! Comment allez-vous ?", pl: 'Ha ha! Nie, to ja jestem Leo! Jak się masz?' }], tip: { fr: "« How are you? » = Comment allez-vous ? Réponds « I'm fine, thanks ».", pl: '„How are you?” = Jak się masz? Odpowiedz „I’m fine, thanks”.' } } ],
+     b: [ { t: "Yes, it's beautiful today!", tr: { fr: "Oui, il fait très beau aujourd'hui !", pl: 'Tak, dzisiaj jest pięknie!' }, to: 'END', reply: ['It is. I come here every day to feed the pigeons. Have a nice walk!', { fr: 'Oui. Je viens ici tous les jours nourrir les pigeons. Bonne promenade !', pl: 'Prawda. Przychodzę tu codziennie karmić gołębie. Miłego spaceru!' }] },
+          { t: 'Yes, but a bit cold.', tr: { fr: 'Oui, mais un peu froid.', pl: 'Tak, ale trochę zimno.' }, to: 'END', reply: ['Ha ha, put on a scarf, like me! Have a nice walk!', { fr: 'Ha ha, mets une écharpe, comme moi ! Bonne promenade !', pl: 'Ha ha, załóż szalik, jak ja! Miłego spaceru!' }] },
+          { t: 'Weather is yes.', tr: { fr: 'Le temps est oui.', pl: 'Pogoda jest tak.' }, to: 'q2', reply: ['Eh? Is the weather nice, or not?', { fr: "Hein ? Il fait beau, ou pas ?", pl: 'Co? Pogoda jest ładna czy nie?' }], tip: { fr: "Réponds avec un adjectif : « Yes, it's beautiful ».", pl: 'Odpowiedz przymiotnikiem: „Yes, it’s beautiful”.' } } ] } },
+   pl: { nodes: {
+     start: ['Dzień dobry! Jak się dziś masz?', { fr: "Bonjour ! Comment ça va aujourd'hui ?" }, 'a'],
+     q2: ['Bardzo dobrze, dziękuję. Piękna pogoda, prawda?', { fr: "Très bien, merci. Il fait beau, n'est-ce pas ?" }, 'b'],
+     end: ['Miłego spaceru!', { fr: 'Bonne promenade !' }],
+     huh: ['Co? Mam stare uszy, powtórz!', { fr: 'Hein ? Mes oreilles sont vieilles, répète !' }] },
+    opts: {
+     a: [ { t: 'Dobrze, dziękuję. A pan?', tr: { fr: 'Bien, merci. Et vous ?' }, to: 'q2' },
+          { t: 'Nieźle, dziękuję!', tr: { fr: 'Pas mal, merci !' }, to: 'q2' },
+          { t: 'Jestem Leo.', tr: { fr: 'Je suis Leo.' }, to: 'start', reply: ['Ha ha! Nie, to ja jestem Leo! Jak się masz?', { fr: "Ha ha ! Non, c'est moi Leo ! Comment ça va ?" }], tip: { fr: "« Jak się masz? » = Comment ça va ? Réponds « Dobrze, dziękuję »." } } ],
+     b: [ { t: 'Tak, dzisiaj jest pięknie!', tr: { fr: "Oui, il fait très beau aujourd'hui !" }, to: 'END', reply: ['Prawda. Przychodzę tu codziennie karmić gołębie. Miłego spaceru!', { fr: 'Oui. Je viens ici tous les jours nourrir les pigeons. Bonne promenade !' }] },
+          { t: 'Tak, ale trochę zimno.', tr: { fr: 'Oui, mais un peu froid.' }, to: 'END', reply: ['Ha ha, załóż szalik, jak ja! Miłego spaceru!', { fr: 'Ha ha, mets une écharpe, comme moi ! Bonne promenade !' }] },
+          { t: 'Pogoda jest tak.', tr: { fr: 'Le temps est oui.' }, to: 'q2', reply: ['Co? Pogoda jest ładna czy nie?', { fr: 'Hein ? Il fait beau, ou pas ?' }], tip: { fr: "Réponds avec un adjectif : « Tak, jest pięknie »." } } ] } } } },
+ maya: { name: 'Maya', role: { fr: "l'étudiante", pl: 'studentka' }, pitch: 1.3,
+  dlg: {
+   en: { nodes: {
+     start: ['Excuse me, where is the post office?', { fr: 'Excuse-moi, où est la poste ?', pl: 'Przepraszam, gdzie jest poczta?' }, 'a'],
+     q2: ['Thank you so much! I need to send a letter to my grandma.', { fr: 'Merci beaucoup ! Je dois envoyer une lettre à ma grand-mère.', pl: 'Dziękuję bardzo! Muszę wysłać list do babci.' }, 'b'],
+     end: ['Bye! Have a good day!', { fr: 'Salut ! Bonne journée !', pl: 'Pa! Miłego dnia!' }],
+     huh: ['Sorry, I didn’t understand.', { fr: "Pardon, je n'ai pas compris.", pl: 'Przepraszam, nie zrozumiałam.' }] },
+    opts: {
+     a: [ { t: "It's over there, next to the pharmacy.", tr: { fr: "C'est là-bas, à côté de la pharmacie.", pl: 'Tam, obok apteki.' }, to: 'q2' },
+          { t: "Sorry, I don't know.", tr: { fr: 'Désolé, je ne sais pas.', pl: 'Przepraszam, nie wiem.' }, to: 'END', reply: ["No problem, I'll ask someone else! Bye!", { fr: 'Pas de souci, je vais demander à quelqu’un d’autre ! Salut !', pl: 'Nie szkodzi, zapytam kogoś innego! Pa!' }] },
+          { t: "It's a bakery.", tr: { fr: "C'est une boulangerie.", pl: 'To jest piekarnia.' }, to: 'start', reply: ['Yes, but where is the post office?', { fr: 'Oui, mais où est la poste ?', pl: 'Tak, ale gdzie jest poczta?' }], tip: { fr: "On te demande où est la poste : « It's over there, next to… ».", pl: 'Pyta, gdzie jest poczta: „It’s over there, next to…”.' } } ],
+     b: [ { t: 'Good luck!', tr: { fr: 'Bonne chance !', pl: 'Powodzenia!' }, to: 'END' },
+          { t: "That's nice!", tr: { fr: "C'est gentil !", pl: 'To miłe!' }, to: 'END' } ] } },
+   pl: { nodes: {
+     start: ['Przepraszam, gdzie jest poczta?', { fr: 'Excuse-moi, où est la poste ?' }, 'a'],
+     q2: ['Dziękuję bardzo! Muszę wysłać list do babci.', { fr: 'Merci beaucoup ! Je dois envoyer une lettre à ma grand-mère.' }, 'b'],
+     end: ['Pa! Miłego dnia!', { fr: 'Salut ! Bonne journée !' }],
+     huh: ['Przepraszam, nie zrozumiałam.', { fr: "Pardon, je n'ai pas compris." }] },
+    opts: {
+     a: [ { t: 'Tam, obok apteki.', tr: { fr: 'Là-bas, à côté de la pharmacie.' }, to: 'q2' },
+          { t: 'Przepraszam, nie wiem.', tr: { fr: 'Désolé, je ne sais pas.' }, to: 'END', reply: ['Nie szkodzi, zapytam kogoś innego! Pa!', { fr: 'Pas de souci, je vais demander à quelqu’un d’autre ! Salut !' }] },
+          { t: 'To jest piekarnia.', tr: { fr: "C'est une boulangerie." }, to: 'start', reply: ['Tak, ale gdzie jest poczta?', { fr: 'Oui, mais où est la poste ?' }], tip: { fr: "On te demande où est la poste : « Tam, obok… » (là-bas, à côté de…)." } } ],
+     b: [ { t: 'Powodzenia!', tr: { fr: 'Bonne chance !' }, to: 'END' },
+          { t: 'To miłe!', tr: { fr: "C'est gentil !" }, to: 'END' } ] } } } },
+ sam: { name: 'Sam', role: { fr: 'le marchand de fruits', pl: 'sprzedawca owoców' }, pitch: .95,
+  dlg: {
+   en: { nodes: {
+     start: ['Hello! Fresh apples, two for one euro!', { fr: 'Bonjour ! Pommes fraîches, deux pour un euro !', pl: 'Dzień dobry! Świeże jabłka, dwa za euro!' }, 'a'],
+     q1b: ['Two for one euro! How many would you like?', { fr: 'Deux pour un euro ! Tu en veux combien ?', pl: 'Dwa za euro! Ile chcesz?' }, 'a'],
+     q2: ["Here you are. That's two euros.", { fr: 'Voilà. Ça fait deux euros.', pl: 'Proszę bardzo. Razem dwa euro.' }, 'b'],
+     end: ['Enjoy your apples!', { fr: 'Bonne dégustation !', pl: 'Smacznego!' }],
+     huh: ['Sorry? Apples, how many?', { fr: 'Pardon ? Des pommes, combien ?', pl: 'Słucham? Ile jabłek?' }] },
+    opts: {
+     a: [ { t: 'Can I have four apples, please?', tr: { fr: "Je peux avoir quatre pommes, s'il vous plaît ?", pl: 'Poproszę cztery jabłka.' }, to: 'q2' },
+          { t: 'How much are the apples?', tr: { fr: 'Combien coûtent les pommes ?', pl: 'Ile kosztują jabłka?' }, to: 'q1b' },
+          { t: 'I want banana.', tr: { fr: 'Je veux banane.', pl: 'Chcę banan.' }, to: 'start', reply: ['Sorry, only apples today! Two for one euro!', { fr: "Désolé, que des pommes aujourd'hui ! Deux pour un euro !", pl: 'Przykro mi, dziś tylko jabłka! Dwa za euro!' }], tip: { fr: "Sam vend des pommes (« apples »). Et on dit « a banana ».", pl: 'Sam sprzedaje jabłka („apples”). I mówi się „a banana”.' } } ],
+     b: [ { t: 'Here you are. Thank you!', tr: { fr: 'Voilà. Merci !', pl: 'Proszę. Dziękuję!' }, to: 'END' },
+          { t: 'Two euros? OK, here.', tr: { fr: "Deux euros ? D'accord, voilà.", pl: 'Dwa euro? Dobrze, proszę.' }, to: 'END' } ] } },
+   pl: { nodes: {
+     start: ['Dzień dobry! Świeże jabłka, dwa za euro!', { fr: 'Bonjour ! Pommes fraîches, deux pour un euro !' }, 'a'],
+     q1b: ['Dwa za euro! Ile chcesz?', { fr: 'Deux pour un euro ! Tu en veux combien ?' }, 'a'],
+     q2: ['Proszę bardzo. Razem dwa euro.', { fr: 'Voilà. Ça fait deux euros.' }, 'b'],
+     end: ['Smacznego!', { fr: 'Bon appétit !' }],
+     huh: ['Słucham? Ile jabłek?', { fr: 'Pardon ? Combien de pommes ?' }] },
+    opts: {
+     a: [ { t: 'Poproszę cztery jabłka.', tr: { fr: "Quatre pommes, s'il vous plaît." }, to: 'q2' },
+          { t: 'Ile kosztują jabłka?', tr: { fr: 'Combien coûtent les pommes ?' }, to: 'q1b' },
+          { t: 'Chcę banan.', tr: { fr: 'Je veux banane.' }, to: 'start', reply: ['Przykro mi, dziś tylko jabłka! Dwa za euro!', { fr: "Désolé, que des pommes aujourd'hui ! Deux pour un euro !" }], tip: { fr: "Sam vend des pommes (« jabłka »)." } } ],
+     b: [ { t: 'Proszę. Dziękuję!', tr: { fr: 'Voilà. Merci !' }, to: 'END' },
+          { t: 'Dwa euro? Dobrze, proszę.', tr: { fr: "Deux euros ? D'accord, voilà." }, to: 'END' } ] } } } }
+};
+PV.GREET = {
+ en: [['Hi!', { fr: 'Salut !', pl: 'Cześć!' }], ['Hello there!', { fr: 'Bonjour !', pl: 'Dzień dobry!' }], ['Lovely day, isn’t it?', { fr: 'Belle journée, non ?', pl: 'Piękny dzień, prawda?' }], ['Have a nice day!', { fr: 'Bonne journée !', pl: 'Miłego dnia!' }]],
+ pl: [['Cześć!', { fr: 'Salut !' }], ['Dzień dobry!', { fr: 'Bonjour !' }], ['Piękny dzień, prawda?', { fr: 'Belle journée, non ?' }], ['Miłego dnia!', { fr: 'Bonne journée !' }]]
+};
+Object.assign(PV.UI.fr, { newFriend: 'Nouvel ami : {n} ! +15 XP', friends: 'amis rencontrés' });
+Object.assign(PV.UI.pl, { newFriend: 'Nowy przyjaciel: {n}! +15 XP', friends: 'poznani przyjaciele' });

@@ -80,7 +80,7 @@ function micError(err, out) {
 }
 
 /* ---------- progression ---------- */
-const blankLang = () => ({ found: [], cards: {}, pron: {}, missions: 0, stories: {} });
+const blankLang = () => ({ found: [], cards: {}, pron: {}, missions: 0, stories: {}, met: {} });
 function normalizeP(d) {
   d = d || {};
   const p = Object.assign({ pseudo: '', ui, t: 'en', xp: 0, streak: 0, lastDay: '', dailyXp: 0, dailyDay: '', spoken: 0, goal: 15, secToday: 0, secDay: '', month: '', monthXp: 0, quizDay: '', quizRes: '', quizPick: '' }, d);
@@ -238,7 +238,7 @@ function start() {
   updHud(); updMission(); renderDeck(); renderMap();
   if (!started && window.THREE && window.buildTown) {
     const H = { palette: palette(), label: id => L.found.includes(id) ? W[id][T] : '?',
-      pick: id => { if (tab === 'town' && place === 'town') showWord(id); },
+      pick: (id, obj) => { if (tab !== 'town' || place !== 'town') return; if (id === 'npc:passerby') greetPasserby(obj); else if (id.startsWith('npc:')) openNpc(id.slice(4)); else showWord(id); },
       active: () => place === 'town' && !document.hidden };
     (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); });
   }
@@ -316,6 +316,7 @@ const SHEETS = ['card', 'dlg', 'misSheet', 'mapSheet'];
 function show(id) {
   SHEETS.forEach(p => $(p).classList.toggle('hidden', p !== id));
   document.body.classList.toggle('dlg-open', id === 'dlg');
+  if (id !== 'dlg' && town && town.endTalk) town.endTalk();
   if (id !== 'dlg' && id !== 'card' && rec) try { rec.abort(); } catch (e) { /* none */ }
 }
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => show(null));
@@ -385,10 +386,12 @@ function renderMap() {
 }
 
 /* ---------- dialogue ---------- */
-let lastLine = '', curOpts = [];
+let lastLine = '', curOpts = [], curNpc = null;
+const DD = () => curNpc ? PV.NPCS[curNpc].dlg[T] : D;
+const voiceP = () => curNpc ? PV.NPCS[curNpc].pitch : .95;
 function render(line, tr, key) {
   lastLine = line; $('dLine').textContent = line; $('dTrTxt').textContent = (tr || {})[ui] || '';
-  curOpts = key ? D.opts[key] : [];
+  curOpts = key ? DD().opts[key] : [];
   const box = $('dOpts'); box.innerHTML = '';
   curOpts.forEach(o => {
     const b = el('button', 'opt'); b.type = 'button';
@@ -398,7 +401,7 @@ function render(line, tr, key) {
   $('dMic').disabled = !SR || !curOpts.length;
   $('dHeard').textContent = curOpts.length ? (SR ? U.speakNow : U.noMic) : '';
 }
-function go(id, line, queue) { const n = D.nodes[id]; const l = line ? line[0] : n[0]; render(l, line ? line[1] : n[1], n[2]); say(l, { queue }); }
+function go(id, line, queue) { const n = DD().nodes[id]; const l = line ? line[0] : n[0]; render(l, line ? line[1] : n[1], n[2]); say(l, { queue, pitch: voiceP() }); }
 function choose(o, spoken) {
   $('dMe').textContent = U.you + ' : « ' + o.t + ' »';
   if (!spoken) say(o.t, { pitch: 1.25, rate: 1 });
@@ -407,12 +410,13 @@ function choose(o, spoken) {
   if (spoken) { spokenSession++; P.spoken++; if (!o.tip) addXP(5, U.xpSpoken); }
   updMission();
   if (o.to === 'END') {
-    const e = D.nodes.end; render(e[0], e[1], null); say(e[0], { queue: true });
+    const e = o.reply || DD().nodes.end; render(e[0], e[1], null); say(e[0], { queue: true, pitch: voiceP() });
+    if (curNpc) { const who = curNpc; setTimeout(() => { if (curNpc === who) { show(null); finishNpc(who); } }, 3200); return; }
     setTimeout(() => { if (tasks.order && tasks.pay) win(); else show(null); }, 2400); return;
   }
   go(o.to, o.reply, true);
 }
-function openDlg() { tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
+function openDlg() { curNpc = null; $('dWho').textContent = S.baker; tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
 $('dReplay').onclick = () => say(lastLine);
 $('dTr').onclick = () => $('dlg').classList.toggle('tr');
 $('dMic').onclick = () => {
@@ -424,10 +428,23 @@ $('dMic').onclick = () => {
     alts.forEach(a => curOpts.forEach(o => { const s = score(a, o.t); if (s > bs) { if (best !== o) second = bs; bs = s; best = o; heard = a; } else if (o !== best && s > second) second = s; }));
     out.textContent = '« ' + heard + ' »'; out.appendChild(el('small', null, U.heard));
     if (best && bs >= .5 && bs - second >= .08) choose(best, true);
-    else { $('dTip').textContent = U.notUnderstood; $('dTip').classList.remove('hidden'); say(D.nodes.huh[0]); }
+    else { $('dTip').textContent = U.notUnderstood; $('dTip').classList.remove('hidden'); say(DD().nodes.huh[0], { pitch: voiceP() }); }
   }, err => micError(err, out), () => mic.classList.remove('on'));
 };
 
+function openNpc(id) {
+  const n = PV.NPCS[id]; if (!n) return;
+  curNpc = id; $('dWho').textContent = n.name + ' · ' + (n.role[ui] || '');
+  $('dMe').textContent = ''; $('dTip').classList.add('hidden');
+  if (town && town.talkTo) town.talkTo(id);
+  show('dlg'); go('start');
+}
+function finishNpc(id) { if (!L.met[id]) { L.met[id] = 1; addXP(15, fill(U.newFriend, { n: PV.NPCS[id].name })); } curNpc = null; }
+function greetPasserby(obj) {
+  const list = PV.GREET[T] || [], g = list[(Math.random() * list.length) | 0]; if (!g) return;
+  if (town && town.greet) town.greet(obj);
+  say(g[0], { pitch: .9 + Math.random() * .4 }); toast('« ' + g[0] + ' » — ' + (g[1][ui] || ''));
+}
 function win() {
   show(null); L.missions++; addXP(50, U.xpMission);
   $('winTitle').textContent = fill(U.winTitle, { l: PV.IN_LANG[ui][T] });
@@ -564,7 +581,7 @@ function renderProgress() {
   const bar = el('div', 'bar'); const bi = el('i'); bi.style.width = (hi ? (P.xp - lo) / (hi - lo) * 100 : 100) + '%'; bar.appendChild(bi); pc.appendChild(bar);
   pc.appendChild(subP(hi ? fill(U.nextLevel, { n: hi - P.xp, l: U.levelNames[lv + 1] }) : U.maxLevel, '8px 0 12px'));
   const s3 = el('div', 'stats3');
-  [[L.found.length, U.wordsLearned], [Object.keys(L.stories).length, U.storiesRead], [L.missions, U.missionsDone]].forEach(([n, t]) => { const d = el('div'); d.append(el('b', null, n), el('span', null, t)); s3.appendChild(d); });
+  [[L.found.length, U.wordsLearned], [Object.keys(L.met || {}).length, U.friends], [Object.keys(L.stories).length, U.storiesRead], [L.missions, U.missionsDone]].forEach(([n, t]) => { const d = el('div'); d.append(el('b', null, n), el('span', null, t)); s3.appendChild(d); });
   pc.appendChild(s3); box.appendChild(pc);
   /* objectif + série */
   const two = el('div', 'two');

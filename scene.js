@@ -186,6 +186,7 @@ const sun=new THREE.DirectionalLight('#ffe2b8',1.15);sun.position.set(-9,5.5,-.2
 sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-6,right:6,top:5,bottom:-5,near:1,far:20});sun.shadow.bias=-.0005;sun.shadow.normalBias=.02;
 const fill=new THREE.DirectionalLight('#ffd7c2',.25);fill.position.set(3,3,6);scene.add(fill);
 
+const uvD=new WeakSet();scene.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&o.material&&!Array.isArray(o.material)&&o.material.bumpMap&&!o.material.map&&o.geometry.attributes.normal&&o.geometry.attributes.uv&&!uvD.has(o.geometry)){uvD.add(o.geometry);const p=o.geometry.attributes.position,n=o.geometry.attributes.normal,uv=o.geometry.attributes.uv;for(let i=0;i<p.count;i++){const ax=Math.abs(n.getX(i)),ay=Math.abs(n.getY(i)),az=Math.abs(n.getZ(i));let u,v;if(ax>=ay&&ax>=az){u=p.getZ(i);v=p.getY(i)}else if(ay>=az){u=p.getX(i);v=p.getZ(i)}else{u=p.getX(i);v=p.getY(i)}uv.setXY(i,u/.6,v/.6)}uv.needsUpdate=true}});clayB.repeat.set(1,1);
 scene.traverse(o=>{if(o.isMesh&&!o.userData.noShadow&&!o.userData.glow&&o!==back&&o!==lw&&o!==rw&&o!==floor&&o!==ceil){o.castShadow=true;o.receiveShadow=true}});
 
 /* picking */
