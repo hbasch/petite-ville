@@ -540,7 +540,9 @@ function makeChar(lk) {
   if (lk.buttons) for (let i = 0; i < 3; i++) mk(G_('btn', () => sph(.022, 6)), C(lk.buttons), 0, .12 + i * .12, .2, body);
   if (lk.scarf) { const sc = mk(G_('scarf', () => lump(new THREE.TorusGeometry(.15, .065, 8, 18), .005)), C(lk.scarf), 0, .56, 0, body); sc.rotation.x = Math.PI / 2; mk(rbox(.11, .28, .05, .04, 2), C(lk.scarf), .09, .4, .19, body).rotation.z = .15; }
   if (lk.backpack) { mk(rbox(.34, .38, .17, .08, 3), C(lk.backpack), 0, .3, -.24, body); [-1, 1].forEach(sg => mk(rbox(.045, .38, .03, .02, 1), C(shade(lk.backpack, -.15)), sg * .12, .32, .19, body)); }
-  P.arms = [-1, 1].map(sg => { const pv = new THREE.Group(); pv.position.set(sg * .27, .5, 0); body.add(pv); mk(G_('arm2', () => rbox(.12, .34, .13, .055, 3)), clothM, 0, -.15, 0, pv); if (lk.rolled) mk(G_('cuff', () => cyl(.068, .068, .05, 10)), C(shade(lk.shirt, .08)), 0, -.3, 0, pv); const h = new THREE.Group(); h.position.y = -.37; pv.add(h); mk(G_('palm', () => sph(.066, 12)), skinM, 0, 0, 0, h).scale.set(1, 1.1, .8); mk(G_('thumb', () => sph(.03, 8)), skinM, -sg * .045, .03, .03, h); pv.rotation.z = sg * .1; return pv; });
+  P.hands = [];
+  [-1, 1].forEach(sg => mk(G_('shoulder', () => sph(.085, 12)), clothM, sg * .24, .5, 0, body).scale.set(1, .85, .95));
+  P.arms = [-1, 1].map(sg => { const pv = new THREE.Group(); pv.position.set(sg * .27, .5, 0); body.add(pv); mk(G_('arm2', () => rbox(.12, .34, .13, .055, 3)), clothM, 0, -.15, 0, pv); if (lk.rolled) mk(G_('cuff', () => cyl(.068, .068, .05, 10)), C(shade(lk.shirt, .08)), 0, -.3, 0, pv); const h = new THREE.Group(); h.position.y = -.37; pv.add(h); P.hands.push(h); mk(G_('palm', () => sph(.066, 12)), skinM, 0, 0, 0, h).scale.set(1, 1.1, .8); mk(G_('thumb', () => sph(.03, 8)), skinM, -sg * .045, .03, .03, h); pv.rotation.z = sg * .1; return pv; });
   if (lk.hold === 'flower') { const f = new THREE.Group(); f.position.set(0, -.4, .06); P.arms[1].add(f); mk(cyl(.012, .012, .32, 6), C(PAL.leaf), 0, .12, 0, f); for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; mk(G_('pet', () => sph(.04, 8)), C('#e2374f'), Math.cos(a) * .04, .3, Math.sin(a) * .04, f); } mk(sph(.03, 8), C('#ffd35a'), 0, .31, 0, f); }
   mk(G_('neck', () => cyl(.07, .08, .1, 12)), skinM, 0, .61, 0, body);
   const head = new THREE.Group(); head.position.y = .9; body.add(head); P.head = head;
@@ -555,13 +557,26 @@ function makeChar(lk) {
     const lw = new THREE.Group(); lw.scale.z = .85; e.add(lw); const lid = new THREE.Group(); lw.add(lid); mk(G_('lid', () => new THREE.SphereGeometry(.074, 16, 8, 0, TAU, 0, Math.PI / 2)), skinM, 0, 0, 0, lid); lid.rotation.x = -1.25; P.lids.push(lid);
     if (lk.lashes) { const l = mk(G_('lash', () => new THREE.TorusGeometry(.066, .009, 4, 10, Math.PI * .8)), PUPIL, 0, .006, .02, e); l.rotation.z = Math.PI * .1 + (sg < 0 ? 0 : 0); }
     return e; });
-  [-1, 1].forEach(sg => { const b = mk(G_('brow2', () => rbox(.1, .028, .025, .012, 1)), C(shade(lk.hair, -.12)), sg * .1, .125, .235, head); b.rotation.z = -sg * .18; });
+  P.brows = [-1, 1].map(sg => { const bg = new THREE.Group(); bg.position.set(sg * .1, .125, .235); head.add(bg); mk(G_('brow2', () => rbox(.1, .028, .025, .012, 1)), C(shade(lk.hair, -.12)), 0, 0, 0, bg).rotation.z = -sg * .18; return bg; });
   mk(G_('nose2', () => sph(.045, 12)), C(shade(lk.skin, -.05), { roughness: .45, emissive: lk.skin, emissiveIntensity: .07 }), 0, -.035, .265, head).scale.set(1, .9, 1.05);
   [-1, 1].forEach(sg => mk(G_('cheek', () => sph(.052, 10)), C('#ff8f8f', { roughness: .5 }), sg * .16, -.07, .2, head).scale.set(1, .68, .4));
   const mouth = new THREE.Group(); mouth.position.set(0, -.115, .238); head.add(mouth); P.mouth = mouth;
   const sm = mk(G_('smile2', () => new THREE.TorusGeometry(.05, .013, 6, 14, Math.PI)), C('#7a2a2a', { bumpScale: 0 }), 0, .01, 0, mouth); sm.rotation.z = Math.PI; sm.userData.keep = true; P.smile = sm;
   P.open = new THREE.Group(); mouth.add(P.open); mk(G_('mopen2', () => sph(.045, 12)), C('#5a1a1a', { bumpScale: 0 }), 0, -.005, 0, P.open).scale.z = .4; mk(G_('teeth', () => rbox(.05, .014, .01, .004, 1)), C('#ffffff', { bumpScale: 0 }), 0, .03, .014, P.open); P.open.scale.set(1, .01, 1);
   hair(lk, head, hairM);
+  if (lk.tote) {
+    const t = new THREE.Group(); t.position.set(-.3, .08, -.1); t.rotation.z = .08; body.add(t);
+    mk(rbox(.22, .24, .07, .03, 2), C(lk.tote), 0, 0, 0, t);
+    mk(rbox(.03, .46, .02, .01, 1), C(shade(lk.tote, -.1)), .06, .26, -.01, t).rotation.z = -.35;
+    const bq = mk(G_('bag', () => cyl(.022, .022, .46, 8)), C('#d9a05a'), -.03, .2, .01, t); bq.rotation.z = .3; bq.scale.set(1.15, 1, 1.15);
+    [-.06, .06].forEach(o => mk(G_('bagcut', () => rbox(.03, .012, .03, .005, 1)), C('#f2d29a'), -.03 - o * .3, .2 + o, .035, t).rotation.z = .3);
+  }
+  if (lk.balloon) {
+    const bl = new THREE.Group(); g.add(bl); P.balloon = bl;
+    mk(cyl(.004, .004, 1.35, 4), C('#fff8ee', { bumpScale: 0 }), 0, .67, 0, bl);
+    const ball = mk(sph(.17, 16), C(lk.balloon, { roughness: .25, bumpScale: 0, emissive: lk.balloon, emissiveIntensity: .12 }), 0, 1.53, 0, bl); ball.scale.set(1, 1.15, 1);
+    mk(G_('knot', () => cyl(.02, .035, .04, 8)), C(lk.balloon, { bumpScale: 0 }), 0, 1.35, 0, bl);
+  }
   return { g, P };
 }
 const bubbleT = tex(128, 128, (g) => { g.fillStyle = '#fff8ee'; g.beginPath(); g.arc(64, 56, 46, 0, TAU); g.fill(); g.beginPath(); g.moveTo(48, 92); g.lineTo(60, 122); g.lineTo(74, 94); g.fill(); g.fillStyle = '#2a2233'; [40, 64, 88].forEach(x => { g.beginPath(); g.arc(x, 56, 8, 0, TAU); g.fill(); }); });
@@ -581,8 +596,51 @@ B.forEach((sp, i) => { if (sp.id !== 'florist') return; const a = a0 + span * i 
 { const a = G + 1.2, bx = Math.sin(a) * 4.15, bz = Math.cos(a) * 4.15; person('leo', { skin: SK[1], hair: '#ece8e0', style: 'beret', hat: '#3a4a6a', mustache: true, eyes: '#3a5a8a', outfit: 'cardigan', shirt: '#9a6a44', buttons: '#e8c35a', scarf: PAL.walls[0], pants: '#4a4a5a', shoes: '#3a2a22' }, 'sit', bx, bz, a); }
 person('maya', { skin: SK[3], hair: '#1a1a22', style: 'curly', lashes: true, eyes: '#3a2418', outfit: 'hoodie', shirt: PAL.walls[1], backpack: PAL.accent, pants: '#2f3a5a', shoes: '#f4efe6' }, 'walk', 0, 7.2, 0, { r: 7.2, a: 1.2, sp: .055, pause: 0 });
 { const a = G - .55, r = 5.6 - .95; person('sam', { skin: SK[2], hair: '#3a2418', style: 'cap', hat: PAL.roofs[0], mustache: true, eyes: '#3a2418', shirt: '#f3efe6', stripes: PAL.roofs[0], rolled: true, apron: '#c99a62' }, 'idle', Math.sin(a) * r, Math.cos(a) * r, a); }
-[[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1 }, 'walk', 0, 0, 0, { r: rnd(6.5, 8.2), a: rnd(0, TAU), sp: rnd(.05, .085) * (i % 2 ? 1 : -1), pause: 0 }));
+[[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1, tote: i === 0 ? '#efe3cf' : null, balloon: i === 2 ? '#e8423a' : null }, 'walk', 0, 0, 0, { r: i === 1 ? 6.6 : rnd(6.5, 8.2), a: rnd(0, TAU), sp: (i === 1 ? .05 : rnd(.05, .085)) * (i % 2 ? 1 : -1), pause: 0, dog: i === 1 }));
 const walkers = [];
+
+/* ---------- un chien en laisse (avec un passant) et un chat qui dort sur un banc ---------- */
+function makeDog() {
+  const d = item('dog'), tan = C('#c98a4a'), dark = C('#8a5a32'), white = C('#f6efe2'), P = {};
+  d.userData.dyn = true;
+  const body = mk(G_('dbody', () => lump(sph(.16, 16), .006)), tan, 0, .3, 0, d); body.scale.set(.8, .72, 1.35);
+  mk(G_('dchest', () => sph(.1, 12)), white, 0, .3, .14, d).scale.set(.9, .9, .8);
+  const head = new THREE.Group(); head.position.set(0, .42, .25); d.add(head); P.head = head;
+  mk(G_('dhead', () => lump(sph(.12, 16), .004)), tan, 0, 0, 0, head);
+  mk(G_('dsnout', () => sph(.065, 12)), white, 0, -.035, .1, head).scale.set(1, .8, 1.15);
+  mk(G_('dnose', () => sph(.026, 8)), C('#1a1418', { roughness: .2, bumpScale: 0 }), 0, -.015, .17, head);
+  [-1, 1].forEach(sg => { mk(G_('deye', () => sph(.018, 8)), C('#1a1418', { roughness: .15, bumpScale: 0 }), sg * .05, .03, .1, head); const e = mk(G_('dear', () => lump(rbox(.06, .13, .03, .015, 2), .004)), dark, sg * .1, -.0, -.01, head); e.rotation.set(0, 0, sg * .35); });
+  mk(G_('dcol', () => new THREE.TorusGeometry(.085, .02, 6, 16)), C('#d8323c'), 0, .38, .17, d).rotation.x = Math.PI / 2 - .5;
+  P.legs = [[-1, 1], [1, 1], [-1, -1], [1, -1]].map(([sx, sz]) => { const l = new THREE.Group(); l.position.set(sx * .075, .2, sz * .15); d.add(l); mk(G_('dleg', () => cyl(.035, .03, .2, 8)), tan, 0, -.1, 0, l); mk(G_('dpaw', () => sph(.04, 8)), white, 0, -.2, .015, l).scale.set(1, .6, 1.2); return l; });
+  const tail = new THREE.Group(); tail.position.set(0, .36, -.2); d.add(tail); P.tail = tail;
+  mk(G_('dtail', () => cyl(.022, .012, .17, 8)), tan, 0, .08, 0, tail); tail.rotation.x = -.7;
+  blob(0, 0, .3, d, .012);
+  return { d, P, t: 0, moving: false };
+}
+const dog = makeDog();
+{ const o = people.find(p => p.dog); dog.d.position.set(Math.sin(o.a) * (o.r - .25), 0, Math.cos(o.a) * (o.r - .25)); }
+const leash = mk(new THREE.CylinderGeometry(.008, .008, 1, 4, 1).translate(0, .5, 0), C('#d8323c', { bumpScale: 0 }), 0, 0, 0); leash.userData.keep = true; leash.userData.noCast = true;
+{
+  const a = G - 1.2, cat = item('cat'); cat.position.set(Math.sin(a) * 4.1, .58, Math.cos(a) * 4.1); cat.rotation.y = a + Math.PI + .25;
+  const fur = C('#df7a2c'), stripe = C('#a8501f'), cream = C('#fbe6c8');
+  /* roulé en boule, tête posée sur les pattes vers l'avant du banc, yeux fermés ; il respire */
+  const breath = new THREE.Group(); cat.add(breath);
+  mk(G_('cbody', () => lump(sph(.17, 16), .006)), fur, 0, .085, .02, breath).scale.set(1.3, .6, 1);
+  [-.12, -.02, .08].forEach(x => { const st = mk(G_('cstr2', () => new THREE.TorusGeometry(.158, .012, 4, 14, Math.PI)), stripe, x, .085, .02, breath); st.rotation.y = Math.PI / 2; st.scale.set(1, .64, 1.05); });
+  const tl = mk(G_('ctail', () => new THREE.TorusGeometry(.2, .036, 6, 18, Math.PI * 1.15)), fur, .02, .035, .02, cat); tl.rotation.set(Math.PI / 2, 0, -.2);
+  [-1, 1].forEach(sg => mk(G_('cpaw', () => sph(.038, 8)), cream, -.1 + sg * .05, .025, -.15, cat).scale.set(1, .6, 1.3));
+  const hd = new THREE.Group(); hd.position.set(-.1, .1, -.13); cat.add(hd);
+  mk(G_('chead2', () => lump(sph(.088, 14), .004)), fur, 0, 0, 0, hd).scale.set(1.05, .88, .95);
+  mk(G_('cmuz2', () => sph(.038, 8)), cream, 0, -.028, -.07, hd).scale.set(1.1, .75, .8);
+  mk(G_('cnose', () => sph(.012, 6)), C('#d86a7a', { bumpScale: 0 }), 0, -.012, -.1, hd);
+  [-1, 1].forEach(sg => {
+    const e = mk(G_('cear2', () => new THREE.ConeGeometry(.034, .065, 4)), fur, sg * .048, .072, .005, hd); e.rotation.z = -sg * .28;
+    const ey = mk(G_('ceye2', () => new THREE.TorusGeometry(.016, .005, 4, 8, Math.PI)), C('#3a2418', { bumpScale: 0 }), sg * .035, .012, -.078, hd); ey.rotation.z = Math.PI;
+  });
+  hd.rotation.set(.15, -.2, .25);
+  cat.userData.breath = breath; cat.userData.head = hd;
+  var catObj = cat;
+}
 
 /* ---------- nuages et petites îles ---------- */
 const clouds = [];
@@ -702,6 +760,7 @@ function collide(p) {
   const ang = Math.atan2(dx, dz), onPath = Math.abs(Math.atan2(Math.sin(ang - G), Math.cos(ang - G))) < .09 || (d > 9 && Math.abs(Math.sin(ang - G) * d) < 1.1);
   const lim = onPath ? 14.2 : 9.3;
   if (d > lim) { p.x = dx / d * lim; p.z = dz / d * lim; }
+  { const ex = p.x - dog.d.position.x, ez = p.z - dog.d.position.z, dd = Math.hypot(ex, ez); if (dd < .6 && dd > 1e-4) { p.x = dog.d.position.x + ex / dd * .6; p.z = dog.d.position.z + ez / dd * .6; } }
   people.forEach(o => { if (o.mode !== 'walk') return; const ex = p.x - o.grp.position.x, ez = p.z - o.grp.position.z, dd = Math.hypot(ex, ez), rr = .75; if (dd < rr && dd > 1e-4) { p.x = o.grp.position.x + ex / dd * rr; p.z = o.grp.position.z + ez / dd * rr; } });
   for (let it = 0; it < 4; it++) colliders.forEach(c => { const ex = p.x - c.x, ez = p.z - c.z, dd = Math.hypot(ex, ez), rr = c.r + .25; if (dd < rr && dd > 1e-4) { p.x = c.x + ex / dd * rr; p.z = c.z + ez / dd * rr; } });
 }
@@ -811,6 +870,21 @@ addEventListener('resize', () => { if (fp) { fp.setSize(innerWidth, innerHeight)
 let talking = null;
 const camV = new THREE.Vector3();
 function faceTo(o, x, z, k) { const want = Math.atan2(x - o.grp.position.x, z - o.grp.position.z); let d = want - o.grp.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); o.grp.rotation.y += d * k; }
+const _hv = new THREE.Vector3(), _hv2 = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
+/* le chien marche à côté de son maître (côté intérieur, un peu en retrait) ; laisse tendue de la main au collier */
+function updateDog(o, dt, t) {
+  const D = dog.d, Pd = dog.P, dir = o.sp > 0 ? 1 : -1;
+  const ta = o.a - dir * .1, tr = o.r - .25, tx = Math.sin(ta) * tr, tz = Math.cos(ta) * tr;
+  const dx = tx - D.position.x, dz = tz - D.position.z, L = Math.hypot(dx, dz), moving = o.pause <= 0 || L > .15;
+  if (L > .01) { const k = Math.min(1, dt * 4); D.position.x += dx * k; D.position.z += dz * k; }
+  dog.t += dt;
+  if (moving) { D.rotation.y = o.a + (dir > 0 ? Math.PI / 2 : -Math.PI / 2); const s = Math.sin(dog.t * 11); Pd.legs.forEach((l, i) => { l.rotation.x = (i === 0 || i === 3 ? s : -s) * .6; }); Pd.head.rotation.x = Math.sin(dog.t * 11) * .04; }
+  else { Pd.legs.forEach(l => { l.rotation.x *= .85; }); Pd.head.rotation.x = .25 + Math.sin(dog.t * 3) * .1; }
+  Pd.tail.rotation.z = Math.sin(dog.t * (moving ? 14 : 9)) * .6;
+  /* laisse */
+  o.c.P.hands[0].getWorldPosition(_hv); D.localToWorld(_hv2.set(0, .4, .2));
+  const v = _hv2.clone().sub(_hv); leash.position.copy(_hv); leash.scale.set(1, v.length(), 1); leash.quaternion.setFromUnitVectors(_up, v.normalize());
+}
 /* attente debout : le poids passe d'une jambe à l'autre (hanche qui glisse, buste qui compense, genou relâché) */
 function weightShift(o, P, dt) {
   if (o.ws == null) { o.ws = rnd(0, 10); o.wsp = rnd(.32, .5); }
@@ -872,7 +946,14 @@ function updatePeople(dt, t) {
     P.open.scale.y += (mouthOpen - P.open.scale.y) * .4; P.smile.visible = P.open.scale.y < .3;
     if (o.bub) { o.bub.visible = !isTalk && dist < 9; o.bub.position.y = 1.78 + Math.sin(o.t * 2.5) * .04; }
     if (o.happy > 0) happyPose(o, P, dt);
+    /* sourcils : se lèvent quand on parle ou qu'on est content */
+    const brow = (o.happy > 0 ? 1 : 0) + (isTalk && speaking ? .5 + .5 * Math.sin(o.t * 5) : isTalk ? .3 : 0);
+    P.brows.forEach(b => { b.position.y += (.125 + Math.min(1, brow) * .03 - b.position.y) * .2; });
+    /* ballon : suit la main, se balance */
+    if (P.balloon) { P.hands[1].getWorldPosition(_hv); o.c.g.worldToLocal(_hv); P.balloon.position.copy(_hv); P.balloon.rotation.set(Math.sin(o.t * 1.3) * .12 - (o.mode === 'walk' && o.pause <= 0 ? .15 : 0), 0, Math.sin(o.t * 1.7) * .1); }
+    if (o.dog) updateDog(o, dt, t);
   });
+  catObj.userData.breath.scale.y = 1 + Math.sin(t * 1.6) * .05; catObj.userData.head.rotation.x = Math.sin(t * .3) > .97 ? .15 : 0;
   if (talking) { const want = Math.atan2(-(talking.grp.position.x - pos.x), -(talking.grp.position.z - pos.z)); let d = want - tYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); tYaw += d * .08; tPitch += (-.3 - tPitch) * .08; }
 }
 function talkTo(id) {

@@ -303,6 +303,8 @@ Object.assign(PV.WORDS, {
  florist:{en:'flower shop',pl:'kwiaciarnia',fr:'fleuriste',ex:{en:'The flower shop sells roses.',pl:'W kwiaciarni są róże.',fr:'Le fleuriste vend des roses.'}},
  house:{en:'house',pl:'dom',fr:'maison',ex:{en:'My friend lives in the blue house.',pl:'Mój przyjaciel mieszka w niebieskim domu.',fr:'Mon ami habite dans la maison bleue.'}},
  tree:{en:'tree',pl:'drzewo',fr:'arbre',ex:{en:'The tree is orange in autumn.',pl:'Jesienią drzewo jest pomarańczowe.',fr:"L'arbre est orange en automne."}},
+ cat:{en:'cat',pl:'kot',fr:'chat',ex:{en:'The cat is sleeping in the sun.',pl:'Kot śpi na słońcu.',fr:'Le chat dort au soleil.'}},
+ dog:{en:'dog',pl:'pies',fr:'chien',ex:{en:'The dog wants to play.',pl:'Pies chce się bawić.',fr:'Le chien veut jouer.'}},
  bench:{en:'bench',pl:'ławka',fr:'banc',ex:{en:'An old man sits on the bench.',pl:'Starszy pan siedzi na ławce.',fr:'Un vieux monsieur est assis sur le banc.'}},
  streetlamp:{en:'street lamp',pl:'latarnia',fr:'réverbère',ex:{en:'The street lamps turn on at night.',pl:'Latarnie zapalają się w nocy.',fr:"Les réverbères s'allument la nuit."}},
  bicycle:{en:'bicycle',pl:'rower',fr:'vélo',ex:{en:'Her bicycle is red.',pl:'Jej rower jest czerwony.',fr:'Son vélo est rouge.'}},
@@ -312,7 +314,7 @@ Object.assign(PV.WORDS, {
  postbox:{en:'postbox',pl:'skrzynka pocztowa',fr:'boîte aux lettres',ex:{en:'Put the letter in the postbox.',pl:'Wrzuć list do skrzynki pocztowej.',fr:'Mets la lettre dans la boîte aux lettres.'}},
  cloud:{en:'cloud',pl:'chmura',fr:'nuage',ex:{en:'There is a little cloud in the sky.',pl:'Na niebie jest mała chmura.',fr:'Il y a un petit nuage dans le ciel.'}}
 });
-PV.TOWN_IDS = ['square','fountain','townhall','clock','bakeryShop','cafe','pharmacy','post','bookshop','florist','house','tree','bench','streetlamp','bicycle','pigeon','stall','apple','postbox','cloud'];
+PV.TOWN_IDS = ['square','fountain','townhall','clock','bakeryShop','cafe','pharmacy','post','bookshop','florist','house','tree','bench','streetlamp','bicycle','pigeon','stall','apple','postbox','cloud','cat','dog'];
 Object.assign(PV.NOTES.en, {
  square:{fr:'« Square » tout seul veut aussi dire « carré ».',pl:'Samo „square” znaczy też „kwadrat”.'},
  post:{fr:'En anglais américain : post office aussi, mais la boîte aux lettres se dit mailbox.',pl:'W USA skrzynka pocztowa to mailbox.'}
