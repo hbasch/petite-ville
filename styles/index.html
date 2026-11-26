@@ -58,12 +58,12 @@ const INFO = {
 const canvas = document.getElementById('c');
 const R = new THREE.WebGLRenderer({ canvas, antialias: true });
 R.setPixelRatio(Math.min(devicePixelRatio, 2)); R.setSize(innerWidth, innerHeight);
-R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping;
+R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = .8;
 R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 const cam = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, .1, 200);
-cam.position.set(7.5, 5.2, 9.5);
-const ctl = new THREE.OrbitControls(cam, canvas); ctl.target.set(0, 1.4, 0); ctl.enableDamping = true; ctl.enablePan = false; ctl.minDistance = 6; ctl.maxDistance = 20; ctl.maxPolarAngle = 1.5; ctl.autoRotate = true; ctl.autoRotateSpeed = .7;
+cam.position.set(9, 7.2, 12.5);
+const ctl = new THREE.OrbitControls(cam, canvas); ctl.target.set(0, .2, .8); ctl.enableDamping = true; ctl.enablePan = false; ctl.minDistance = 6; ctl.maxDistance = 20; ctl.maxPolarAngle = 1.5; ctl.autoRotate = true; ctl.autoRotateSpeed = .7;
 canvas.addEventListener('pointerdown', () => { ctl.autoRotate = false; document.getElementById('hint').textContent = 'Pince ou molette pour zoomer'; }, { once: true });
 const rnd = (a, b) => a + Math.random() * (b - a), TAU = Math.PI * 2;
 function tex(w, h, draw, rep) { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); draw(g, w, h); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep[0], rep[1]); } return t; }
@@ -90,13 +90,13 @@ const toonGrad = (() => { const d = new Uint8Array([90, 90, 90, 255, 175, 175, 1
 const STY = {
   clay: { bg: ['#f6e1c8', '#e9c3a6'], round: .22, seg: 7, wob: .025, outline: false,
     mat: (c) => new THREE.MeshStandardMaterial({ color: c, roughness: .62, bumpMap: clayBump, bumpScale: .018 }),
-    pal: { wallA: '#ff8f70', wallB: '#ffd36b', roofA: '#5fb0a8', roofB: '#e2595a', trim: '#fff4e2', win: '#3d4a7a', door: '#7a4a9a', ground: '#f0d7b5', grass: '#8ccf6e', leaf: '#5fbf6a', trunk: '#a8693e', lamp: '#4a5a8a', bench: '#d97a3e', skin: '#ffc9a8', shirt: '#4a8fe0', cat: '#ff9f43' } },
+    pal: { wallA: '#ff6f4a', wallB: '#ffc12e', roofA: '#2f9f93', roofB: '#e2373f', trim: '#fff1dc', win: '#2f3a72', door: '#7a3fa0', ground: '#f0c890', grass: '#62bd45', leaf: '#3aae4f', trunk: '#a8693e', lamp: '#4a5a8a', bench: '#d97a3e', skin: '#ffc9a8', shirt: '#4a8fe0', cat: '#ff9f43' } },
   wood: { bg: ['#e6ecef', '#c9d4da'], round: .07, seg: 4, wob: 0, outline: false,
     mat: (c, raw) => new THREE.MeshStandardMaterial({ color: c, roughness: raw ? .75 : .5, map: woodGrain }),
-    pal: { wallA: '#e86f5a', wallB: '#f2c14e', roofA: '#c9a27a', roofB: '#c9a27a', trim: '#fbf6ec', win: '#2f4a6a', door: '#3f7a6a', ground: '#d9b88f', grass: '#b5c96a', leaf: '#6aa56a', trunk: '#c9a27a', lamp: '#2f4a6a', bench: '#c9a27a', skin: '#f2c9a0', shirt: '#3f7a6a', cat: '#2a2233' } },
+    pal: { wallA: '#e2553e', wallB: '#efb52e', roofA: '#c9a27a', roofB: '#c9a27a', trim: '#fbf6ec', win: '#2f4a6a', door: '#3f7a6a', ground: '#d9b88f', grass: '#b5c96a', leaf: '#6aa56a', trunk: '#c9a27a', lamp: '#2f4a6a', bench: '#c9a27a', skin: '#f2c9a0', shirt: '#3f7a6a', cat: '#2a2233' } },
   paper: { bg: ['#efe9df', '#dcd2c4'], round: 0, seg: 1, wob: 0, outline: 'edges',
     mat: (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 1, map: paperT }),
-    pal: { wallA: '#f29b84', wallB: '#f6d58e', roofA: '#7aa6c2', roofB: '#c76b6b', trim: '#fffaf2', win: '#46557a', door: '#8a6aa8', ground: '#e8dccb', grass: '#a9cf8e', leaf: '#7cbf86', trunk: '#b08a68', lamp: '#46557a', bench: '#d99a6a', skin: '#f6d0b5', shirt: '#6a9ad0', cat: '#f2a65a' } },
+    pal: { wallA: '#e9775a', wallB: '#efb84e', roofA: '#4a83ad', roofB: '#bf4a4a', trim: '#fffaf2', win: '#34426a', door: '#7a5aa0', ground: '#ddc6a4', grass: '#7fba5e', leaf: '#4fa565', trunk: '#b08a68', lamp: '#46557a', bench: '#d99a6a', skin: '#f6d0b5', shirt: '#6a9ad0', cat: '#f2a65a' } },
   ink: { bg: ['#fbe9c8', '#f3c9a0'], round: .05, seg: 3, wob: .01, outline: 'hull',
     mat: (c) => new THREE.MeshToonMaterial({ color: c, gradientMap: toonGrad, map: brushT }),
     pal: { wallA: '#ef7b5f', wallB: '#f7c75a', roofA: '#3f8f8a', roofB: '#c4473f', trim: '#fff3e0', win: '#2e3a6a', door: '#6a3f8a', ground: '#f1d3a6', grass: '#9fd36a', leaf: '#4fae5f', trunk: '#8a5a32', lamp: '#2e3a6a', bench: '#d9733a', skin: '#ffcfa6', shirt: '#3f7fd8', cat: '#f28f2e' } }
@@ -184,7 +184,7 @@ function setStyle(s) {
   if (root) { scene.remove(root); root.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   root = build(s); scene.add(root);
   scene.background = bgTex(STY[s].bg[0], STY[s].bg[1]);
-  key.intensity = s === 'ink' ? 1.5 : s === 'paper' ? 1.35 : 1.25; hemi.intensity = s === 'ink' ? .55 : .7;
+  key.intensity = s === 'ink' ? 1.6 : s === 'paper' ? 1.3 : 1.35; R.toneMappingExposure = s === 'paper' ? .78 : .82; hemi.intensity = s === 'ink' ? .55 : .7;
   const i = INFO[s]; document.getElementById('tName').textContent = i[0]; document.getElementById('tDesc').textContent = i[1]; document.getElementById('tPro').textContent = i[2]; document.getElementById('tCon').textContent = i[3];
   document.querySelectorAll('.tabs button').forEach(b => { b.classList.toggle('on', b.dataset.s === s); b.setAttribute('aria-selected', b.dataset.s === s); });
 }
