@@ -37,6 +37,8 @@ const CITY = {
   pl: { signs: (SCN.pl || {}).signs, sign: { bg: '#f6ecd8', fg: '#5a1e22', font: 'Georgia,"Times New Roman",serif', border: '#8a3a2a' }, bunting: ['#fff8ee', '#d8323c'], postbox: '#d8323c', tower: '#a8553f' }
 }[COUNTRY];
 const TRIM = '#fff4e2', GLASS = '#2f3550', EARTH = '#9a6a46';
+/* Édimbourg est en pierre de taille : joints tracés dans la pâte des murs ; ailleurs, enduit lisse */
+const STONE = COUNTRY === 'gb' ? 1 : 0;
 
 /* ---------- outils ---------- */
 function tex(w, h, draw, rep) { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); draw(g, w, h); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep[0], rep[1]); } return t; }
@@ -46,8 +48,8 @@ function C(color, o) {
   const opts = Object.assign({}, o || {}), uniq = opts.unique; delete opts.unique;
   const key = color + JSON.stringify(opts);
   if (!uniq && matCache[key]) return matCache[key];
-  const amt = opts.bumpScale === 0 ? 0 : (opts.bumpScale ? opts.bumpScale * 1.9 : .04), sss = opts.sss; delete opts.bumpScale; delete opts.sss;
-  const m = PVClay.apply(new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .5 }, opts)), amt, sss);
+  const amt = opts.bumpScale === 0 ? 0 : (opts.bumpScale ? opts.bumpScale * 1.9 : .04), sss = opts.sss, stone = opts.stone; delete opts.bumpScale; delete opts.sss; delete opts.stone;
+  const m = PVClay.apply(new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .5 }, opts)), amt, sss, stone);
   if (uniq) m.userData.unique = true; else matCache[key] = m; return m;
 }
 function rbox(w, h, d, r, seg) {
@@ -285,7 +287,7 @@ const CURT = ['#fff4e2', '#f2c6c2', '#cfe0d8', '#f6e3a8', '#d8cfe8', '#e8b9a0'];
 function windowAt(g, x, y, z, sp, lit) {
   if (Math.random() < .6) { const cc = C(CURT[(Math.random() * CURT.length) | 0]); [-1, 1].forEach(sg => mk(G_('curt', () => lump(rbox(.15, .7, .03, .015, 2), .004)), cc, x + sg * .2, y + .02, z + .15, g)); mk(G_('valance', () => rbox(.58, .09, .035, .02, 1)), cc, x, y + .34, z + .15, g); }
   /* embrasure : un liseré plus sombre autour du cadre, comme la pierre creusée qui l'entoure */
-  mk(G_('reveal', () => rbox(.96, 1.18, .05, .05, 2)), C(shade(sp.color, -.1), { bumpScale: .026 }), x, y - .01, z + .004, g);
+  mk(G_('reveal', () => rbox(.96, 1.18, .05, .05, 2)), C(shade(sp.color, -.1), { bumpScale: .026, stone: STONE }), x, y - .01, z + .004, g);
   mk(frameG, C(TRIM), x, y, z, g);
   mk(glassG, lit ? litGlass : darkGlass, x, y, z + .085, g);
   if (sp.sash) { mk(G_('sashH', () => rbox(.58, .045, .04, .015, 1)), C(TRIM), x, y + .02, z + .155, g); [-1, 1].forEach(sg => mk(G_('sashV', () => rbox(.025, .76, .03, .01, 1)), C(TRIM), x + sg * .1, y, z + .155, g)); }
@@ -296,7 +298,7 @@ function windowAt(g, x, y, z, sp, lit) {
   if (sp.flowers && Math.random() < .55) { mk(boxG, C('#8a5a3a'), x, y - .66, z + .12, g); for (let j = 0; j < 5; j++) mk(G_('fl', () => sph(.07, 8)), C(['#ff6f91', '#ffd35a', '#fff4e2', PAL.walls[4], PAL.accent][j]), x - .3 + j * .15, y - .5, z + .14, g); }
 }
 function building(sp, ang, rad) {
-  const g = item(sp.id); const d = 3.4, wall = C(sp.color, { bumpScale: .026 });
+  const g = item(sp.id); const d = 3.4, wall = C(sp.color, { bumpScale: .026, stone: STONE });
   g.position.set(Math.sin(ang) * rad, 0, Math.cos(ang) * rad); g.rotation.y = ang + Math.PI;
   mk(lump(rbox(sp.w, sp.h, d, .38, mobile ? 5 : 7), .04, .75), wall, 0, sp.h / 2, 0, g);
   mk(rbox(sp.w + .25, .26, d + .25, .12, 3), C(TRIM), 0, sp.h + .05, 0, g);
@@ -517,7 +519,7 @@ let signMat = null;
 
 /* beffroi avec horloge qui donne l'heure */
 const hall = bld.hall.g, hs = bld.hall.sp, tw = 2.6, th = 4.6, ty = hs.h + .2;
-mk(lump(rbox(tw, th, tw, .3), .02), C(CITY.tower || hs.color), 0, ty + th / 2, -.4, hall);
+mk(lump(rbox(tw, th, tw, .3), .02), C(CITY.tower || hs.color, { stone: STONE }), 0, ty + th / 2, -.4, hall);
 mk(rbox(tw + .35, .3, tw + .35, .14, 3), C(TRIM), 0, ty + th, -.4, hall);
 [[0, tw / 2 + .02], [Math.PI / 2, tw / 2 + .02], [-Math.PI / 2, tw / 2 + .02]].forEach(([ry]) => { const f = new THREE.Group(); f.rotation.y = ry; f.position.set(0, ty + th * .22, -.4); hall.add(f); mk(rbox(.8, 1.1, .16, .3, 3), darkGlass, 0, 0, tw / 2, f); });
 const gold = C('#e8c35a', { metalness: .6, roughness: .3 }), corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]];

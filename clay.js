@@ -16,6 +16,7 @@ uniform float clayDay;
 uniform float clayGround;
 uniform vec3 claySSS;
 uniform float clayEnvK;
+uniform float clayStone;
 uniform vec3 clayEnvT, clayEnvH, clayEnvG;
 float cHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float cNoise(vec3 x) {
@@ -31,10 +32,20 @@ float clayPrint(vec3 p) {
   /* arcs partiels (pas des cercles complets), comme une pulpe de doigt qui a glissé */
   return on * sin(r * 95.0 + cHash(c) * 6.28) * smoothstep(0.42, 0.12, r) * smoothstep(-0.15, 0.25, f.x + f.y * 0.6);
 }
+/* pierres de taille tracées à l'ébauchoir : assises un peu ondulées, joints verticaux décalés d'un rang à l'autre */
+float clayJoint(vec3 p) {
+  float wob = cNoise(p * 1.7 + 3.0) * 0.07;
+  float y = (p.y + wob) / 0.36, row = floor(y), v = fract(y);
+  float u = fract((p.x + p.z + row * 0.31 + wob) / 0.62 + cHash(vec3(row, 1.0, 2.0)) * 0.4);
+  return max(1.0 - smoothstep(0.0, 0.075, min(v, 1.0 - v)), 1.0 - smoothstep(0.0, 0.04, min(u, 1.0 - u)));
+}
 float clayHeight(vec3 p, float fine) {
   float d = cNoise(p * 2.3);
   d = 1.0 - sqrt((d * 2.0 - 1.0) * (d * 2.0 - 1.0) + 0.02);
-  return d * d * 0.65 + cNoise(p * 1.1 + 5.0) * 0.55 + cNoise(p * 7.0 + 3.1) * 0.25 + cNoise(p * 31.0) * 0.07 * fine + clayPrint(p) * 0.018 * fine * fine * fine;
+  float h = d * d * 0.65 + cNoise(p * 1.1 + 5.0) * 0.55 + cNoise(p * 7.0 + 3.1) * 0.25;
+  /* grain fin et empreintes : seulement de près (on ne paie pas ce calcul pour le lointain) */
+  if (fine > 0.0) h += cNoise(p * 31.0) * 0.07 * fine + clayPrint(p) * 0.018 * fine * fine * fine;
+  return h;
 }
 `;
   function patch(sh) {
@@ -43,6 +54,7 @@ float clayHeight(vec3 p, float fine) {
     sh.uniforms.clayGround = U.ground;
     sh.uniforms.claySSS = { value: this.userData.claySSS || SSS0 };
     sh.uniforms.clayEnvK = { value: this.envMapIntensity };
+    sh.uniforms.clayStone = { value: this.userData.clayStone || 0 };
     sh.uniforms.clayEnvT = U.envT; sh.uniforms.clayEnvH = U.envH; sh.uniforms.clayEnvG = U.envG;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vClayP;\nvarying float vClayY;')
@@ -56,14 +68,17 @@ float clayHeight(vec3 p, float fine) {
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\n' + NOISE)
       .replace('#include <color_fragment>', `#include <color_fragment>
-  diffuseColor.rgb *= 0.95 + 0.1 * cNoise(vClayP * 1.7 + 7.0);`)
+  diffuseColor.rgb *= 0.95 + 0.1 * cNoise(vClayP * 1.7 + 7.0);
+  /* joints de pierre (murs d'Édimbourg), effacés au loin pour ne pas scintiller */
+  float clayJ = clayStone > 0.0 ? clayJoint(vClayP) * clayStone * (1.0 - smoothstep(9.0, 24.0, length(vViewPosition))) : 0.0;
+  diffuseColor.rgb *= 1.0 - 0.22 * clayJ;`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
   /* brillance grasse irrégulière : là où le doigt a lissé la pâte, elle brille un peu plus */
   roughnessFactor = clamp(roughnessFactor + (cNoise(vClayP * 1.9 + 11.0) - 0.5) * 0.34, 0.2, 1.0);`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
   {
     float fine = 1.0 - smoothstep(3.0, 11.0, length(vViewPosition));
-    float hh = clayHeight(vClayP, fine);
+    float hh = clayHeight(vClayP, fine) - clayJ * 0.5;
     vec3 sx = dFdx(-vViewPosition), sy = dFdy(-vViewPosition);
     vec3 r1 = cross(sy, normal), r2 = cross(normal, sx);
     float det = dot(sx, r1);
@@ -102,10 +117,12 @@ float clayHeight(vec3 p, float fine) {
   }
   /* lumière diffusée dans la pâte (rouge orangé), plus forte pour la peau */
   const SSS0 = new THREE.Vector3(.2, .11, .06);
-  /* amt : profondeur du relief (0 = lisse, pour les yeux, le verre, les ampoules) ; sss : [r, v, b] facultatif */
-  function apply(m, amt, sss) {
+  /* amt : profondeur du relief (0 = lisse, pour les yeux, le verre, les ampoules) ; sss : [r, v, b] facultatif ;
+     stone : force des joints de pierre de taille (0 = enduit lisse) */
+  function apply(m, amt, sss, stone) {
     if (!amt) return m;
     m.userData.clayAmt = amt;
+    if (stone) m.userData.clayStone = stone;
     if (sss) m.userData.claySSS = new THREE.Vector3().fromArray(sss);
     m.extensions = Object.assign(m.extensions || {}, { derivatives: true });
     m.onBeforeCompile = patch;
@@ -121,9 +138,9 @@ float clayHeight(vec3 p, float fine) {
   const bakedMats = {};
   function bakedMat(m) {
     const amt = m.userData.clayAmt || 0;
-    const sss = m.userData.claySSS ? m.userData.claySSS.toArray() : null;
-    const key = [m.roughness, m.metalness, m.emissive.getHexString(), m.emissiveIntensity, amt, m.side, m.flatShading, m.envMapIntensity, sss].join('|');
-    if (!bakedMats[key]) bakedMats[key] = apply(new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: m.roughness, metalness: m.metalness, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity, side: m.side, flatShading: m.flatShading, envMapIntensity: m.envMapIntensity }), amt, sss);
+    const sss = m.userData.claySSS ? m.userData.claySSS.toArray() : null, stone = m.userData.clayStone || 0;
+    const key = [m.roughness, m.metalness, m.emissive.getHexString(), m.emissiveIntensity, amt, m.side, m.flatShading, m.envMapIntensity, sss, stone].join('|');
+    if (!bakedMats[key]) bakedMats[key] = apply(new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: m.roughness, metalness: m.metalness, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity, side: m.side, flatShading: m.flatShading, envMapIntensity: m.envMapIntensity }), amt, sss, stone);
     return { key: 's' + key, mat: bakedMats[key], color: true };
   }
   function bakeable(c) {
