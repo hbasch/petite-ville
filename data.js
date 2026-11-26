@@ -24,7 +24,7 @@ PV.WORDS = {
  table:{en:'table',pl:'stół',fr:'table',ex:{en:"Let's sit at the table.",pl:'Usiądźmy przy stole.',fr:'Asseyons-nous à la table.'}},
  chair:{en:'chair',pl:'krzesło',fr:'chaise',ex:{en:'Is this chair free?',pl:'Czy to krzesło jest wolne?',fr:'Cette chaise est libre ?'}},
  cup:{en:'cup',pl:'filiżanka',fr:'tasse',ex:{en:'A cup of tea, please.',pl:'Poproszę filiżankę herbaty.',fr:"Une tasse de thé, s'il vous plaît."}},
- baker:{en:'baker',pl:'piekarz',fr:'boulanger',ex:{en:'Tom is the baker.',pl:'Tomek jest piekarzem.',fr:'Tom est le boulanger.'}}
+ baker:{en:'baker',pl:'piekarz',fr:'boulanger',ex:{en:'Tom is the baker.',pl:'Tom jest piekarzem.',fr:'Tom est le boulanger.'}}
 };
 /* petites notes par langue apprise, écrites dans la langue de l'utilisateur */
 PV.NOTES = {
@@ -43,23 +43,24 @@ PV.NOTES = {
  }
 };
 
-/* ---------- Décor selon la langue apprise ---------- */
+/* ---------- Décor : le même pour toutes les langues (pictogrammes, prix en euros) ---------- */
+PV.BOARD = { rows: [['croissant', '1,20 €'], ['baguette', '2,10 €'], ['loaf', '2,80 €'], ['doughnut', '1,50 €'], ['cupcake', '1,80 €']] };
 PV.SCENE = {
- en:{board:{title:'Prices',rows:[['Croissant','£1.20'],['Baguette','£2.10'],['Loaf of bread','£2.80'],['Doughnut','£1.50'],['Cupcake','£1.80']]},open:'OPEN',flour:'FLOUR',voice:'en-GB',baker:'Tom',shop:'Rolling Pin Bakery'},
- pl:{board:{title:'Cennik',rows:[['Rogalik','4,50 zł'],['Bagietka','6,00 zł'],['Chleb','7,00 zł'],['Pączek','3,50 zł'],['Babeczka','5,00 zł']]},open:'OTWARTE',flour:'MĄKA',voice:'pl-PL',baker:'Pan Tomek',shop:'Piekarnia pod Wałkiem'}
+ en: { board: PV.BOARD, open: '', flour: '', voice: 'en-GB', baker: 'Tom', shop: '' },
+ pl: { board: PV.BOARD, open: '', flour: '', voice: 'pl-PL', baker: 'Tom', shop: '' }
 };
 
 /* ---------- Dialogues : [réplique, {fr, pl}] ---------- */
 PV.DLG = {
  en:{
   nodes:{
-   start:['Good morning! Welcome to the Rolling Pin. What can I get you?',{fr:"Bonjour ! Bienvenue au Rolling Pin. Qu'est-ce que je vous sers ?",pl:'Dzień dobry! Witamy w Rolling Pin. Co podać?'},'order'],
+   start:['Good morning! Welcome to my bakery. What can I get you?',{fr:"Bonjour ! Bienvenue dans ma boulangerie. Qu'est-ce que je vous sers ?",pl:'Dzień dobry! Witam w mojej piekarni. Co podać?'},'order'],
    start2:['So, what would you like?',{fr:"Alors, qu'est-ce qui vous ferait plaisir ?",pl:'To co podać?'},'order'],
    more:['Of course. Two croissants and a baguette. Anything else?',{fr:'Bien sûr. Deux croissants et une baguette. Autre chose ?',pl:'Oczywiście. Dwa rogaliki i bagietka. Coś jeszcze?'},'more'],
    more2:['Anything else?',{fr:'Autre chose ?',pl:'Coś jeszcze?'},'more'],
-   price:["That's four pounds fifty, please.",{fr:"Ça fait quatre livres cinquante, s'il vous plaît.",pl:'Razem cztery funty pięćdziesiąt.'},'pay'],
-   price2:["It's four pounds fifty, please.",{fr:"C'est quatre livres cinquante, s'il vous plaît.",pl:'Cztery funty pięćdziesiąt, proszę.'},'pay'],
-   change:["Thank you! Here's your change: fifty pence. Have a lovely day!",{fr:'Merci ! Voici votre monnaie : cinquante pence. Bonne journée !',pl:'Dziękuję! Pięćdziesiąt pensów reszty. Miłego dnia!'},'bye'],
+   price:["That's four euros fifty, please.",{fr:"Ça fait quatre euros cinquante, s'il vous plaît.",pl:'Razem cztery euro pięćdziesiąt.'},'pay'],
+   price2:["It's four euros fifty, please.",{fr:"C'est quatre euros cinquante, s'il vous plaît.",pl:'Cztery euro pięćdziesiąt, proszę.'},'pay'],
+   change:["Thank you! Here's your change: fifty cents. Have a lovely day!",{fr:'Merci ! Voici votre monnaie : cinquante centimes. Bonne journée !',pl:'Dziękuję! Pięćdziesiąt centów reszty. Miłego dnia!'},'bye'],
    end:['Bye! See you tomorrow!',{fr:'Au revoir ! À demain !',pl:'Do widzenia! Do jutra!'}],
    huh:['Sorry? I didn\'t catch that.',{fr:"Pardon ? Je n'ai pas compris.",pl:'Przepraszam? Nie zrozumiałem.'}]
   },
@@ -71,13 +72,13 @@ PV.DLG = {
    ],
    more:[
     {t:"No, thank you. That's all.",tr:{fr:"Non merci, c'est tout.",pl:'Nie, dziękuję. To wszystko.'},to:'price'},
-    {t:'How much is a doughnut?',tr:{fr:'Combien coûte un beignet ?',pl:'Ile kosztuje pączek?'},to:'more2',reply:['A doughnut is one pound fifty.',{fr:"Un beignet, c'est une livre cinquante.",pl:'Pączek kosztuje funt pięćdziesiąt.'}]},
+    {t:'How much is a doughnut?',tr:{fr:'Combien coûte un beignet ?',pl:'Ile kosztuje pączek?'},to:'more2',reply:['A doughnut is one euro fifty.',{fr:"Un beignet, c'est un euro cinquante.",pl:'Pączek kosztuje euro pięćdziesiąt.'}]},
     {t:'Can I have that cake, please?',tr:{fr:"Je peux avoir ce gâteau, s'il vous plaît ?",pl:'Czy mogę prosić ten tort?'},to:'more2',reply:['Sorry, that cake is for a birthday order.',{fr:"Désolé, ce gâteau est pour une commande d'anniversaire.",pl:'Przykro mi, ten tort jest na zamówienie urodzinowe.'}]}
    ],
    pay:[
-    {t:"Here's four pounds.",tr:{fr:'Voici quatre livres.',pl:'Proszę, cztery funty.'},to:'price2',reply:["Hmm, that's only four pounds. It's four pounds fifty.",{fr:"Hmm, ça ne fait que quatre livres. C'est quatre livres cinquante.",pl:'Hmm, to tylko cztery funty. Razem cztery funty pięćdziesiąt.'}],tip:{fr:"Regarde l'ardoise : 2 × 1,20 + 2,10 = 4,50.",pl:'Spójrz na tablicę: 2 × 1,20 + 2,10 = 4,50.'}},
-    {t:"Here's five pounds.",tr:{fr:'Voici cinq livres.',pl:'Proszę, pięć funtów.'},to:'change',task:'pay'},
-    {t:'Sorry, how much?',tr:{fr:'Pardon, combien ?',pl:'Przepraszam, ile?'},to:'price2',reply:['Four pounds fifty.',{fr:'Quatre livres cinquante.',pl:'Cztery funty pięćdziesiąt.'}]}
+    {t:"Here's four euros.",tr:{fr:'Voici quatre euros.',pl:'Proszę, cztery euro.'},to:'price2',reply:["Hmm, that's only four euros. It's four euros fifty.",{fr:"Hmm, ça ne fait que quatre euros. C'est quatre euros cinquante.",pl:'Hmm, to tylko cztery euro. Razem cztery euro pięćdziesiąt.'}],tip:{fr:"Regarde l'ardoise : 2 × 1,20 + 2,10 = 4,50 €.",pl:'Spójrz na tablicę: 2 × 1,20 + 2,10 = 4,50 €.'}},
+    {t:"Here's five euros.",tr:{fr:'Voici cinq euros.',pl:'Proszę, pięć euro.'},to:'change',task:'pay'},
+    {t:'Sorry, how much?',tr:{fr:'Pardon, combien ?',pl:'Przepraszam, ile?'},to:'price2',reply:['Four euros fifty.',{fr:'Quatre euros cinquante.',pl:'Cztery euro pięćdziesiąt.'}]}
    ],
    bye:[
     {t:'Thanks, you too! Goodbye!',tr:{fr:'Merci, vous aussi ! Au revoir !',pl:'Dzięki, nawzajem! Do widzenia!'},to:'END'},
@@ -87,13 +88,13 @@ PV.DLG = {
  },
  pl:{
   nodes:{
-   start:['Dzień dobry! Witamy w piekarni. Co podać?',{fr:"Bonjour ! Bienvenue à la boulangerie. Qu'est-ce que je vous sers ?"},'order'],
+   start:['Dzień dobry! Witam w mojej piekarni. Co podać?',{fr:"Bonjour ! Bienvenue dans ma boulangerie. Qu'est-ce que je vous sers ?"},'order'],
    start2:['To co podać?',{fr:"Alors, qu'est-ce que je vous sers ?"},'order'],
    more:['Oczywiście. Dwa rogaliki i bagietka. Coś jeszcze?',{fr:'Bien sûr. Deux croissants et une baguette. Autre chose ?'},'more'],
    more2:['Coś jeszcze?',{fr:'Autre chose ?'},'more'],
-   price:['Razem piętnaście złotych.',{fr:'Ça fait quinze zlotys au total.'},'pay'],
-   price2:['Piętnaście złotych, proszę.',{fr:"Quinze zlotys, s'il vous plaît."},'pay'],
-   change:['Dziękuję! Pięć złotych reszty. Miłego dnia!',{fr:'Merci ! Cinq zlotys de monnaie. Bonne journée !'},'bye'],
+   price:['Razem cztery euro pięćdziesiąt.',{fr:'Ça fait quatre euros cinquante.'},'pay'],
+   price2:['Cztery euro pięćdziesiąt, proszę.',{fr:"Quatre euros cinquante, s'il vous plaît."},'pay'],
+   change:['Dziękuję! Pięćdziesiąt centów reszty. Miłego dnia!',{fr:'Merci ! Cinquante centimes de monnaie. Bonne journée !'},'bye'],
    end:['Do widzenia! Do jutra!',{fr:'Au revoir ! À demain !'}],
    huh:['Przepraszam? Nie zrozumiałem.',{fr:"Pardon ? Je n'ai pas compris."}]
   },
@@ -105,13 +106,13 @@ PV.DLG = {
    ],
    more:[
     {t:'Nie, dziękuję. To wszystko.',tr:{fr:"Non merci, c'est tout."},to:'price'},
-    {t:'Ile kosztuje pączek?',tr:{fr:'Combien coûte un beignet ?'},to:'more2',reply:['Pączek kosztuje trzy pięćdziesiąt.',{fr:'Un beignet coûte trois zlotys cinquante.'}]},
+    {t:'Ile kosztuje pączek?',tr:{fr:'Combien coûte un beignet ?'},to:'more2',reply:['Pączek kosztuje euro pięćdziesiąt.',{fr:'Un beignet coûte un euro cinquante.'}]},
     {t:'Czy mogę prosić ten tort?',tr:{fr:'Je peux avoir ce gâteau ?'},to:'more2',reply:['Przykro mi, ten tort jest na zamówienie.',{fr:'Désolé, ce gâteau est une commande.'}]}
    ],
    pay:[
-    {t:'Proszę, dziesięć złotych.',tr:{fr:'Voici dix zlotys.'},to:'price2',reply:['Hmm, to tylko dziesięć. Razem piętnaście złotych.',{fr:'Hmm, ça ne fait que dix. Quinze zlotys au total.'}],tip:{fr:"Regarde l'ardoise : 2 × 4,50 + 6,00 = 15 zł."}},
-    {t:'Proszę, dwadzieścia złotych.',tr:{fr:'Voici vingt zlotys.'},to:'change',task:'pay'},
-    {t:'Przepraszam, ile?',tr:{fr:'Pardon, combien ?'},to:'price2',reply:['Piętnaście złotych.',{fr:'Quinze zlotys.'}]}
+    {t:'Proszę, cztery euro.',tr:{fr:'Voici quatre euros.'},to:'price2',reply:['Hmm, to tylko cztery euro. Razem cztery euro pięćdziesiąt.',{fr:"Hmm, ça ne fait que quatre euros. C'est quatre euros cinquante."}],tip:{fr:"Regarde l'ardoise : 2 × 1,20 + 2,10 = 4,50 €."}},
+    {t:'Proszę, pięć euro.',tr:{fr:'Voici cinq euros.'},to:'change',task:'pay'},
+    {t:'Przepraszam, ile?',tr:{fr:'Pardon, combien ?'},to:'price2',reply:['Cztery euro pięćdziesiąt.',{fr:'Quatre euros cinquante.'}]}
    ],
    bye:[
     {t:'Dziękuję, nawzajem! Do widzenia!',tr:{fr:'Merci, vous aussi ! Au revoir !'},to:'END'},
@@ -150,10 +151,10 @@ PV.STORIES = {
   ] }
  ],
  pl: [
-  { id: 'morning', icon: 'sun', bg: '#f3b45a', title: 'Poranek Pana Tomka', tr: { fr: 'Le petit matin de Pan Tomek' }, min: 2, s: [
+  { id: 'morning', icon: 'sun', bg: '#f3b45a', title: 'Poranek Toma', tr: { fr: 'Le petit matin de Tom' }, min: 2, s: [
    ['Jest piąta rano.', { fr: 'Il est cinq heures du matin.' }],
    ['Miasto jest ciche i ciemne.', { fr: 'La ville est calme et sombre.' }],
-   ['Pan Tomek otwiera drzwi piekarni.', { fr: 'Pan Tomek ouvre la porte de la boulangerie.' }],
+   ['Tom otwiera drzwi piekarni.', { fr: 'Tom ouvre la porte de la boulangerie.' }],
    ['Włącza lampy i duży piec.', { fr: 'Il allume les lampes et le grand four.' }],
    ['Potem bierze mąkę, wodę i sól.', { fr: "Ensuite, il prend de la farine, de l'eau et du sel." }],
    ['Robi ciasto rękami.', { fr: 'Il fait la pâte avec ses mains.' }],
@@ -167,7 +168,7 @@ PV.STORIES = {
    ['Ania wbiega do piekarni.', { fr: 'Ania entre en courant dans la boulangerie.' }],
    ['Ma mokre włosy i jest jej zimno.', { fr: 'Ses cheveux sont mouillés et elle a froid.' }],
    ['„O nie! Gdzie jest mój parasol?” – pyta.', { fr: '« Oh non ! Où est mon parapluie ? » demande-t-elle.' }],
-   ['Pan Tomek zagląda pod stół.', { fr: 'Pan Tomek regarde sous la table.' }],
+   ['Tom zagląda pod stół.', { fr: 'Tom regarde sous la table.' }],
    ['Pod stołem nie ma parasola.', { fr: "Il n'y a pas de parapluie sous la table." }],
    ['Zagląda za drzwi. Nic.', { fr: 'Il regarde derrière la porte. Rien.' }],
    ['Potem się śmieje i pokazuje koszyk.', { fr: 'Puis il rit et montre le panier.' }],
@@ -192,7 +193,7 @@ PV.PLACES = [
 PV.UI = {
  fr: {
   onbTitle: 'Bienvenue à Petite Ville', onbText: "Une petite ville où l'on apprend une langue en parlant à ses habitants.",
-  learnQ: 'Je veux apprendre', learnSub: { en: 'Avec Tom, le boulanger de Londres', pl: 'Avec Pan Tomek, à Cracovie' },
+  learnQ: 'Je veux apprendre', learnSub: { en: 'La langue la plus demandée au monde', pl: 'Pour vivre ou voyager en Pologne' }, soonLangs: 'Bientôt : espagnol, français, allemand, italien…',
   enterTown: 'Entrer dans la ville', noAccNeeded: 'Pas besoin de compte pour essayer.',
   signupTitle: 'Sauvegarde ta progression', loginTitle: 'Content de te revoir',
   signupWhy: 'Retrouve tes mots et ta série sur tous tes appareils, et apparais au classement.',
@@ -228,18 +229,18 @@ PV.UI = {
   levelNames: ['Visiteur', 'Promeneur', 'Voisin', 'Habitué', 'Ami du quartier', 'Figure locale', 'Pilier de la ville', "Maire d'honneur"],
   level: 'Niv.', nextLevel: 'Encore {n} XP pour devenir {l}', maxLevel: 'Niveau maximum atteint !',
   wordsLearned: 'mots découverts', storiesRead: 'histoires lues', missionsDone: 'missions réussies',
-  introTitle: 'Bienvenue à la', introText: 'Ici, tout se passe en {l}. Touche les objets pour apprendre leur nom, puis fais tes courses en parlant à {b}.',
+  introTitle: 'Bienvenue chez Tom, le boulanger', introText: 'Ici, tout se passe en {l}. Touche les objets pour apprendre leur nom, puis fais tes courses en parlant à {b}.',
   step1: 'Touche un objet pour entendre son nom', step2: 'Fais glisser pour regarder autour de toi', step3: 'Touche {b} et réponds-lui à voix haute', enter: "C'est parti",
   winTitle: "Tu l'as fait, en {l}.", winText: '{b} a souri. Demain, il se souviendra de toi.',
   wWords: 'mots découverts', wSpoken: 'phrases dites à voix haute', wXp: 'XP gagnés',
-  nextScene: 'La suite : le café de Rosie', plus: 'Avec Petite Ville+ · 10 € par an · toutes les scènes (maquette, aucun paiement)',
+  palette: 'Couleurs', nextScene: 'La suite : le café de Rosie', plus: 'Avec Petite Ville+ · 10 € par an · toutes les scènes (maquette, aucun paiement)',
   againBtn: 'Rejouer', continueBtn: 'Continuer', close: 'Fermer',
   errGeneric: 'Une erreur est survenue : ', errFields: 'Remplis tous les champs.', accSaved: 'Compte créé, progression sauvegardée !',
   xpWord: '+5 XP · nouveau mot', xpMission: '+50 XP · mission réussie', xpPron: '+10 XP · bonne prononciation', xpSpoken: '+5 XP · phrase dite', levelUp: 'Nouveau niveau : {l} !'
  },
  pl: {
   onbTitle: 'Witaj w Petite Ville', onbText: 'Małe miasteczko, w którym uczysz się języka, rozmawiając z mieszkańcami.',
-  learnQ: 'Chcę się uczyć', learnSub: { en: 'Z Tomem, piekarzem z Londynu', pl: 'Z Panem Tomkiem w Krakowie' },
+  learnQ: 'Chcę się uczyć', learnSub: { en: 'Najpopularniejszy język świata', pl: 'Do życia lub podróży w Polsce' }, soonLangs: 'Wkrótce: hiszpański, francuski, niemiecki, włoski…',
   enterTown: 'Wejdź do miasteczka', noAccNeeded: 'Nie potrzebujesz konta, żeby spróbować.',
   signupTitle: 'Zapisz swoje postępy', loginTitle: 'Miło cię znowu widzieć',
   signupWhy: 'Miej swoje słowa i serię na wszystkich urządzeniach i pojaw się w rankingu.',
@@ -275,11 +276,11 @@ PV.UI = {
   levelNames: ['Gość', 'Spacerowicz', 'Sąsiad', 'Stały bywalec', 'Przyjaciel dzielnicy', 'Lokalna postać', 'Filar miasteczka', 'Honorowy burmistrz'],
   level: 'Poz.', nextLevel: 'Jeszcze {n} XP do poziomu: {l}', maxLevel: 'Najwyższy poziom!',
   wordsLearned: 'odkryte słowa', storiesRead: 'przeczytane historie', missionsDone: 'zaliczone misje',
-  introTitle: 'Witaj w', introText: 'Tutaj wszystko dzieje się po {l}. Dotykaj przedmiotów, żeby poznać ich nazwy, a potem zrób zakupy, rozmawiając z: {b}.',
+  introTitle: 'Witaj w piekarni Toma', introText: 'Tutaj wszystko dzieje się po {l}. Dotykaj przedmiotów, żeby poznać ich nazwy, a potem zrób zakupy, rozmawiając z: {b}.',
   step1: 'Dotknij przedmiotu, żeby usłyszeć nazwę', step2: 'Przeciągnij, żeby się rozejrzeć', step3: 'Dotknij: {b} i odpowiadaj na głos', enter: 'Zaczynamy',
   winTitle: 'Udało się, po {l}!', winText: '{b} się uśmiechnął. Jutro będzie cię pamiętał.',
   wWords: 'odkryte słowa', wSpoken: 'zdania na głos', wXp: 'zdobyte XP',
-  nextScene: 'Dalej: kawiarnia Rosie', plus: 'W Petite Ville+ · 45 zł rocznie · wszystkie sceny (makieta, bez płatności)',
+  palette: 'Kolory', nextScene: 'Dalej: kawiarnia Rosie', plus: 'W Petite Ville+ · 45 zł rocznie · wszystkie sceny (makieta, bez płatności)',
   againBtn: 'Jeszcze raz', continueBtn: 'Dalej', close: 'Zamknij',
   errGeneric: 'Wystąpił błąd: ', errFields: 'Wypełnij wszystkie pola.', accSaved: 'Konto założone, postępy zapisane!',
   xpWord: '+5 XP · nowe słowo', xpMission: '+50 XP · misja zaliczona', xpPron: '+10 XP · dobra wymowa', xpSpoken: '+5 XP · zdanie na głos', levelUp: 'Nowy poziom: {l}!'

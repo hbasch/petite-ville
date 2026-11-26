@@ -59,7 +59,7 @@ function listen(onInterim, onFinal, onError, onEnd) {
   rec.onend = () => { if (!done) onError('no-speech'); if (onEnd) onEnd(); rec = null; };
   try { rec.start(); lastAct = Date.now(); } catch (e) { onError('busy'); if (onEnd) onEnd(); }
 }
-const NUM = { en: { 1: 'one', 2: 'two', 4: 'four', 5: 'five', 10: 'ten', 20: 'twenty', 50: 'fifty' }, pl: { 2: 'dwa', 5: 'piec', 10: 'dziesiec', 15: 'pietnascie', 20: 'dwadziescia', 50: 'piecdziesiat' } };
+const NUM = { en: { 1: 'one', 2: 'two', 4: 'four', 5: 'five', 10: 'ten', 20: 'twenty', 50: 'fifty' }, pl: { 2: 'dwa', 4: 'cztery', 5: 'piec', 10: 'dziesiec', 15: 'pietnascie', 20: 'dwadziescia', 50: 'piecdziesiat' } };
 const EXP = { heres: 'here is', thats: 'that is', its: 'it is', whats: 'what is', id: 'i would', ill: 'i will', im: 'i am' };
 function norm(s) {
   return s.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -237,7 +237,7 @@ function start() {
   if (!SR) $('dMic').disabled = true;
   updHud(); updMission(); renderDeck(); renderMap();
   if (!started && window.THREE && window.buildTown) {
-    const H = { signs: S.signs || {}, label: id => L.found.includes(id) ? W[id][T] : '?',
+    const H = { palette: palette(), label: id => L.found.includes(id) ? W[id][T] : '?',
       pick: id => { if (tab === 'town' && place === 'town') showWord(id); },
       active: () => place === 'town' && !document.hidden };
     (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); });
@@ -247,7 +247,7 @@ function start() {
 function showIntro(kind) {
   const t = kind === 'town';
   $('introTitleTxt').textContent = t ? U.townIntroTitle : U.introTitle;
-  $('shopName').textContent = t ? 'Petite Ville' : S.shop;
+  $('shopName').textContent = t ? 'Petite Ville' : '';
   $('introText').textContent = fill(t ? U.townIntroText : U.introText, { l: PV.IN_LANG[ui][T], b: S.baker });
   $('step1').textContent = t ? U.tstep1 : U.step1; $('step2').textContent = t ? U.tstep2 : U.step2;
   $('step3').textContent = fill(t ? U.tstep3 : U.step3, { b: S.baker });
@@ -278,6 +278,8 @@ function enterBakery() {
 function exitBakery() { place = 'town'; show(null); if (town) town.placeAtBakery(); setPlaceUI(); }
 
 /* ---------- mode photo ---------- */
+function palette() { const q = (location.search.match(/palette=([abcd])/) || [])[1]; if (q) store.set('pv_pal', q); return q || store.get('pv_pal') || 'a'; }
+document.querySelectorAll('[data-pal]').forEach(b => { b.classList.toggle('on', b.dataset.pal === palette()); b.onclick = () => { store.set('pv_pal', b.dataset.pal); location.href = location.pathname + '?palette=' + b.dataset.pal; }; });
 const fmtH = h => { const hh = Math.floor(h) % 24, mm = Math.round((h - Math.floor(h)) * 60); return String(hh).padStart(2, '0') + ':' + String(mm === 60 ? 0 : mm).padStart(2, '0'); };
 $('photoBtn').onclick = () => {
   if (!town) return; show(null); document.body.classList.add('photo'); $('photoBar').classList.remove('hidden');

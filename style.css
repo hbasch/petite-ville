@@ -267,3 +267,7 @@ body.photo #hud,body.photo #nav,body.photo .sheet{display:none!important}
 .shutter:active span{background:var(--honey)}
 #flashFx{position:fixed;inset:0;z-index:25;background:#fff;pointer-events:none;animation:flashA .45s ease-out forwards}
 @keyframes flashA{from{opacity:.85}to{opacity:0}}
+.phPal{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--lav)}
+.phPal span{margin-right:auto}
+.phPal button{width:34px;height:34px;border-radius:50%;border:3px solid transparent;cursor:pointer;background:linear-gradient(135deg,var(--c1) 50%,var(--c2) 50%)}
+.phPal button.on{border-color:#fff}
