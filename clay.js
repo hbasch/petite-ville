@@ -17,7 +17,7 @@ float cNoise(vec3 x) {
 }
 float clayHeight(vec3 p, float fine) {
   float d = cNoise(p * 2.3);
-  d = 1.0 - abs(d * 2.0 - 1.0);
+  d = 1.0 - sqrt((d * 2.0 - 1.0) * (d * 2.0 - 1.0) + 0.02);
   return d * d * 0.65 + cNoise(p * 7.0 + 3.1) * 0.25 + cNoise(p * 31.0) * 0.10 * fine;
 }
 `;
@@ -43,7 +43,7 @@ float clayHeight(vec3 p, float fine) {
     vec3 sx = dFdx(-vViewPosition), sy = dFdy(-vViewPosition);
     vec3 r1 = cross(sy, normal), r2 = cross(normal, sx);
     float det = dot(sx, r1);
-    vec3 grad = sign(det) * (dFdx(hh) * r1 + dFdy(hh) * r2) * clayAmt;
+    vec3 grad = sign(det) * (dFdx(hh) * r1 + dFdy(hh) * r2) * clayAmt * (1.0 - smoothstep(25.0, 60.0, length(vViewPosition)));
     normal = normalize(abs(det) * normal - grad);
   }`)
       .replace('#include <tonemapping_fragment>', `{

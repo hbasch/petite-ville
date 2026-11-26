@@ -116,10 +116,10 @@ const path = mk(rbox(2.6, .1, 5.2, .05, 2), C(shade(PAL.ground, -.08)), Math.sin
 {
   const tg = new THREE.ConeGeometry(.07, .26, 5), tm = C(shade(PAL.leaf, .02)), N = mobile ? 260 : 480;
   const im = new THREE.InstancedMesh(tg, tm, N), o = new THREE.Object3D();
-  for (let i = 0; i < N; i++) { const a = rnd(0, TAU), r = rnd(10.4, 14.7); o.position.set(Math.sin(a) * r, .1, Math.cos(a) * r); o.rotation.set(rnd(-.2, .2), 0, rnd(-.2, .2)); o.scale.setScalar(rnd(.7, 1.3)); o.updateMatrix(); im.setMatrixAt(i, o.matrix); }
+  for (let i = 0; i < N; i++) { let a = rnd(0, TAU), r = rnd(10.4, 14.7); while (Math.cos(a - G) > 0 && Math.abs(Math.sin(a - G) * r) < 1.5) a = rnd(0, TAU); o.position.set(Math.sin(a) * r, .1, Math.cos(a) * r); o.rotation.set(rnd(-.2, .2), 0, rnd(-.2, .2)); o.scale.setScalar(rnd(.7, 1.3)); o.updateMatrix(); im.setMatrixAt(i, o.matrix); }
   scene.add(im);
   const fg = sph(.07, 8), fm = C('#ffffff'), F = 90, fim = new THREE.InstancedMesh(fg, fm, F), col = new THREE.Color(), fc = ['#fff4e2', '#ffd35a', PAL.walls[4], PAL.accent];
-  for (let i = 0; i < F; i++) { const a = rnd(0, TAU), r = rnd(10.6, 14.6); o.position.set(Math.sin(a) * r, .16, Math.cos(a) * r); o.rotation.set(0, 0, 0); o.scale.setScalar(rnd(.8, 1.3)); o.updateMatrix(); fim.setMatrixAt(i, o.matrix); col.set(fc[i % 4]); fim.setColorAt(i, col); }
+  for (let i = 0; i < F; i++) { let a = rnd(0, TAU), r = rnd(10.6, 14.6); while (Math.cos(a - G) > 0 && Math.abs(Math.sin(a - G) * r) < 1.5) a = rnd(0, TAU); o.position.set(Math.sin(a) * r, .16, Math.cos(a) * r); o.rotation.set(0, 0, 0); o.scale.setScalar(rnd(.8, 1.3)); o.updateMatrix(); fim.setMatrixAt(i, o.matrix); col.set(fc[i % 4]); fim.setColorAt(i, col); }
   if (fim.instanceColor) fim.instanceColor.needsUpdate = true; scene.add(fim);
 }
 
@@ -270,7 +270,7 @@ for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; const s = mk(cyl(.035, .06,
 const colliders = [{ x: 0, z: 0, r: 2.4 }];
 const woodM = C('#b5794a'), iron = C('#3a3a48', { metalness: .25 });
 [0, 1, 2, 3].forEach(i => {
-  const a = G + Math.PI / 4 + i * Math.PI / 2, b = item('bench'); b.position.set(Math.sin(a) * 4.1, 0, Math.cos(a) * 4.1); b.rotation.y = a + Math.PI; blob(0, 0, 1.1, b);
+  const a = G + [1.2, -1.2, 2.4, -2.4][i], b = item('bench'); b.position.set(Math.sin(a) * 4.1, 0, Math.cos(a) * 4.1); b.rotation.y = a + Math.PI; blob(0, 0, 1.1, b, .06);
   mk(rbox(1.8, .16, .62, .07, 2), woodM, 0, .5, 0, b);
   const bk = mk(rbox(1.8, .5, .14, .07, 2), woodM, 0, .9, .3, b); bk.rotation.x = -.18;
   [-.75, .75].forEach(x => mk(rbox(.12, .5, .55, .05, 2), iron, x, .25, 0, b));
@@ -408,7 +408,7 @@ function makeChar(lk) {
     mk(G_('iris', () => sph(.043, 14)), C(lk.eyes || '#5a3a22', { roughness: .15, bumpScale: 0 }), 0, -.004, .026, e).scale.z = .5;
     mk(G_('pup2', () => sph(.026, 10)), PUPIL, 0, -.006, .036, e).scale.z = .5;
     mk(G_('shine2', () => sph(.014, 6)), SHINE, .016, .018, .045, e); mk(G_('shine3', () => sph(.007, 6)), SHINE, -.012, -.016, .044, e);
-    const lid = new THREE.Group(); e.add(lid); mk(G_('lid', () => new THREE.SphereGeometry(.074, 16, 8, 0, TAU, 0, Math.PI / 2)), skinM, 0, 0, 0, lid).scale.z = .62; lid.rotation.x = -1.25; P.lids.push(lid);
+    const lw = new THREE.Group(); lw.scale.z = .85; e.add(lw); const lid = new THREE.Group(); lw.add(lid); mk(G_('lid', () => new THREE.SphereGeometry(.074, 16, 8, 0, TAU, 0, Math.PI / 2)), skinM, 0, 0, 0, lid); lid.rotation.x = -1.25; P.lids.push(lid);
     if (lk.lashes) { const l = mk(G_('lash', () => new THREE.TorusGeometry(.066, .009, 4, 10, Math.PI * .8)), PUPIL, 0, .006, .02, e); l.rotation.z = Math.PI * .1 + (sg < 0 ? 0 : 0); }
     return e; });
   [-1, 1].forEach(sg => { const b = mk(G_('brow2', () => rbox(.1, .028, .025, .012, 1)), C(shade(lk.hair, -.12)), sg * .1, .125, .235, head); b.rotation.z = -sg * .18; });
@@ -433,7 +433,7 @@ function person(id, lk, mode, x, z, rot, extra) {
 }
 const SK = ['#f6d3b5', '#e8b48e', '#c98e6a', '#8a5a3c'];
 B.forEach((sp, i) => { if (sp.id !== 'florist') return; const a = a0 + span * i / (B.length - 1) + .1; person('rosa', { skin: SK[0], hair: '#c2452e', style: 'bun', fringe: true, lashes: true, eyes: '#3f7a4a', outfit: 'dress', shirt: PAL.walls[4], collar: '#fff8ee', apron: PAL.leaf, pants: '#f6d3b5', shoes: '#7a3a2a', hold: 'flower' }, 'idle', Math.sin(a) * 8.6, Math.cos(a) * 8.6, a + Math.PI); });
-{ const a = G + Math.PI / 4, bx = Math.sin(a) * 4.15, bz = Math.cos(a) * 4.15; person('leo', { skin: SK[1], hair: '#ece8e0', style: 'beret', hat: '#3a4a6a', mustache: true, eyes: '#3a5a8a', outfit: 'cardigan', shirt: '#9a6a44', buttons: '#e8c35a', scarf: PAL.walls[0], pants: '#4a4a5a', shoes: '#3a2a22' }, 'sit', bx, bz, a); }
+{ const a = G + 1.2, bx = Math.sin(a) * 4.15, bz = Math.cos(a) * 4.15; person('leo', { skin: SK[1], hair: '#ece8e0', style: 'beret', hat: '#3a4a6a', mustache: true, eyes: '#3a5a8a', outfit: 'cardigan', shirt: '#9a6a44', buttons: '#e8c35a', scarf: PAL.walls[0], pants: '#4a4a5a', shoes: '#3a2a22' }, 'sit', bx, bz, a); }
 person('maya', { skin: SK[3], hair: '#1a1a22', style: 'curly', lashes: true, eyes: '#3a2418', outfit: 'hoodie', shirt: PAL.walls[1], backpack: PAL.accent, pants: '#2f3a5a', shoes: '#f4efe6' }, 'walk', 0, 7.2, 0, { r: 7.2, a: 1.2, sp: .055, pause: 0 });
 { const a = G - .55, r = 5.6 - .95; person('sam', { skin: SK[2], hair: '#3a2418', style: 'cap', hat: PAL.roofs[0], mustache: true, eyes: '#3a2418', shirt: '#f3efe6', stripes: PAL.roofs[0], rolled: true, apron: '#c99a62' }, 'idle', Math.sin(a) * r, Math.cos(a) * r, a); }
 [[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1 }, 'walk', 0, 0, 0, { r: rnd(6.5, 8.2), a: rnd(0, TAU), sp: rnd(.05, .085) * (i % 2 ? 1 : -1), pause: 0 }));
@@ -495,6 +495,9 @@ colliders.push(...people.filter(p => p.mode !== 'walk').map(p => ({ x: p.grp.pos
 
 /* ombres */
 scene.traverse(o => { if ((o.isMesh || o.isInstancedMesh) && o !== sky && o.material && !Array.isArray(o.material) && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; } });
+/* les tout petits détails (yeux, boutons, dents…) ne projettent pas d'ombre : beaucoup moins de calculs sur téléphone */
+scene.updateMatrixWorld(true);
+{ const sc = new THREE.Vector3(); scene.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.castShadow && o.geometry) { if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); o.getWorldScale(sc); if (o.geometry.boundingSphere.radius * Math.max(sc.x, sc.y, sc.z) < .09) o.castShadow = false; } }); }
 base.castShadow = false; grass.receiveShadow = true;
 
 /* ---------- lumière qui suit l'heure ---------- */
@@ -545,6 +548,7 @@ applyHour(realHour());
 const pos = new THREE.Vector3(Math.sin(G) * 9.2, 1.45, Math.cos(G) * 9.2);
 let yaw = G, pitch = -.06, tYaw = G, tPitch = -.06, target = null, bob = 0;
 const vel = new THREE.Vector3(), wish = new THREE.Vector3();
+let stuckT = 0;
 const keys = {}, fwd = new THREE.Vector3(), right = new THREE.Vector3();
 addEventListener('keydown', e => { if (!H.active() || /INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || '')) return; keys[e.key.toLowerCase()] = true; });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
@@ -610,7 +614,7 @@ function setPhoto(on) {
     if (!composer) composer = makeComposer();
   } else {
     if (ctl) ctl.enabled = false;
-    pos.copy(saved.pos); yaw = tYaw = saved.yaw; pitch = tPitch = saved.pitch; cam.fov = saved.fov; cam.updateProjectionMatrix();
+    pos.copy(saved.pos); yaw = tYaw = saved.yaw; pitch = tPitch = saved.pitch; vel.set(0, 0, 0); target = null; cam.fov = saved.fov; cam.updateProjectionMatrix();
     hourOverride = null; applyHour(realHour());
   }
 }
@@ -677,7 +681,7 @@ function updatePeople(dt, t) {
     else if (o.mode !== 'walk' || o.pause > 0 || isTalk) { armR.rotation.z += (.12 - armR.rotation.z) * .15; if (o.id === 'leo') armR.rotation.x = -.6 + Math.max(0, Math.sin(o.t * 1.3)) * -.6; }
     /* clignement des yeux, bouche */
     o.blink -= dt; const closed = o.blink < 0; if (o.blink < -.12) o.blink = rnd(2, 5);
-    P.lids.forEach(l => { l.rotation.x += ((closed ? .3 : -1.25) - l.rotation.x) * .6; });
+    P.lids.forEach(l => { l.rotation.x += ((closed ? 1.45 : -1.25) - l.rotation.x) * .6; });
     const mouthOpen = isTalk && speaking ? (.4 + Math.abs(Math.sin(o.t * 14)) * .9) : .01;
     P.open.scale.y += (mouthOpen - P.open.scale.y) * .4; P.smile.visible = P.open.scale.y < .3;
     if (o.bub) { o.bub.visible = !isTalk && dist < 9; o.bub.position.y = 1.78 + Math.sin(o.t * 2.5) * .04; }
@@ -743,6 +747,7 @@ function loop() {
   pos.addScaledVector(vel, dt); collide(pos);
   if (dt > 0) { vel.x = (pos.x - px) / dt; vel.z = (pos.z - pz) / dt; }
   const spd = Math.hypot(vel.x, vel.z);
+  if (target && wish.lengthSq() > .25 && spd < .2) { if ((stuckT += dt) > .7) { target = null; stuckT = 0; } } else stuckT = 0;
   yaw += (tYaw - yaw) * (1 - Math.exp(-dt * 16)); pitch += (tPitch - pitch) * (1 - Math.exp(-dt * 16));
   bob += dt * spd * 3.4;
   cam.position.set(pos.x, pos.y + Math.sin(bob) * .018 * Math.min(1, spd / SPEED), pos.z);
