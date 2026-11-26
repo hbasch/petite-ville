@@ -129,6 +129,41 @@ const path = mk(rbox(2.6, .1, 5.2, .05, 2), C(shade(PAL.ground, -.08)), Math.sin
   if (fim.instanceColor) fim.instanceColor.needsUpdate = true; scene.add(fim);
 }
 
+/* ---------- au sol : marelle à la craie, plaque d'égout, herbes entre les pavés ---------- */
+{
+  /* craie : traits doublés et un peu tremblés, comme dessinés par un enfant */
+  const T = tex(512, 768, (g, w, h) => {
+    g.clearRect(0, 0, w, h); g.lineCap = 'round'; g.lineJoin = 'round';
+    const chalk = (col, lw, path) => { for (let k = 0; k < 3; k++) { g.strokeStyle = col; g.globalAlpha = .55 - k * .12; g.lineWidth = lw - k; g.beginPath(); path((Math.random() - .5) * 3, (Math.random() - .5) * 3); g.stroke(); } g.globalAlpha = 1; };
+    const sq = (x, y, s2) => chalk('#fffaf0', 7, (jx, jy) => { g.rect(x + jx, y + jy, s2, s2); });
+    const cx = 200, s2 = 104;
+    sq(cx - s2 / 2, 640, s2); sq(cx - s2 / 2, 536, s2); sq(cx - s2, 432, s2); sq(cx, 432, s2); sq(cx - s2 / 2, 328, s2); sq(cx - s2, 224, s2); sq(cx, 224, s2);
+    chalk('#fffaf0', 7, (jx, jy) => { g.moveTo(cx - s2 + jx, 224 + jy); g.arc(cx + jx, 224 + jy, s2, Math.PI, 0); });
+    g.fillStyle = '#fffaf0'; g.globalAlpha = .7; g.font = '700 54px "Baloo 2",Nunito,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    [[cx, 692, '1'], [cx, 588, '2'], [cx - s2 / 2, 484, '3'], [cx + s2 / 2, 484, '4'], [cx, 380, '5'], [cx - s2 / 2, 276, '6'], [cx + s2 / 2, 276, '7'], [cx, 180, '8']].forEach(([x, y, t]) => g.fillText(t, x, y));
+    g.globalAlpha = 1;
+    /* un soleil et une fleur à la craie de couleur */
+    chalk('#ffd35a', 6, (jx, jy) => { g.arc(410 + jx, 140 + jy, 38, 0, TAU); for (let i = 0; i < 8; i++) { const a2 = i / 8 * TAU; g.moveTo(410 + Math.cos(a2) * 52, 140 + Math.sin(a2) * 52); g.lineTo(410 + Math.cos(a2) * 76, 140 + Math.sin(a2) * 76); } });
+    chalk('#ff8fb0', 6, (jx, jy) => { for (let i = 0; i < 5; i++) { const a2 = i / 5 * TAU; g.moveTo(420 + Math.cos(a2) * 26 + 18, 520 + Math.sin(a2) * 26); g.arc(420 + Math.cos(a2) * 26 + jx, 520 + Math.sin(a2) * 26 + jy, 18, 0, TAU); } });
+    chalk('#9fd88a', 6, (jx, jy) => { g.moveTo(420 + jx, 546); g.lineTo(424 + jy, 650); g.moveTo(422, 600); g.quadraticCurveTo(450, 580, 462 + jx, 600); });
+  });
+  T.anisotropy = 8;
+  const hm = new THREE.MeshStandardMaterial({ map: T, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 });
+  const ha = G + Math.PI + .12, hop = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 3.0), hm);
+  hop.position.set(Math.sin(ha) * 6.3, .066, Math.cos(ha) * 6.3); hop.rotation.set(-Math.PI / 2, 0, ha + Math.PI); hop.receiveShadow = true; hop.renderOrder = 1; scene.add(hop);
+  /* plaque d'égout en fonte */
+  const ma = G - 1.85, mx = Math.sin(ma) * 6.3, mz = Math.cos(ma) * 6.3, fonte = C('#55555f', { metalness: .45, roughness: .5 });
+  mk(cyl(.44, .44, .03, 28), fonte, mx, .06, mz); mk(new THREE.TorusGeometry(.4, .025, 6, 28), C('#6a6a74', { metalness: .45, roughness: .45 }), mx, .075, mz).rotation.x = Math.PI / 2;
+  for (let k = -3; k <= 3; k++) { const L2 = Math.sqrt(Math.max(0, .36 * .36 - (k * .09) * (k * .09))) * 2; if (L2 > .05) mk(rbox(L2, .015, .03, .007, 1), C('#6a6a74', { metalness: .45, roughness: .45 }), mx, .078, mz + k * .09); }
+  /* herbes folles entre les pavés, le long des façades et au pied des réverbères */
+  const wg = new THREE.ConeGeometry(.028, .1, 4), wm = C(shade(PAL.leaf, .05), { bumpScale: 0 }), WN = mobile ? 160 : 260, wi = new THREE.InstancedMesh(wg, wm, WN), o = new THREE.Object3D();
+  for (let i = 0; i < WN; i++) {
+    let x, z; if (i % 3) { const a2 = rnd(0, TAU), r = rnd(9.15, 9.6); x = Math.sin(a2) * r; z = Math.cos(a2) * r; } else { const a2 = G + .5 + ((i / 3 | 0) % 6) * (TAU - 1) / 5, r2 = rnd(.15, .35), b2 = rnd(0, TAU); x = Math.sin(a2) * 8.7 + Math.sin(b2) * r2; z = Math.cos(a2) * 8.7 + Math.cos(b2) * r2; }
+    o.position.set(x, .06, z); o.rotation.set(rnd(-.35, .35), rnd(0, TAU), rnd(-.35, .35)); o.scale.setScalar(rnd(.6, 1.3)); o.updateMatrix(); wi.setMatrixAt(i, o.matrix);
+  }
+  wi.userData.noCast = true; scene.add(wi);
+}
+
 /* ---------- pictogrammes en pâte (enseignes universelles) ---------- */
 function picto(type) {
   const g = new THREE.Group();
