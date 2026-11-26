@@ -22,7 +22,7 @@ const PALS = {
   c: { walls: ['#f28c28', '#f2d03b', '#2f5fb3', '#8fd3b6', '#f6efe2'], roofs: ['#23305a', '#c4473a'], ground: '#d8cfc2', leaf: '#5fae4a', accent: '#e84a7a' },
   d: { walls: ['#f0a77a', '#b8cf8f', '#b7a3d6', '#f2d68a', '#eaa3a8'], roofs: ['#7a4a3a', '#6a4a6a'], ground: '#efe0c8', leaf: '#86b86a', accent: '#4a2f2a' }
 };
-const PAL = PALS[H.palette] || PALS.a;
+const PAL = ((window.PV && PV.PALS) || PALS)[H.palette] || PALS.a;
 const TRIM = '#fff4e2', GLASS = '#2f3550', EARTH = '#9a6a46';
 
 /* ---------- outils ---------- */
@@ -94,10 +94,10 @@ const square = item('square');
 const base = mk(cyl(10.1, 10.1, .16, 72), C(shade(PAL.ground, -.22)), 0, .07, 0, square); base.receiveShadow = true;
 /* pavés posés un à un */
 {
-  const cg = sph(1, 10); const cm = C('#ffffff', { roughness: .7 });
-  const pts = []; for (let z = -9.7; z <= 9.7; z += .46) for (let x = -9.7 + ((Math.round(z / .46) % 2) ? .26 : 0); x <= 9.7; x += .52) { const d = Math.hypot(x, z); if (d < 9.6 && d > 1.95) pts.push([x + rnd(-.04, .04), z + rnd(-.04, .04)]); }
+  const cg = sph(1, mobile ? 7 : 9); const cm = C('#ffffff', { roughness: .7 });
+  const pts = []; for (let z = -9.7; z <= 9.7; z += .3) for (let x = -9.7 + ((Math.round(z / .3) % 2) ? .17 : 0); x <= 9.7; x += .34) { const d = Math.hypot(x, z); if (d < 9.65 && d > 1.95) pts.push([x + rnd(-.03, .03), z + rnd(-.03, .03)]); }
   const im = new THREE.InstancedMesh(cg, cm, pts.length), o = new THREE.Object3D(), col = new THREE.Color();
-  pts.forEach(([x, z], i) => { o.position.set(x, .15, z); o.rotation.set(0, rnd(0, TAU), 0); o.scale.set(rnd(.21, .26), rnd(.05, .075), rnd(.18, .22)); o.updateMatrix(); im.setMatrixAt(i, o.matrix); col.set(shade(PAL.ground, rnd(-.07, .05))); im.setColorAt(i, col); });
+  pts.forEach(([x, z], i) => { o.position.set(x, .15, z); o.rotation.set(0, rnd(0, TAU), 0); o.scale.set(rnd(.14, .17), rnd(.035, .05), rnd(.12, .145)); o.updateMatrix(); im.setMatrixAt(i, o.matrix); col.set(shade(PAL.ground, rnd(-.12, .0))); im.setColorAt(i, col); });
   im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.receiveShadow = true; square.add(im);
 }
 const path = mk(rbox(2.6, .14, 5.2, .06, 2), C(shade(PAL.ground, -.08)), Math.sin(G) * 12.5, .02, Math.cos(G) * 12.5, square); path.rotation.y = G; path.receiveShadow = true;
@@ -174,6 +174,7 @@ function building(sp, ang, rad) {
     const y = gfm + fh * (f + .5) + .05;
     if (f > 0) mk(rbox(sp.w + .08, .1, .16, .05, 2), C(shade(sp.color, .07)), 0, gfm + fh * f, d / 2, g);
     for (let i = 0; i < n; i++) windowAt(g, sp.w * ((i + .5) / n - .5), y, d / 2, sp, Math.random() < .62);
+    for (let i = 0; i < n; i++) { const x = sp.w * ((i + .5) / n - .5); mk(frameG, C(TRIM), x, y, -d / 2, g); mk(glassG, Math.random() < .5 ? litGlass : darkGlass, x, y, -d / 2 - .05, g); }
   }
   mk(rbox(sp.w + .06, .14, .22, .06, 2), C(TRIM), 0, gfm, d / 2, g);
   /* rez-de-chaussée */
@@ -387,7 +388,7 @@ function applyHour(h) {
   const a = KF[i], b = KF[i + 1], t = Math.min(1, Math.max(0, (h - a[0]) / (b[0] - a[0])));
   lerpC(skyU.top.value, a[1], b[1], t).convertSRGBToLinear(); lerpC(skyU.hor.value, a[2], b[2], t).convertSRGBToLinear(); lerpC(skyU.bot.value, a[3], b[3], t).convertSRGBToLinear();
   lerpC(sun.color, a[4], b[4], t); sun.intensity = a[5] + (b[5] - a[5]) * t;
-  lerpC(hemi.color, a[6], b[6], t); lerpC(hemi.groundColor, a[7], b[7], t); hemi.intensity = a[8] + (b[8] - a[8]) * t;
+  lerpC(hemi.color, a[6], b[6], t); lerpC(hemi.groundColor, a[7], b[7], t); hemi.intensity = (a[8] + (b[8] - a[8]) * t) * .82;
   lerpC(scene.fog.color, a[9], b[9], t).convertSRGBToLinear();
   lightsOn = a[10] + (b[10] - a[10]) * t; starMat.opacity = a[11] + (b[11] - a[11]) * t;
   const day = h >= 6 && h <= 20, el = day ? Math.sin((h - 6) / 14 * Math.PI) : .55, az = (h / 24) * TAU + 1.2;

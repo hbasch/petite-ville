@@ -266,7 +266,7 @@ function enterBakery() {
   place = 'bakery'; show(null); setPlaceUI();
   if (!bakeryBuilt && window.THREE) {
     bakeryBuilt = true;
-    const H = { board: S.board, open: S.open, flour: S.flour,
+    const H = { board: S.board, open: S.open, flour: S.flour, pal: (PV.PALS || {})[palette()],
       label: id => L.found.includes(id) ? W[id][T] : '?',
       pick: id => { if (tab !== 'town' || place !== 'bakery') return; if (id === 'baker') openDlg(); else showWord(id); },
       bubble: () => !tasks.pay, active: () => place === 'bakery' && !document.hidden };

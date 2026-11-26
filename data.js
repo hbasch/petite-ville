@@ -339,3 +339,11 @@ Object.assign(PV.UI.pl, {
  townIntroTitle: 'Witaj na rynku', townIntroText: 'Małe miasteczko, gdzie wszystko dzieje się po {l}. Spaceruj, dotykaj domów i przedmiotów, żeby poznać ich nazwy, a potem idź na zakupy.',
  tstep1: 'Przeciągnij, żeby się rozejrzeć; dotknij ziemi, żeby iść', tstep2: 'Dotknij domu lub przedmiotu, żeby poznać nazwę', tstep3: 'Znajdź piekarnię i wejdź do: {b}', onSquare: 'Na rynku'
 });
+
+/* ---------- palettes pâte à modeler (choisies avec Claude Design) ---------- */
+PV.PALS = {
+  a: { walls: ['#d9774b', '#e3a84a', '#9db58a', '#efe3cf', '#d99b8c'], roofs: ['#a8492f', '#5b6577'], ground: '#e6cfa8', leaf: '#7a9a4a', accent: '#2f6f6b' },
+  b: { walls: ['#d9a62e', '#8f3b3b', '#3f6b5a', '#9fb6c4', '#efe6d6'], roofs: ['#3a3f4a', '#6b4a3a'], ground: '#cfc6b8', leaf: '#4a7a4a', accent: '#c27a3e' },
+  c: { walls: ['#f28c28', '#f2d03b', '#2f5fb3', '#8fd3b6', '#f6efe2'], roofs: ['#23305a', '#c4473a'], ground: '#d8cfc2', leaf: '#5fae4a', accent: '#e84a7a' },
+  d: { walls: ['#f0a77a', '#b8cf8f', '#b7a3d6', '#f2d68a', '#eaa3a8'], roofs: ['#7a4a3a', '#6a4a6a'], ground: '#efe0c8', leaf: '#86b86a', accent: '#4a2f2a' }
+};

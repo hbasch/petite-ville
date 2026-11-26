@@ -1,4 +1,5 @@
 window.buildScene=function(H){
+const PAL=H.pal||{walls:['#d9774b','#e3a84a','#9db58a','#efe3cf','#d99b8c'],roofs:['#a8492f','#5b6577'],ground:'#e6cfa8',leaf:'#7a9a4a',accent:'#2f6f6b'};
 const $=id=>document.getElementById(id);
 const canvas=$('c');
 const R=new THREE.WebGLRenderer({canvas,antialias:true});
@@ -25,9 +26,10 @@ const wood=(c)=>M(c||'#c9935d',{map:woodTex,roughness:.6});
 
 /* room */
 const floorT=tex(256,256,(g,w,h)=>{g.fillStyle='#efe7da';g.fillRect(0,0,w,h);g.fillStyle='#3a312d';g.fillRect(0,0,w/2,h/2);g.fillRect(w/2,h/2,w/2,h/2);g.strokeStyle='rgba(140,120,100,.6)';g.lineWidth=3;g.strokeRect(0,0,w,h);g.beginPath();g.moveTo(w/2,0);g.lineTo(w/2,h);g.moveTo(0,h/2);g.lineTo(w,h/2);g.stroke()},[10,10]);
-const floor=mk(new THREE.PlaneGeometry(10,10),M('#fff',{map:floorT,roughness:.3}),0,0,1);floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;
-const wallT=tex(512,512,(g,w,h)=>{g.fillStyle='#f0c96e';g.fillRect(0,0,w,h);for(let i=0;i<2500;i++){g.fillStyle=`rgba(255,255,255,${Math.random()*.06})`;g.fillRect(Math.random()*w,Math.random()*h,2,2)}
- const p=h*(1-1.05/3.5);g.fillStyle='#fbf4e6';g.fillRect(0,p,w,h-p);g.strokeStyle='rgba(150,120,90,.35)';g.lineWidth=2;for(let x=20;x<w;x+=64){g.strokeRect(x,p+26,44,h-p-46)}g.fillStyle='#c73e5d';g.fillRect(0,p,w,12);g.fillStyle='#e6d8c2';g.fillRect(0,h-14,w,14)},[10/3.5,1]);
+const floor=mk(new THREE.PlaneGeometry(10,10),M(PAL.roofs[1],{roughness:.7}),0,-.005,1);floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;
+{const tg=rbox(.47,.07,.47,.05,2),tm=M('#ffffff',{roughness:.5}),N=400,im=new THREE.InstancedMesh(tg,tm,N),o=new THREE.Object3D(),cc=new THREE.Color();let k=0;for(let i=0;i<20;i++)for(let j=0;j<20;j++){o.position.set(-4.75+i*.5,.0,-3.75+j*.5);o.rotation.y=(Math.random()-.5)*.04;o.updateMatrix();im.setMatrixAt(k,o.matrix);cc.set((i+j)%2?PAL.walls[3]:PAL.roofs[1]);cc.offsetHSL(0,0,(Math.random()-.5)*.04);im.setColorAt(k,cc);k++}if(im.instanceColor)im.instanceColor.needsUpdate=true;im.receiveShadow=true;scene.add(im)}
+const wallT=tex(512,512,(g,w,h)=>{g.fillStyle=PAL.walls[3];g.fillRect(0,0,w,h);for(let i=0;i<2500;i++){g.fillStyle=`rgba(255,255,255,${Math.random()*.06})`;g.fillRect(Math.random()*w,Math.random()*h,2,2)}
+ const p=h*(1-1.05/3.5);g.fillStyle=PAL.walls[2];g.fillRect(0,p,w,h-p);g.strokeStyle='rgba(150,120,90,.35)';g.lineWidth=2;for(let x=20;x<w;x+=64){g.strokeRect(x,p+26,44,h-p-46)}g.fillStyle=PAL.accent;g.fillRect(0,p,w,12);g.fillStyle='#e6d8c2';g.fillRect(0,h-14,w,14)},[10/3.5,1]);
 const wallM=()=>M('#fff',{map:wallT,roughness:.9});
 const back=mk(new THREE.PlaneGeometry(10,3.5),wallM(),0,1.75,-4);back.receiveShadow=true;
 const lw=mk(new THREE.PlaneGeometry(10,3.5),wallM(),-5,1.75,1);lw.rotation.y=Math.PI/2;lw.receiveShadow=true;
@@ -37,10 +39,10 @@ for(let i=0;i<4;i++)mk(box(10,.16,.2),wood('#6e4a2c'),0,3.42,-3+i*2.2);
 
 /* counter */
 const counter=item('counter');
-mk(box(5,.98,.7),M('#b8334f',{roughness:.45}),-.5,.49,-1.2,counter);
+mk(box(5,.98,.7),M(PAL.walls[0]),-.5,.49,-1.2,counter);
 mk(box(5.16,.06,.84),wood('#d9a46d'),-.5,1.01,-1.2,counter);
-mk(box(5,.08,.66),M('#4a1726'),-.5,.04,-1.18,counter);
-for(let i=0;i<7;i++)mk(box(.6,.62,.02),M('#c94462',{roughness:.4}),-2.65+i*.72,.52,-.85,counter);
+mk(box(5,.08,.66),M(PAL.roofs[0]),-.5,.04,-1.18,counter);
+for(let i=0;i<7;i++)mk(box(.6,.62,.06),M(PAL.walls[4]),-2.65+i*.72,.52,-.85,counter);
 
 /* display case */
 const dcase=item('case');
