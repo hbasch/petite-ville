@@ -281,6 +281,6 @@ body.photo #hud,body.photo #nav,body.photo .sheet{display:none!important}
 .overlay{padding:calc(16px + var(--safeT)) 16px calc(16px + var(--safeB))}
 #photoBar{bottom:calc(16px + var(--safeB))}
 #card .wordRow{padding-right:46px}
-html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 #ct,#c{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 @media(max-width:600px){.pill{min-height:44px}}

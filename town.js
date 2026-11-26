@@ -223,7 +223,50 @@ function building(sp, ang, rad) {
     mk(rbox(3.4, .2, .7, .08, 2), C(shade(PAL.ground, -.12)), 0, .1, d / 2 + .3, g);
   }
   houseDetails(g, sp, d, rh, hw);
+  if (sp.shop || sp.hall) shopBadge(g, sp, d);
   return g;
+}
+/* ---------- pastilles flottantes au-dessus des commerces : on sait où toucher ----------
+   Pictogramme dessiné (même langage que les enseignes), « ? » tant que le mot n'est pas découvert,
+   puis le mot appris écrit dessous. La boulangerie (où l'on peut entrer) a un anneau miel. */
+const badges = [], INK = '#2a2233';
+const ICONS = {
+  bread(g) { g.fillStyle = '#d8964f'; g.strokeStyle = '#8a5326'; g.lineWidth = 6; g.beginPath(); g.ellipse(128, 122, 64, 36, 0, 0, TAU); g.fill(); g.stroke(); g.strokeStyle = '#f6d29a'; g.lineWidth = 9; g.lineCap = 'round'; [-1, 0, 1].forEach(k => { g.beginPath(); g.moveTo(118 + k * 30, 102); g.lineTo(138 + k * 30, 142); g.stroke(); }); },
+  cup(g) { g.strokeStyle = INK; g.lineWidth = 6; g.lineJoin = 'round'; g.fillStyle = PAL.accent; g.beginPath(); g.ellipse(128, 170, 60, 11, 0, 0, TAU); g.fill(); g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(84, 100); g.lineTo(172, 100); g.lineTo(162, 154); g.quadraticCurveTo(158, 166, 146, 166); g.lineTo(110, 166); g.quadraticCurveTo(98, 166, 94, 154); g.closePath(); g.fill(); g.stroke(); g.lineWidth = 8; g.beginPath(); g.arc(172, 124, 17, -Math.PI / 2, Math.PI / 2); g.stroke(); g.strokeStyle = '#b8b0c8'; g.lineWidth = 6; g.lineCap = 'round'; [110, 142].forEach(x => { g.beginPath(); g.moveTo(x, 90); g.bezierCurveTo(x - 12, 78, x + 12, 70, x, 56); g.stroke(); }); },
+  book(g) { g.strokeStyle = INK; g.lineWidth = 6; g.lineJoin = 'round'; [-1, 1].forEach(sg => { g.fillStyle = sg < 0 ? PAL.accent : '#ffffff'; g.beginPath(); g.moveTo(128, 98); g.quadraticCurveTo(128 + sg * 30, 84, 128 + sg * 62, 92); g.lineTo(128 + sg * 62, 160); g.quadraticCurveTo(128 + sg * 30, 152, 128, 166); g.closePath(); g.fill(); g.stroke(); }); },
+  cross(g) { g.fillStyle = '#3fae5f'; const r = (x, y, w, h) => { g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, 10) : g.rect(x, y, w, h); g.fill(); }; r(106, 66, 44, 108); r(74, 98, 108, 44); },
+  mail(g) { g.strokeStyle = INK; g.lineWidth = 6; g.lineJoin = 'round'; g.fillStyle = '#ffffff'; g.beginPath(); g.rect(70, 86, 116, 76); g.fill(); g.stroke(); g.fillStyle = PAL.accent; g.beginPath(); g.moveTo(70, 88); g.lineTo(128, 130); g.lineTo(186, 88); g.closePath(); g.fill(); g.stroke(); },
+  flower(g) { g.strokeStyle = PAL.leaf; g.lineWidth = 9; g.lineCap = 'round'; g.beginPath(); g.moveTo(128, 128); g.lineTo(128, 176); g.stroke(); g.fillStyle = PAL.leaf; g.beginPath(); g.ellipse(146, 162, 16, 8, -.5, 0, TAU); g.fill(); g.fillStyle = '#ff6f91'; for (let i = 0; i < 5; i++) { const a = i / 5 * TAU - Math.PI / 2; g.beginPath(); g.arc(128 + Math.cos(a) * 26, 108 + Math.sin(a) * 26, 19, 0, TAU); g.fill(); } g.fillStyle = '#ffd35a'; g.beginPath(); g.arc(128, 108, 15, 0, TAU); g.fill(); },
+  hall(g) { g.fillStyle = '#5f9483'; g.strokeStyle = INK; g.lineWidth = 5; g.lineJoin = 'round'; g.beginPath(); g.moveTo(74, 100); g.lineTo(128, 68); g.lineTo(182, 100); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#ffffff'; [86, 112, 138, 164].forEach(x => { g.fillRect(x - 2, 104, 12, 50); g.strokeRect(x - 2, 104, 12, 50); }); g.fillStyle = '#e3d6c2'; g.fillRect(70, 156, 116, 14); g.strokeRect(70, 156, 116, 14); }
+};
+function drawBadge(b) {
+  const g = b.cv.getContext('2d'), lab = H.label(b.id); b.lab = lab;
+  g.clearRect(0, 0, 256, 320);
+  g.fillStyle = b.ring; g.beginPath(); g.moveTo(104, 212); g.lineTo(128, 246); g.lineTo(152, 212); g.closePath(); g.fill();
+  g.beginPath(); g.arc(128, 118, 106, 0, TAU); g.fill();
+  g.fillStyle = '#fff8ee'; g.beginPath(); g.arc(128, 118, 90, 0, TAU); g.fill();
+  ICONS[b.icon](g);
+  if (lab === '?') {
+    g.fillStyle = '#ffb547'; g.strokeStyle = '#fff8ee'; g.lineWidth = 8; g.beginPath(); g.arc(212, 38, 32, 0, TAU); g.fill(); g.stroke();
+    g.fillStyle = INK; g.font = '800 44px "Baloo 2",Nunito,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', 212, 41);
+  } else {
+    let fs = 40; g.font = '800 ' + fs + 'px "Baloo 2",Nunito,sans-serif'; while (g.measureText(lab).width > 210 && fs > 22) { fs -= 2; g.font = '800 ' + fs + 'px "Baloo 2",Nunito,sans-serif'; }
+    const w = Math.min(244, g.measureText(lab).width + 34); g.fillStyle = 'rgba(29,33,66,.92)'; g.beginPath(); g.roundRect ? g.roundRect(128 - w / 2, 258, w, 54, 27) : g.rect(128 - w / 2, 258, w, 54); g.fill();
+    g.fillStyle = '#fff8ee'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(lab, 128, 287);
+  }
+  b.tex.needsUpdate = true;
+}
+function shopBadge(g, sp, d) {
+  const icon = sp.hall ? 'hall' : { bread: 'bread', cup: 'cup', book: 'book', cross: 'cross', mail: 'mail', flower: 'flower' }[sp.shop];
+  if (!icon) return;
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 320;
+  const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true, fog: false }));
+  spr.scale.set(.95, 1.19, 1); spr.renderOrder = 3;
+  const x = sp.hall ? 0 : -sp.w * .17 + .2, y = sp.hall ? 3.3 : 3.05;
+  spr.position.set(x, y, d / 2 + (sp.hall ? 1.0 : 1.15)); g.add(spr);
+  const b = { id: sp.id, icon, ring: sp.id === 'bakeryShop' ? '#ffb547' : sp.hall ? '#5f9483' : (sp.awning || PAL.accent), cv, tex, spr, y, lab: null };
+  drawBadge(b); badges.push(b);
 }
 const wallLampM = C('#fff3d0', { unique: true, emissive: '#ffcf7a', emissiveIntensity: 0, bumpScale: 0 }); lampMats.push(wallLampM);
 const ironD = C('#3a3a48', { metalness: .3 }), zinc = C('#8a8f99', { metalness: .35, roughness: .45 }), terra = C('#c4633f');
@@ -629,12 +672,23 @@ function pick(e) {
   let o = hs[0].object; while (o && !o.userData.id) o = o.parent;
   return o ? { id: o.userData.id, point: hs[0].point, dist: hs[0].distance, obj: o } : null;
 }
-canvas.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: 0, id: e.pointerId }; try { canvas.setPointerCapture(e.pointerId); } catch (er) { /* */ } });
+/* doigts et souris : un doigt = regarder (glisser) ou marcher / toucher (tap) ; deux doigts = zoom (pincer) ;
+   molette = zoom. Pendant un geste à deux doigts, ni rotation ni clic parasite. */
+const touches = new Map(); let pinch = null, multi = false, zoomT = 1, zoomV = 1;
+const ZMIN = .5, ZMAX = 1.15, setZoom = z => { zoomT = Math.max(ZMIN, Math.min(ZMAX, z)); };
+const spread = () => { const [a, b] = [...touches.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+canvas.addEventListener('pointerdown', e => {
+  touches.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { canvas.setPointerCapture(e.pointerId); } catch (er) { /* */ }
+  if (touches.size === 1) { multi = false; down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: 0, id: e.pointerId }; }
+  else { multi = true; down = null; if (touches.size === 2) pinch = { d: spread(), z: zoomT }; }
+});
 canvas.addEventListener('pointermove', e => {
+  if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (photo) return;
+  if (pinch && touches.size >= 2) { setZoom(pinch.z * pinch.d / spread()); return; }
   if (down && down.id === e.pointerId) {
     const dx = e.clientX - down.lx, dy = e.clientY - down.ly; down.lx = e.clientX; down.ly = e.clientY; down.moved += Math.abs(dx) + Math.abs(dy);
-    if (down.moved > 6) { tYaw -= dx * .0042; tPitch = Math.max(-1.1, Math.min(1.0, tPitch - dy * .0042)); }
+    if (down.moved > 6) { const k = .0042 * zoomV; tYaw -= dx * k; tPitch = Math.max(-1.1, Math.min(1.0, tPitch - dy * k)); }
     return;
   }
   if (e.pointerType !== 'mouse') return;
@@ -643,13 +697,17 @@ canvas.addEventListener('pointermove', e => {
   canvas.style.cursor = id ? 'pointer' : 'grab';
   if (id) { tip.textContent = H.label(id); tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px'; tip.classList.remove('hidden'); } else tip.classList.add('hidden');
 });
+function lift(e) { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; if (multi) { if (!touches.size) multi = false; down = null; return true; } return false; }
+canvas.addEventListener('pointercancel', e => { lift(e); down = null; });
 canvas.addEventListener('pointerup', e => {
-  if (photo || !down) { down = null; return; }
+  if (lift(e)) return;
+  if (photo || !down || down.id !== e.pointerId) { down = null; return; }
   const moved = down.moved; down = null; if (moved > 8) return;
   const p = pick(e); if (!p) return;
   if (p.id === 'square') { target = new THREE.Vector3(p.point.x, 1.45, p.point.z); return; }
   H.pick(p.id, p.obj);
 });
+canvas.addEventListener('wheel', e => { if (photo) return; e.preventDefault(); setZoom(zoomT * (1 + Math.max(-.2, Math.min(.2, e.deltaY * .0012)))); }, { passive: false });
 canvas.addEventListener('pointerleave', () => { tip.classList.add('hidden'); });
 
 /* ---------- mode photo : vue aérienne en maquette ---------- */
@@ -665,7 +723,7 @@ function makeComposer() {
   return c;
 }
 function setPhoto(on) {
-  if (on === photo) return; photo = on; tip.classList.add('hidden');
+  if (on === photo) return; photo = on; tip.classList.add('hidden'); badges.forEach(b => { b.spr.visible = !on; });
   if (on) {
     saved = { pos: pos.clone(), yaw, pitch, fov: cam.fov };
     cam.fov = 34; cam.near = 6; cam.far = 600; cam.updateProjectionMatrix();
@@ -801,7 +859,18 @@ function updateFx(dt, t) {
 
 /* ---------- boucle ---------- */
 addEventListener('resize', () => { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); R.setSize(innerWidth, innerHeight); if (composer) composer.setSize(innerWidth, innerHeight); });
-const clockT = new THREE.Clock(); let lastHourCheck = 0;
+const clockT = new THREE.Clock(); let lastHourCheck = 0, lastBadgeCheck = 0;
+/* ?debug : panneau de mesures à l'écran (images par seconde, résolution, appels de dessin, triangles, qualité) */
+const DBG = /[?&]debug\b/.test(location.search) ? document.createElement('div') : null, dbgS = { t: 0, n: 0 };
+if (DBG) { DBG.style.cssText = 'position:fixed;z-index:30;left:8px;bottom:calc(var(--nav) + 8px);background:rgba(20,22,44,.85);color:#9dffb0;font:11px/1.35 monospace;padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre'; document.body.appendChild(DBG); R.info.autoReset = false; }
+function dbgFrame() {
+  const now = performance.now(); if (dbgS.last) dbgS.t += (now - dbgS.last) / 1000; dbgS.last = now; dbgS.n++; if (dbgS.t < .5) return;
+  const sz = R.getDrawingBufferSize(new THREE.Vector2()), fps = dbgS.n / dbgS.t;
+  DBG.textContent = Math.round(fps) + ' img/s (' + (1000 / fps).toFixed(0) + ' ms)\n' + sz.x + '×' + sz.y + ' · ratio ' + R.getPixelRatio().toFixed(2) + '\n' +
+    Math.round(R.info.render.calls / dbgS.n) + ' appels · ' + Math.round(R.info.render.triangles / dbgS.n / 1000) + 'k tri\n' +
+    'qualité ' + (fp ? 'complète' : 'allégée') + (mobile ? ' · mobile' : '') + ' · zoom ' + zoomV.toFixed(2);
+  dbgS.t = 0; dbgS.n = 0; R.info.reset();
+}
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function loop() {
   requestAnimationFrame(loop);
@@ -817,6 +886,8 @@ function loop() {
     water.material.emissiveIntensity = .22 + Math.sin(t * 2) * .05;
   }
   updateFx(dt, t);
+  badges.forEach((b, i) => { b.spr.position.y = b.y + Math.sin(t * 1.8 + i * 1.3) * .06; });
+  if (t - lastBadgeCheck > .7) { lastBadgeCheck = t; badges.forEach(b => { if (H.label(b.id) !== b.lab) drawBadge(b); }); }
   if (photo) { ctl.update(); if (composer) composer.render(); else R.render(scene, cam); sky.position.copy(cam.position); stars.position.copy(cam.position); return; }
   /* marche */
   fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw)); right.set(Math.cos(yaw), 0, -Math.sin(yaw));
@@ -840,6 +911,7 @@ function loop() {
   bob += dt * spd * 3.4;
   cam.position.set(pos.x, pos.y + Math.sin(bob) * .018 * Math.min(1, spd / SPEED), pos.z);
   cam.rotation.set(pitch, yaw, 0, 'YXZ');
+  zoomV += (zoomT - zoomV) * (1 - Math.exp(-dt * 12)); { const f = (mobile ? 70 : 62) * zoomV; if (Math.abs(cam.fov - f) > .01) { cam.fov = f; cam.updateProjectionMatrix(); } }
   sky.position.copy(cam.position); stars.position.copy(cam.position);
   if (!fp && !fpFailed) { try { fp = makeFP(); } catch (e) { fpFailed = true; console.warn(e); } }
   perfT += dt; perfN++;
@@ -848,12 +920,13 @@ function loop() {
   if (perfT > 2 && fp && pr <= 1) { if (perfT / perfN > 1 / 28) { if (++slowN > 1 && !/[?&]debug\b/.test(location.search)) { fp = null; fpFailed = true; } } else slowN = 0; }
   if (perfT > 2) { if (perfT / perfN > 1 / 40 && pr > 1) { pr = Math.max(1, pr - .25); R.setPixelRatio(pr); R.setSize(innerWidth, innerHeight); if (fp) { fp.setPixelRatio(pr); if (fxaa) { const s = R.getDrawingBufferSize(new THREE.Vector2()); fxaa.uniforms.resolution.value.set(1 / s.x, 1 / s.y); } } } perfT = 0; perfN = 0; }
   if (fp) fp.render(); else R.render(scene, cam);
+  if (DBG) dbgFrame();
 }
 loop();
 
 /* sortir de la boulangerie : devant sa porte, face à la place */
 /* outil de test : ?debug dans l'adresse donne window.PVDBG pour placer la caméra (captures de vérification) */
-if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld };
+if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges };
 function placeAtBakery() { const a = bld.bakery.ang; pos.set(Math.sin(a) * 8.0, 1.45, Math.cos(a) * 8.0); yaw = tYaw = a; pitch = tPitch = -.05; target = null; vel.set(0, 0, 0); }
 
 return {

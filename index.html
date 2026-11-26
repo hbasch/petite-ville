@@ -8,7 +8,17 @@
 <meta name="description" content="Apprends l'anglais ou le polonais en parlant aux habitants d'une petite ville en 3D.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
+<script>
+/* pas de zoom de la page entière (iPhone) : le pincement sert à zoomer dans la ville */
+document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+/* ?debug : les erreurs s'affichent à l'écran (sur téléphone, on ne voit pas la console) */
+if (/[?&]debug\b/.test(location.search)) {
+  var dbgShow = function (m) { var d = document.getElementById('dbgErr'); if (!d) { d = document.createElement('div'); d.id = 'dbgErr'; d.style.cssText = 'position:fixed;z-index:99;left:8px;right:8px;top:calc(8px + env(safe-area-inset-top,0px));background:#b3261e;color:#fff;font:12px/1.35 monospace;padding:8px 10px;border-radius:10px;max-height:40vh;overflow:auto;white-space:pre-wrap'; d.onclick = function () { d.remove(); }; (document.body || document.documentElement).appendChild(d); } d.textContent += m + '\n'; };
+  addEventListener('error', function (e) { dbgShow('Erreur : ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop().split('?')[0] + ':' + e.lineno + ')' : '')); });
+  addEventListener('unhandledrejection', function (e) { dbgShow('Erreur : ' + ((e.reason && e.reason.message) || e.reason)); });
+}
+</script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -250,7 +260,7 @@
 <script src="data.js?v=10"></script>
 <script src="clay.js?v=4"></script>
 <script src="scene.js?v=14"></script>
-<script src="town.js?v=21"></script>
+<script src="town.js?v=22"></script>
 <script src="app.js?v=10"></script>
 </body>
 </html>
