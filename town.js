@@ -161,7 +161,39 @@ function gableShape(type, w, rh) {
   s.lineTo(-hw, 0); return s;
 }
 const frameG = G_('frame', () => rbox(.8, 1.02, .2, .09, 3)), glassG = G_('glass', () => rbox(.56, .78, .12, .07, 3)), sillG = G_('sill', () => rbox(.98, .12, .3, .05, 2)), shutG = G_('shut', () => rbox(.3, .92, .1, .05, 2)), boxG = G_('fbox', () => rbox(.84, .2, .24, .06, 2));
+/* vitrine en saillie : cadre, montants devant, étagère et marchandises selon le commerce
+   (le fond lumineux derrière est l'ancienne vitre, qui s'éclaire le soir) */
+function vitrine(g, sp, d, sx, sw) {
+  const ac = C(PAL.accent), z0 = d / 2 + .24, L0 = sx - sw / 2 + .16, W0 = sw - .32;
+  [-1, 1].forEach(sg => mk(rbox(.08, 1.5, .26, .03, 2), ac, sx + sg * (sw / 2 + .02), 1.06, d / 2 + .22, g));
+  mk(rbox(sw + .3, .14, .34, .05, 2), ac, sx, 1.84, d / 2 + .2, g);
+  for (let j = 1; j < 3; j++) mk(G_('vmul', () => rbox(.05, 1.45, .05, .02, 1)), ac, sx - sw / 2 + sw * j / 3, 1.06, d / 2 + .34, g);
+  mk(rbox(sw - .1, .04, .2, .015, 1), C('#e8d9bf'), sx, .98, z0, g);
+  const at = (n, i) => L0 + W0 * (i + .5) / n, M = (c, o) => C(c, o);
+  const row = (n, y, f) => { for (let i = 0; i < n; i++) f(at(n, i), y, i); };
+  if (sp.shop === 'bread') {
+    row(4, .31, (x, y, i) => { mk(G_('bask', () => cyl(.11, .085, .08, 12)), M('#b07a3e'), x, y + .04, z0, g); const l = mk(G_('loaf', () => lump(sph(.09, 12), .006)), M(i % 2 ? '#d8964f' : '#c47d3a'), x, y + .12, z0, g); l.scale.set(1.3, .7, .9); });
+    row(3, 1.0, (x, y, i) => { if (i === 1) { mk(G_('bask2', () => cyl(.08, .07, .16, 12)), M('#b07a3e'), x, y + .08, z0, g); [-.25, 0, .25].forEach(r => { const b = mk(G_('bag', () => cyl(.022, .022, .46, 8)), M('#d9a05a'), x + r * .1, y + .26, z0, g); b.rotation.z = r; }); } else [-.08, .08].forEach(o => { const c = mk(G_('crois', () => new THREE.TorusGeometry(.05, .026, 6, 10, Math.PI * 1.2)), M('#e0a050'), x + o, y + .04, z0, g); c.rotation.x = -Math.PI / 2; }); });
+  } else if (sp.shop === 'cup') {
+    row(3, 1.0, (x, y, i) => { mk(G_('stand', () => cyl(.11, .04, .03, 14)), M('#fffaf0'), x, y + .06, z0, g); mk(G_('cake', () => cyl(.09, .09, .09, 16)), M(['#f2a0b0', '#8a5a3a', '#f6e3a8'][i]), x, y + .13, z0, g); mk(G_('icing', () => cyl(.092, .092, .025, 16)), M('#fff8ee'), x, y + .18, z0, g); mk(G_('cherry', () => sph(.022, 8)), M('#d8323c'), x, y + .21, z0, g); });
+    row(5, .31, (x, y, i) => { mk(G_('sauc', () => cyl(.06, .06, .012, 12)), M('#fffaf0'), x, y + .01, z0, g); mk(G_('vcup', () => cyl(.035, .028, .06, 10)), M(i % 2 ? PAL.accent : '#fffaf0'), x, y + .045, z0, g); });
+  } else if (sp.shop === 'book') {
+    const BK = ['#c4473a', '#2f5fb3', '#e3a84a', '#3f6b5a', '#8f3b3b', '#efe3cf', '#6a4a6a'];
+    [.31, 1.0].forEach(y => { let x = L0; while (x < L0 + W0 - .06) { const w = .045 + Math.random() * .035, h = .15 + Math.random() * .08; mk(rbox(w, h, .13, .01, 1), M(BK[(Math.random() * BK.length) | 0]), x + w / 2, y + h / 2, z0, g).rotation.z = Math.random() < .15 ? .2 : 0; x += w + .012; } });
+  } else if (sp.shop === 'cross') {
+    const BT = ['#c98a3a', '#5a8fc8', '#fffaf0', '#3fae5f'];
+    [.31, 1.0].forEach((y, r) => row(6, y, (x, yy, i) => { const c = BT[(i + r) % 4], h = .1 + ((i * 7 + r) % 3) * .03; mk(cyl(.035, .04, h, 10), M(c, { roughness: .3 }), x, yy + h / 2, z0, g); mk(G_('cap', () => cyl(.022, .022, .03, 8)), M('#fffaf0'), x, yy + h + .015, z0, g); }));
+  } else if (sp.shop === 'mail') {
+    row(3, .31, (x, y, i) => { const h = .1 + i * .03; mk(rbox(.18, h, .14, .015, 1), M('#c9a06a'), x, y + h / 2, z0, g); mk(rbox(.02, h + .005, .145, .005, 1), M('#7a4a2a'), x, y + h / 2, z0, g); });
+    row(4, 1.0, (x, y, i) => { for (let k = 0; k < 4; k++) mk(G_('env', () => rbox(.14, .012, .1, .004, 1)), M(k % 2 ? '#fffaf0' : (i % 2 ? '#f2d6a0' : '#cfe0f0')), x, y + .01 + k * .014, z0, g).rotation.y = (k - 1.5) * .12; });
+  } else if (sp.shop === 'flower') {
+    const FL = ['#ff6f91', '#ffd35a', '#fff4e2', PAL.walls[4], '#e84a3a', '#b7a3d6'];
+    [.31, 1.0].forEach((y, r) => row(4, y, (x, yy, i) => { mk(G_('vbk', () => cyl(.07, .055, .13, 12)), M('#7a8fa8', { metalness: .3 }), x, yy + .065, z0, g); mk(G_('vleaf', () => lump(sph(.08, 10), .01)), M(PAL.leaf), x, yy + .2, z0, g); for (let k = 0; k < 5; k++) { const a2 = k / 5 * TAU; mk(G_('fl', () => sph(.07, 8)), M(FL[(i + r * 2 + k % 2) % FL.length]), x + Math.cos(a2) * .05, yy + .25 + (k % 2) * .03, z0 + Math.sin(a2) * .04, g).scale.setScalar(.6); } }));
+  }
+}
+const CURT = ['#fff4e2', '#f2c6c2', '#cfe0d8', '#f6e3a8', '#d8cfe8', '#e8b9a0'];
 function windowAt(g, x, y, z, sp, lit) {
+  if (Math.random() < .6) { const cc = C(CURT[(Math.random() * CURT.length) | 0]); [-1, 1].forEach(sg => mk(G_('curt', () => lump(rbox(.15, .7, .03, .015, 2), .004)), cc, x + sg * .2, y + .02, z + .15, g)); mk(G_('valance', () => rbox(.58, .09, .035, .02, 1)), cc, x, y + .34, z + .15, g); }
   mk(frameG, C(TRIM), x, y, z, g);
   mk(glassG, lit ? litGlass : darkGlass, x, y, z + .085, g);
   mk(rbox(.05, .76, .05, .02, 1), C(TRIM), x, y, z + .155, g);
@@ -199,9 +231,9 @@ function building(sp, ang, rad) {
     const sw = sp.w * .48, sx = -sp.w * .17;
     mk(rbox(sw + .2, 1.75, .22, .1, 3), C(PAL.accent), sx, 1.02, d / 2, g);
     mk(rbox(sw - .12, 1.45, .14, .08, 3), shopGlass, sx, 1.05, d / 2 + .06, g);
-    for (let j = 1; j < 3; j++) mk(rbox(.06, 1.45, .06, .02, 1), C(PAL.accent), sx - sw / 2 + sw * j / 3, 1.05, d / 2 + .12, g);
+    vitrine(g, sp, d, sx, sw);
     mk(rbox(sw + .3, .22, .4, .08, 2), C(PAL.accent), sx, .2, d / 2 + .12, g);
-    const dx = sp.w * .3; mk(rbox(1.02, 1.75, .2, .12, 3), C(PAL.accent), dx, .88, d / 2, g); mk(rbox(.78, 1.5, .14, .1, 3), C(shade(sp.color, -.25)), dx, .8, d / 2 + .06, g); mk(rbox(.5, .5, .1, .06, 2), shopGlass, dx, 1.15, d / 2 + .12, g);
+    const dx = sp.w * .3; mk(rbox(1.02, 1.75, .2, .12, 3), C(PAL.accent), dx, .88, d / 2, g); mk(rbox(.78, 1.5, .14, .1, 3), C(shade(sp.color, -.25)), dx, .8, d / 2 + .06, g); mk(rbox(.5, .5, .1, .06, 2), shopGlass, dx, 1.15, d / 2 + .12, g); mk(G_('dpan', () => rbox(.5, .38, .04, .02, 1)), C(shade(sp.color, -.32)), dx, .45, d / 2 + .14, g);
     mk(sph(.06, 8), C('#e8c35a', { metalness: .6, roughness: .3 }), dx + .25, .8, d / 2 + .16, g);
     /* auvent bombé */
     const aw = new THREE.Group(); aw.position.set(sx + .2, 2.12, d / 2 + .1); g.add(aw);
@@ -212,6 +244,10 @@ function building(sp, ang, rad) {
   } else if (!sp.hall) {
     mk(rbox(1.08, 1.82, .2, .14, 3), C(TRIM), 0, .91, d / 2, g); mk(rbox(.84, 1.62, .14, .12, 3), C(sp.door || shade(sp.color, -.3)), 0, .82, d / 2 + .06, g);
     mk(sph(.06, 8), C('#e8c35a', { metalness: .6, roughness: .3 }), .28, .8, d / 2 + .15, g);
+    const dpc = C(shade(sp.door || shade(sp.color, -.3), -.07));
+    [-1, 1].forEach(sx2 => [.48, 1.18].forEach(py => mk(G_('hpan', () => rbox(.27, py > 1 ? .5 : .56, .035, .02, 1)), dpc, sx2 * .17, py, d / 2 + .14, g)));
+    mk(G_('plq', () => rbox(.2, .15, .03, .03, 1)), C('#2f4a7a'), .78, 1.62, d / 2 + .11, g); mk(G_('plqn', () => rbox(.07, .09, .01, .005, 1)), C('#fff8ee'), .78, 1.62, d / 2 + .13, g);
+    mk(G_('mat', () => rbox(.72, .025, .34, .01, 1)), C('#9a6a46', { roughness: .9 }), 0, .155, d / 2 + .34, g);
     [-1, 1].forEach(sg => windowAt(g, sg * sp.w * .32, 1.15, d / 2, sp, Math.random() < .5));
     mk(rbox(1.3, .14, .5, .06, 2), C(shade(PAL.ground, -.12)), 0, .07, d / 2 + .25, g);
   }
@@ -222,6 +258,11 @@ function building(sp, ang, rad) {
     [-1, 1].forEach(sg => windowAt(g, sg * sp.w * .36, 1.25, d / 2, sp, true));
     mk(rbox(3.4, .2, .7, .08, 2), C(shade(PAL.ground, -.12)), 0, .1, d / 2 + .3, g);
   }
+  mk(rbox(sp.w - .3, .42, .08, .03, 2), C(shade(sp.color, -.16)), 0, .21, d / 2 + .02, g);
+  if (!sp.flat) [-1, 1].forEach(sg => {
+    const th = -sg * a, cxr = sg * hw / 2, cyr = sp.h + .22 + rh / 2, N = Math.max(4, Math.round(L / .3)), tm = C(shade(sp.roof, -.07)), hh = .19;
+    for (let k = 0; k < N; k++) { const u = -L / 2 + .2 + k * (L - .4) / (N - 1); mk(G_('tilerow', () => lump(rbox(.19, .07, d + .6, .035, 2), .006)), tm, cxr + u * Math.cos(th) - hh * Math.sin(th), cyr + u * Math.sin(th) + hh * Math.cos(th), 0, g).rotation.z = th; }
+  });
   houseDetails(g, sp, d, rh, hw);
   if (sp.shop || sp.hall) shopBadge(g, sp, d);
   return g;
