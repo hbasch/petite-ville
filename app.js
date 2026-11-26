@@ -237,7 +237,7 @@ function start() {
   if (!SR) $('dMic').disabled = true;
   updHud(); updMission(); renderDeck(); renderMap();
   if (!started && window.THREE && window.buildTown) {
-    const H = { palette: palette(), label: id => L.found.includes(id) ? W[id][T] : '?',
+    const H = { palette: palette(), country: country(), label: id => L.found.includes(id) ? W[id][T] : '?',
       pick: (id, obj) => { if (tab !== 'town' || place !== 'town') return; if (id === 'npc:passerby') greetPasserby(obj); else if (id.startsWith('npc:')) openNpc(id.slice(4)); else showWord(id); },
       active: () => place === 'town' && !document.hidden };
     (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); });
@@ -278,6 +278,8 @@ function enterBakery() {
 function exitBakery() { place = 'town'; show(null); if (town) town.placeAtBakery(); setPlaceUI(); }
 
 /* ---------- mode photo ---------- */
+/* pays de la ville : celui de la langue apprise (anglais → Édimbourg, polonais → Wrocław) ; ?pays=fr|gb|pl pour tester */
+function country() { const q = (location.search.match(/[?&]pays=(fr|gb|pl)\b/) || [])[1]; return q || ({ en: 'gb', pl: 'pl' })[T] || 'fr'; }
 function palette() { const q = (location.search.match(/palette=([abcd])/) || [])[1]; if (q) store.set('pv_pal', q); return q || store.get('pv_pal') || 'a'; }
 document.querySelectorAll('[data-pal]').forEach(b => { b.classList.toggle('on', b.dataset.pal === palette()); b.onclick = () => { store.set('pv_pal', b.dataset.pal); location.href = location.pathname + '?palette=' + b.dataset.pal; }; });
 const fmtH = h => { const hh = Math.floor(h) % 24, mm = Math.round((h - Math.floor(h)) * 60); return String(hh).padStart(2, '0') + ':' + String(mm === 60 ? 0 : mm).padStart(2, '0'); };

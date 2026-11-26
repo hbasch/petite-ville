@@ -305,6 +305,16 @@ Object.assign(PV.WORDS, {
  tree:{en:'tree',pl:'drzewo',fr:'arbre',ex:{en:'The tree is orange in autumn.',pl:'Jesienią drzewo jest pomarańczowe.',fr:"L'arbre est orange en automne."}},
  cat:{en:'cat',pl:'kot',fr:'chat',ex:{en:'The cat is sleeping in the sun.',pl:'Kot śpi na słońcu.',fr:'Le chat dort au soleil.'}},
  dog:{en:'dog',pl:'pies',fr:'chien',ex:{en:'The dog wants to play.',pl:'Pies chce się bawić.',fr:'Le chien veut jouer.'}},
+ pub:{en:'pub',pl:'pub',fr:'pub',ex:{en:"Let's meet at the pub at six.",pl:'Spotkajmy się w pubie o szóstej.',fr:'On se retrouve au pub à six heures.'}},
+ milkbar:{en:'milk bar',pl:'bar mleczny',fr:'bar mleczny (cantine)',ex:{en:'We eat pierogi at the milk bar.',pl:'Jemy pierogi w barze mlecznym.',fr:'On mange des pierogi au bar mleczny.'}},
+ phonebox:{en:'phone box',pl:'budka telefoniczna',fr:'cabine téléphonique',ex:{en:'The red phone box is next to the post office.',pl:'Czerwona budka telefoniczna stoi obok poczty.',fr:'La cabine téléphonique rouge est à côté de la poste.'}},
+ castle:{en:'castle',pl:'zamek',fr:'château',ex:{en:'The castle is on a big rock.',pl:'Zamek stoi na wielkiej skale.',fr:'Le château est sur un grand rocher.'}},
+ statue:{en:'statue',pl:'pomnik',fr:'statue',ex:{en:'This statue is a little dog.',pl:'Ten pomnik to mały pies.',fr:"Cette statue, c'est un petit chien."}},
+ unicorn:{en:'unicorn',pl:'jednorożec',fr:'licorne',ex:{en:'The unicorn is the national animal of Scotland.',pl:'Jednorożec to narodowe zwierzę Szkocji.',fr:"La licorne est l'animal national de l'Écosse."}},
+ pillory:{en:'pillory',pl:'pręgierz',fr:'pilori',ex:{en:'The old pillory stands in the market square.',pl:'Stary pręgierz stoi na rynku.',fr:'Le vieux pilori se dresse sur la place du marché.'}},
+ kiosk:{en:'kiosk',pl:'kiosk',fr:'kiosque',ex:{en:'I buy a newspaper at the kiosk.',pl:'Kupuję gazetę w kiosku.',fr:"J'achète le journal au kiosque."}},
+ car:{en:'car',pl:'samochód',fr:'voiture',ex:{en:'This little car is very old.',pl:'Ten mały samochód jest bardzo stary.',fr:'Cette petite voiture est très vieille.'}},
+ dwarf:{en:'dwarf',pl:'krasnal',fr:'nain',ex:{en:'There is a little bronze dwarf here!',pl:'Tu jest mały krasnal z brązu!',fr:'Il y a un petit nain en bronze ici !'}},
  bench:{en:'bench',pl:'ławka',fr:'banc',ex:{en:'An old man sits on the bench.',pl:'Starszy pan siedzi na ławce.',fr:'Un vieux monsieur est assis sur le banc.'}},
  streetlamp:{en:'street lamp',pl:'latarnia',fr:'réverbère',ex:{en:'The street lamps turn on at night.',pl:'Latarnie zapalają się w nocy.',fr:"Les réverbères s'allument la nuit."}},
  bicycle:{en:'bicycle',pl:'rower',fr:'vélo',ex:{en:'Her bicycle is red.',pl:'Jej rower jest czerwony.',fr:'Son vélo est rouge.'}},
@@ -314,7 +324,7 @@ Object.assign(PV.WORDS, {
  postbox:{en:'postbox',pl:'skrzynka pocztowa',fr:'boîte aux lettres',ex:{en:'Put the letter in the postbox.',pl:'Wrzuć list do skrzynki pocztowej.',fr:'Mets la lettre dans la boîte aux lettres.'}},
  cloud:{en:'cloud',pl:'chmura',fr:'nuage',ex:{en:'There is a little cloud in the sky.',pl:'Na niebie jest mała chmura.',fr:'Il y a un petit nuage dans le ciel.'}}
 });
-PV.TOWN_IDS = ['square','fountain','townhall','clock','bakeryShop','cafe','pharmacy','post','bookshop','florist','house','tree','bench','streetlamp','bicycle','pigeon','stall','apple','postbox','cloud','cat','dog'];
+PV.TOWN_IDS = ['square','fountain','townhall','clock','bakeryShop','cafe','pharmacy','post','bookshop','florist','house','tree','bench','streetlamp','bicycle','pigeon','stall','apple','postbox','cloud','cat','dog','pub','milkbar','phonebox','castle','statue','unicorn','pillory','kiosk','car','dwarf'];
 Object.assign(PV.NOTES.en, {
  square:{fr:'« Square » tout seul veut aussi dire « carré ».',pl:'Samo „square” znaczy też „kwadrat”.'},
  post:{fr:'En anglais américain : post office aussi, mais la boîte aux lettres se dit mailbox.',pl:'W USA skrzynka pocztowa to mailbox.'}
@@ -323,8 +333,8 @@ Object.assign(PV.NOTES.pl, {
  square:{fr:'Le « rynek » est la grande place au cœur des villes polonaises, comme à Cracovie.'},
  townhall:{fr:'Le ratusz se trouve souvent au milieu du rynek.'}
 });
-PV.SCENE.en.signs = { bakeryShop: 'BAKERY', cafe: 'CAFÉ ROSIE', pharmacy: 'PHARMACY', post: 'POST OFFICE', bookshop: 'BOOKSHOP', florist: 'FLOWERS', townhall: 'TOWN HALL' };
-PV.SCENE.pl.signs = { bakeryShop: 'PIEKARNIA', cafe: 'KAWIARNIA ROSIE', pharmacy: 'APTEKA', post: 'POCZTA', bookshop: 'KSIĘGARNIA', florist: 'KWIACIARNIA', townhall: 'RATUSZ' };
+PV.SCENE.en.signs = { pub: 'THE THISTLE INN', bakeryShop: 'BAKERY', cafe: 'CAFÉ ROSIE', pharmacy: 'PHARMACY', post: 'POST OFFICE', bookshop: 'BOOKSHOP', florist: 'FLOWERS', townhall: 'TOWN HALL' };
+PV.SCENE.pl.signs = { milkbar: 'BAR MLECZNY', bakeryShop: 'PIEKARNIA', cafe: 'KAWIARNIA ROSIE', pharmacy: 'APTEKA', post: 'POCZTA', bookshop: 'KSIĘGARNIA', florist: 'KWIACIARNIA', townhall: 'RATUSZ' };
 PV.PLACES.unshift({ id: 'square', key: 'placeSquare', status: 'open', color: '#e7a06b' });
 PV.PLACES.find(p => p.id === 'market').status = 'square';
 Object.assign(PV.UI.fr, {
