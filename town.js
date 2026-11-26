@@ -618,10 +618,11 @@ function updatePeople(dt, t) {
     } else if (o.mode !== 'sit') { P.legs.forEach(l => { l.rotation.x *= .85; }); P.body.position.y = .4 + Math.sin(o.t * 2) * .006; }
     /* respiration, regard */
     P.body.scale.set(1, 1 + Math.sin(o.t * 2.2) * .015, 1);
-    if (isTalk) { faceTo(o, pos.x, pos.z, .12); P.head.rotation.y *= .8; P.head.rotation.x = -.12 + Math.sin(o.t * 3) * .04; }
+    if (isTalk && o.mode !== 'sit') { faceTo(o, pos.x, pos.z, .12); P.head.rotation.y *= .8; P.head.rotation.x = -.12 + Math.sin(o.t * 3) * .04; }
+    else if (isTalk) { const want = Math.atan2(dx, dz) - o.grp.rotation.y; const d = Math.atan2(Math.sin(want), Math.cos(want)); P.head.rotation.y += (Math.max(-.9, Math.min(.9, d)) - P.head.rotation.y) * .1; P.head.rotation.x = -.08 + Math.sin(o.t * 3) * .04; }
     else if (dist < 4.5) { const want = Math.atan2(dx, dz) - o.grp.rotation.y; const d = Math.atan2(Math.sin(want), Math.cos(want)); P.head.rotation.y += (Math.max(-1, Math.min(1, d)) - P.head.rotation.y) * .1; P.head.rotation.x += (-.1 - P.head.rotation.x) * .1; }
     else { P.head.rotation.y += (Math.sin(o.t * .4) * .35 - P.head.rotation.y) * .03; P.head.rotation.x += (Math.sin(o.t * .7) * .05 - P.head.rotation.x) * .05; }
-    if (o.mode === 'idle' && !isTalk) faceTo(o, Math.sin(o.base + Math.PI) * -100, Math.cos(o.base + Math.PI) * -100, 0);
+    if (o.mode === 'idle' && !isTalk) faceTo(o, o.grp.position.x + Math.sin(o.base) * 10, o.grp.position.z + Math.cos(o.base) * 10, .04);
     /* coucou quand on s'approche */
     if (dist < 3.2 && !o.waved && !isTalk) { o.waved = true; o.wave = 1.6; }
     if (dist > 6) o.waved = false;
@@ -640,6 +641,7 @@ function updatePeople(dt, t) {
 }
 function talkTo(id) {
   const o = people.find(p => p.id === id); if (!o) return; talking = o; o.pause = 999;
+  if (o.mode === 'sit') { const f = o.grp.rotation.y; target = new THREE.Vector3(o.grp.position.x + Math.sin(f) * 2.6, 1.45, o.grp.position.z + Math.cos(f) * 2.6); return; }
   const dx = pos.x - o.grp.position.x, dz = pos.z - o.grp.position.z, d = Math.hypot(dx, dz);
   if (d > 3.2 || d < 1.8) target = new THREE.Vector3(o.grp.position.x + dx / d * 2.5, 1.45, o.grp.position.z + dz / d * 2.5);
 }
