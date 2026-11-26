@@ -76,6 +76,13 @@ const starMat = new THREE.PointsMaterial({ color: '#fff6e0', size: 1.6, sizeAtte
 const stars = new THREE.Points(starGeo, starMat); scene.add(stars);
 scene.fog = new THREE.Fog('#d6ecfa', 45, 160);
 
+const GRADE = { uniforms: { tDiffuse: { value: null }, sat: { value: 1.14 }, con: { value: 1.07 }, tint: { value: new THREE.Vector3(1, 1, 1) }, vig: { value: 1.0 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: 'uniform sampler2D tDiffuse; uniform float sat; uniform float con; uniform vec3 tint; uniform float vig; varying vec2 vUv;\n' +
+    'void main(){ vec4 c = texture2D(tDiffuse, vUv); vec3 col = c.rgb; float l = dot(col, vec3(.2126,.7152,.0722)); col = mix(vec3(l), col, sat);\n' +
+    ' col = max((col - 0.18) * con + 0.18, 0.0) * tint; vec2 d = vUv - .5; col *= mix(.8, 1.0, smoothstep(.95, .25, length(d) * vig * 1.25));\n' +
+    ' gl_FragColor = vec4(col, c.a); }' };
+
 /* ---------- lumières ---------- */
 const hemi = new THREE.HemisphereLight('#cfe6ff', '#6b4a35', .6); scene.add(hemi);
 const sun = new THREE.DirectionalLight('#ffffff', 1.2); scene.add(sun, sun.target);
@@ -575,12 +582,6 @@ function snapshot() {
 }
 
 /* ---------- rendu à la première personne : anticrénelage, halo doux, étalonnage selon l'heure, vignette ---------- */
-const GRADE = { uniforms: { tDiffuse: { value: null }, sat: { value: 1.14 }, con: { value: 1.07 }, tint: { value: new THREE.Vector3(1, 1, 1) }, vig: { value: 1.0 } },
-  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-  fragmentShader: 'uniform sampler2D tDiffuse; uniform float sat; uniform float con; uniform vec3 tint; uniform float vig; varying vec2 vUv;\n' +
-    'void main(){ vec4 c = texture2D(tDiffuse, vUv); vec3 col = c.rgb; float l = dot(col, vec3(.2126,.7152,.0722)); col = mix(vec3(l), col, sat);\n' +
-    ' col = max((col - 0.18) * con + 0.18, 0.0) * tint; vec2 d = vUv - .5; col *= mix(.8, 1.0, smoothstep(.95, .25, length(d) * vig * 1.25));\n' +
-    ' gl_FragColor = vec4(col, c.a); }' };
 let fp = null, fpFailed = false, fxaa = null;
 function makeFP() {
   if (!THREE.EffectComposer || !THREE.ShaderPass || !THREE.GammaCorrectionShader) return null;
