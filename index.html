@@ -8,7 +8,7 @@
 <meta name="description" content="Apprends l'anglais ou le polonais en parlant aux habitants d'une petite ville en 3D.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -28,10 +28,12 @@
  <symbol id="i-umbrella" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 18 0z" fill="currentColor"/><path d="M12 12v7a2 2 0 0 1-4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></symbol>
  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 4h4v16H7zM13 4h4v16h-4z" fill="currentColor"/></symbol>
+ <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
 
-<canvas id="c" aria-label="Scène 3D"></canvas>
+<canvas id="ct" aria-label="La place de Petite Ville"></canvas>
+<canvas id="c" class="hidden" aria-label="La boulangerie"></canvas>
 <div id="hover" class="hidden"></div>
 <div id="toast" class="toast hidden" role="status"></div>
 
@@ -43,6 +45,7 @@
   <button type="button" class="pill" id="goalPill"><span class="goalRing" id="goalRing"><i></i></span><span id="goalTxt">0/15</span></button>
   <button type="button" class="pill" id="misBtn"><span class="txt" data-i="mission"></span> <b id="misN">0/4</b></button>
  </div>
+ <button type="button" class="pill photoPill" id="photoBtn" aria-label="Photo"><svg><use href="#i-cam"/></svg><span class="txt" data-i="photo"></span></button>
  <button type="button" class="pill placePill" id="placeBtn"><span id="placeName"></span><svg><use href="#i-down"/></svg></button>
 </div>
 
@@ -60,6 +63,7 @@
  <div class="actions">
   <button class="btn coral" id="wRepeat" type="button"><svg><use href="#i-mic"/></svg><span data-i="repeat"></span></button>
   <button class="btn line" id="wSave" type="button"><svg><use href="#i-mark"/></svg><span id="wSaveTxt"></span></button>
+  <button class="btn honey hidden" id="wEnter" type="button" style="grid-column:1/-1"><span id="wEnterTxt"></span></button>
  </div>
 </section>
 
@@ -71,7 +75,7 @@
   <li data-t="talk" data-i="t_talk"></li>
   <li data-t="order" data-i="t_order"></li>
   <li data-t="pay" data-i="t_pay"></li>
-  <li data-t="words" data-i="t_words"></li>
+  <li data-t="town" data-i="t_town"></li>
  </ul>
  <div class="progRow"><span data-i="found"></span><b id="fc">0</b></div>
  <div class="bar"><i id="fb"></i></div>
@@ -106,6 +110,13 @@
  <div class="opts" id="dOpts"></div>
  <div class="mini" data-i="voiceNote"></div>
 </section>
+
+<div id="photoBar" class="hidden">
+ <div class="phRow"><span data-i="hourLbl"></span> <b id="phHour">12:00</b><button class="btn sm" id="phReal" type="button" data-i="realTime"></button></div>
+ <input type="range" id="phSlider" min="0" max="24" step="0.25" value="12" aria-label="Heure">
+ <div class="phBtns"><button class="ib" id="phClose" type="button" aria-label="Fermer">×</button><button class="shutter" id="phShoot" type="button" aria-label="Prendre la photo"><span></span></button><span class="phHint" data-i="photoHint"></span></div>
+</div>
+<div id="flashFx" class="hidden"></div>
 
 <!-- ===== pages ===== -->
 <main id="pgStories" class="page hidden"><div class="pageIn" id="storiesIn"></div></main>
@@ -184,11 +195,11 @@
 
 <div id="intro" class="overlay hidden">
  <div class="ov">
-  <h1><span data-i="introTitle"></span> <em id="shopName"></em></h1>
+  <h1><span id="introTitleTxt"></span> <em id="shopName"></em></h1>
   <p id="introText"></p>
   <ul class="steps">
-   <li><i>1</i><span data-i="step1"></span></li>
-   <li><i>2</i><span data-i="step2"></span></li>
+   <li><i>1</i><span id="step1"></span></li>
+   <li><i>2</i><span id="step2"></span></li>
    <li><i>3</i><span id="step3"></span></li>
   </ul>
   <button class="btn honey wide" id="enter" type="button" data-i="enter"></button>
@@ -222,9 +233,20 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="config.js?v=4"></script>
-<script src="data.js?v=4"></script>
-<script src="scene.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/HorizontalTiltShiftShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/VerticalTiltShiftShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/GammaCorrectionShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/VignetteShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="config.js?v=5"></script>
+<script src="data.js?v=5"></script>
+<script src="scene.js?v=5"></script>
+<script src="town.js?v=5"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

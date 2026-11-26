@@ -13,7 +13,8 @@ const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) 
 const icon = (id) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#i-' + id); s.appendChild(u); return s; };
 
 let ui = store.get('pv_ui') || ((navigator.language || '').toLowerCase().startsWith('pl') ? 'pl' : 'fr');
-let T = 'en', U = PV.UI[ui], S, D, user = null, P = null, L = null, started = false, tab = 'town';
+let T = 'en', U = PV.UI[ui], S, D, user = null, P = null, L = null, started = false, tab = 'town', place = 'town', town = null, bakeryBuilt = false;
+const TOWN = new Set(PV.TOWN_IDS || []);
 const tasks = { talk: false, order: false, pay: false };
 let mistakes = 0, spokenSession = 0, xpSession = 0;
 
@@ -130,8 +131,8 @@ function updHud() {
   const due = dueCount(); $('dueBadge').textContent = due; $('dueBadge').classList.toggle('hidden', !due);
 }
 function updMission() {
-  const n = L.found.length; $('fc').textContent = n + '/' + IDS.length; $('fb').style.width = Math.min(100, n / GOAL * 100) + '%';
-  const t = Object.assign({ words: n >= GOAL }, tasks);
+  const n = L.found.length; $('fc').textContent = n + '/' + IDS.length; $('fb').style.width = Math.min(100, n / IDS.length * 100) + '%';
+  const t = Object.assign({ town: L.found.filter(id => TOWN.has(id)).length >= 6 }, tasks);
   let done = 0;
   document.querySelectorAll('.tasks li').forEach(li => { const d = !!t[li.dataset.t]; li.classList.toggle('done', d); if (d) done++; });
   $('misN').textContent = done + '/4';
@@ -230,23 +231,67 @@ function start() {
   touchDay(); applyUI(); save();
   $('onb').classList.add('hidden');
   ['hud', 'nav'].forEach(id => $(id).classList.remove('hidden'));
-  $('placeName').textContent = U.placeBakery;
-  $('shopName').textContent = S.shop; $('dWho').textContent = S.baker;
-  $('introText').textContent = fill(U.introText, { l: PV.IN_LANG[ui][T], b: S.baker });
-  $('step3').textContent = fill(U.step3, { b: S.baker });
-  if (!L.found.length) $('intro').classList.remove('hidden');
+  $('dWho').textContent = S.baker;
+  setPlaceUI();
+  if (!L.found.some(id => TOWN.has(id))) showIntro('town');
   if (!SR) $('dMic').disabled = true;
   updHud(); updMission(); renderDeck(); renderMap();
-  if (!started && window.THREE) {
-    const H = { board: S.board, open: S.open, flour: S.flour,
-      label: id => L.found.includes(id) ? W[id][T] : '?',
-      pick: id => { if (tab !== 'town') return; if (id === 'baker') openDlg(); else showWord(id); },
-      bubble: () => !tasks.pay };
-    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => window.buildScene(H));
+  if (!started && window.THREE && window.buildTown) {
+    const H = { signs: S.signs || {}, label: id => L.found.includes(id) ? W[id][T] : '?',
+      pick: id => { if (tab === 'town' && place === 'town') showWord(id); },
+      active: () => place === 'town' && !document.hidden };
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); });
   }
   started = true;
 }
-$('enter').onclick = () => { $('intro').classList.add('hidden'); say(T === 'pl' ? 'Dzień dobry!' : 'Welcome!'); };
+function showIntro(kind) {
+  const t = kind === 'town';
+  $('introTitleTxt').textContent = t ? U.townIntroTitle : U.introTitle;
+  $('shopName').textContent = t ? 'Petite Ville' : S.shop;
+  $('introText').textContent = fill(t ? U.townIntroText : U.introText, { l: PV.IN_LANG[ui][T], b: S.baker });
+  $('step1').textContent = t ? U.tstep1 : U.step1; $('step2').textContent = t ? U.tstep2 : U.step2;
+  $('step3').textContent = fill(t ? U.tstep3 : U.step3, { b: S.baker });
+  $('intro').classList.remove('hidden');
+}
+$('enter').onclick = () => { $('intro').classList.add('hidden'); say(T === 'pl' ? 'Dzień dobry!' : 'Hello!'); };
+
+/* ---------- la place et la boulangerie ---------- */
+function setPlaceUI() {
+  const inB = place === 'bakery';
+  $('placeName').textContent = inB ? '← ' + U.backToSquare : U.placeSquare;
+  $('ct').classList.toggle('hidden', inB); $('c').classList.toggle('hidden', !inB);
+  $('photoBtn').classList.toggle('hidden', inB);
+}
+function enterBakery() {
+  place = 'bakery'; show(null); setPlaceUI();
+  if (!bakeryBuilt && window.THREE) {
+    bakeryBuilt = true;
+    const H = { board: S.board, open: S.open, flour: S.flour,
+      label: id => L.found.includes(id) ? W[id][T] : '?',
+      pick: id => { if (tab !== 'town' || place !== 'bakery') return; if (id === 'baker') openDlg(); else showWord(id); },
+      bubble: () => !tasks.pay, active: () => place === 'bakery' && !document.hidden };
+    window.buildScene(H);
+  }
+  if (!L.found.some(id => !TOWN.has(id))) showIntro('bakery');
+  say(T === 'pl' ? 'Dzień dobry!' : 'Hello!');
+}
+function exitBakery() { place = 'town'; show(null); if (town) town.placeAtBakery(); setPlaceUI(); }
+
+/* ---------- mode photo ---------- */
+const fmtH = h => { const hh = Math.floor(h) % 24, mm = Math.round((h - Math.floor(h)) * 60); return String(hh).padStart(2, '0') + ':' + String(mm === 60 ? 0 : mm).padStart(2, '0'); };
+$('photoBtn').onclick = () => {
+  if (!town) return; show(null); document.body.classList.add('photo'); $('photoBar').classList.remove('hidden');
+  town.setPhoto(true); const h = town.hour(); $('phSlider').value = h; $('phHour').textContent = fmtH(h);
+};
+$('phSlider').oninput = () => { const h = +$('phSlider').value; $('phHour').textContent = fmtH(h); town.setHour(h); };
+$('phReal').onclick = () => { town.setHour(null); const h = town.hour(); $('phSlider').value = h; $('phHour').textContent = fmtH(h); };
+$('phClose').onclick = () => { town.setPhoto(false); document.body.classList.remove('photo'); $('photoBar').classList.add('hidden'); };
+$('phShoot').onclick = () => {
+  const url = town.snapshot(); const a = document.createElement('a'); a.href = url; a.download = 'petite-ville-' + fmtH(town.hour()).replace(':', 'h') + '.jpg';
+  document.body.appendChild(a); a.click(); a.remove();
+  const fx = $('flashFx'); fx.classList.remove('hidden'); fx.style.animation = 'none'; void fx.offsetWidth; fx.style.animation = ''; setTimeout(() => fx.classList.add('hidden'), 500);
+  toast(U.photoSaved);
+};
 
 /* ---------- onglets ---------- */
 function showTab(t) {
@@ -273,7 +318,7 @@ function show(id) {
 }
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => show(null));
 $('misBtn').onclick = () => { updMission(); show('misSheet'); };
-$('placeBtn').onclick = () => { renderMap(); show('mapSheet'); };
+$('placeBtn').onclick = () => { if (place === 'bakery') exitBakery(); else { renderMap(); show('mapSheet'); } };
 $('meBtn').onclick = () => showTab('progress');
 $('goalPill').onclick = () => showTab('progress');
 addEventListener('keydown', e => { if (e.key === 'Escape') { show(null); $('authOv').classList.add('hidden'); } });
@@ -297,9 +342,13 @@ function showWord(id) {
   const note = ((PV.NOTES[T] || {})[id] || {})[ui];
   $('wNoteTxt').textContent = note || ''; $('wNote').classList.toggle('hidden', !note);
   $('wPron').classList.add('hidden'); $('wRepeat').disabled = !SR;
+  const canEnter = place === 'town' && (id === 'bakeryShop' || id === 'cafe');
+  $('wEnter').classList.toggle('hidden', !canEnter);
+  if (canEnter) $('wEnterTxt').textContent = id === 'cafe' ? U.enterBtn + ' · ' + U.plusTag : U.enterBtn + ' · ' + S.baker;
   updSave(); show('card'); say(w[T]);
 }
 function updSave() { $('wSaveTxt').textContent = L.cards[curWord] ? U.saved : U.save; }
+$('wEnter').onclick = () => { if (curWord === 'bakeryShop') enterBakery(); else toast(U.plusTag + ' · ' + (ui === 'pl' ? '45 zł' : '10 €')); };
 $('wListen').onclick = () => { const w = W[curWord]; say(w[T]); say(w.ex[T], { queue: true }); };
 $('wSave').onclick = () => { if (L.cards[curWord]) delete L.cards[curWord]; else L.cards[curWord] = { box: 1, due: dayNum() }; save(); updSave(); updHud(); };
 $('wRepeat').onclick = () => {
@@ -318,12 +367,13 @@ $('wRepeat').onclick = () => {
 function renderMap() {
   const box = $('places'); box.innerHTML = '';
   PV.PLACES.forEach(pl => {
-    const b = el('button', 'place' + (pl.id === 'bakery' ? ' cur' : '') + (pl.status !== 'open' ? ' locked' : '')); b.type = 'button';
+    const cur = (pl.id === 'square' && place === 'town') || (pl.id === 'bakery' && place === 'bakery'), open = pl.status === 'open' || pl.status === 'square';
+    const b = el('button', 'place' + (cur ? ' cur' : '') + (!open ? ' locked' : '')); b.type = 'button';
     const roof = el('span', 'roof'); roof.style.background = pl.color; b.appendChild(roof);
-    b.appendChild(el('span', 'tag ' + pl.status, pl.status === 'open' ? U.open : pl.status === 'plus' ? U.plusTag : U.soon));
+    b.appendChild(el('span', 'tag ' + (open ? 'open' : pl.status), open ? U.open : pl.status === 'plus' ? U.plusTag : U.soon));
     b.appendChild(el('b', null, U[pl.key]));
-    b.appendChild(el('small', null, pl.id === 'bakery' ? U.here : ''));
-    b.onclick = () => { if (pl.status === 'open') show(null); else toast(pl.status === 'plus' ? U.plusTag + ' · ' + (ui === 'pl' ? '45 zł' : '10 €') : U.soon); };
+    b.appendChild(el('small', null, cur ? U.here : pl.status === 'square' ? U.onSquare : ''));
+    b.onclick = () => { if (pl.id === 'bakery') { if (place !== 'bakery') enterBakery(); else show(null); } else if (pl.id === 'square' || pl.status === 'square') { if (place === 'bakery') exitBakery(); else show(null); } else toast(pl.status === 'plus' ? U.plusTag + ' · ' + (ui === 'pl' ? '45 zł' : '10 €') : U.soon); };
     box.appendChild(b);
   });
   if (T === 'en') {

@@ -287,3 +287,54 @@ PV.UI = {
 };
 /* « tout se passe en … » */
 PV.IN_LANG = { fr: { en: 'anglais', pl: 'polonais' }, pl: { en: 'angielsku', pl: 'polsku' } };
+
+/* ---------- La place : mots de la ville ---------- */
+Object.assign(PV.WORDS, {
+ square:{en:'town square',pl:'rynek',fr:'place',ex:{en:"Let's meet in the town square.",pl:'Spotkajmy się na rynku.',fr:'Retrouvons-nous sur la place.'}},
+ fountain:{en:'fountain',pl:'fontanna',fr:'fontaine',ex:{en:'The children play by the fountain.',pl:'Dzieci bawią się przy fontannie.',fr:'Les enfants jouent près de la fontaine.'}},
+ townhall:{en:'town hall',pl:'ratusz',fr:'mairie',ex:{en:'The town hall has a big clock.',pl:'Ratusz ma duży zegar.',fr:'La mairie a une grande horloge.'}},
+ clock:{en:'clock',pl:'zegar',fr:'horloge',ex:{en:'Look at the clock. We are late!',pl:'Spójrz na zegar. Jesteśmy spóźnieni!',fr:"Regarde l'horloge. On est en retard !"}},
+ bakeryShop:{en:'bakery',pl:'piekarnia',fr:'boulangerie',ex:{en:'The bakery opens at seven.',pl:'Piekarnia otwiera się o siódmej.',fr:'La boulangerie ouvre à sept heures.'}},
+ cafe:{en:'café',pl:'kawiarnia',fr:'café',ex:{en:'Rosie works in the café.',pl:'Rosie pracuje w kawiarni.',fr:'Rosie travaille au café.'}},
+ pharmacy:{en:'pharmacy',pl:'apteka',fr:'pharmacie',ex:{en:'The pharmacy has a green cross.',pl:'Apteka ma zielony krzyż.',fr:'La pharmacie a une croix verte.'}},
+ post:{en:'post office',pl:'poczta',fr:'poste',ex:{en:'I send a letter at the post office.',pl:'Wysyłam list na poczcie.',fr:"J'envoie une lettre à la poste."}},
+ bookshop:{en:'bookshop',pl:'księgarnia',fr:'librairie',ex:{en:'I buy a book at the bookshop.',pl:'Kupuję książkę w księgarni.',fr:"J'achète un livre à la librairie."}},
+ florist:{en:'flower shop',pl:'kwiaciarnia',fr:'fleuriste',ex:{en:'The flower shop sells roses.',pl:'W kwiaciarni są róże.',fr:'Le fleuriste vend des roses.'}},
+ house:{en:'house',pl:'dom',fr:'maison',ex:{en:'My friend lives in the blue house.',pl:'Mój przyjaciel mieszka w niebieskim domu.',fr:'Mon ami habite dans la maison bleue.'}},
+ tree:{en:'tree',pl:'drzewo',fr:'arbre',ex:{en:'The tree is orange in autumn.',pl:'Jesienią drzewo jest pomarańczowe.',fr:"L'arbre est orange en automne."}},
+ bench:{en:'bench',pl:'ławka',fr:'banc',ex:{en:'An old man sits on the bench.',pl:'Starszy pan siedzi na ławce.',fr:'Un vieux monsieur est assis sur le banc.'}},
+ streetlamp:{en:'street lamp',pl:'latarnia',fr:'réverbère',ex:{en:'The street lamps turn on at night.',pl:'Latarnie zapalają się w nocy.',fr:"Les réverbères s'allument la nuit."}},
+ bicycle:{en:'bicycle',pl:'rower',fr:'vélo',ex:{en:'Her bicycle is red.',pl:'Jej rower jest czerwony.',fr:'Son vélo est rouge.'}},
+ pigeon:{en:'pigeon',pl:'gołąb',fr:'pigeon',ex:{en:'A pigeon eats bread crumbs.',pl:'Gołąb je okruszki chleba.',fr:'Un pigeon mange des miettes de pain.'}},
+ stall:{en:'market stall',pl:'stragan',fr:'étal',ex:{en:'This stall sells fruit.',pl:'Na tym straganie są owoce.',fr:'Cet étal vend des fruits.'}},
+ apple:{en:'apple',pl:'jabłko',fr:'pomme',ex:{en:'This apple is sweet.',pl:'To jabłko jest słodkie.',fr:'Cette pomme est sucrée.'}},
+ postbox:{en:'postbox',pl:'skrzynka pocztowa',fr:'boîte aux lettres',ex:{en:'Put the letter in the postbox.',pl:'Wrzuć list do skrzynki pocztowej.',fr:'Mets la lettre dans la boîte aux lettres.'}},
+ cloud:{en:'cloud',pl:'chmura',fr:'nuage',ex:{en:'There is a little cloud in the sky.',pl:'Na niebie jest mała chmura.',fr:'Il y a un petit nuage dans le ciel.'}}
+});
+PV.TOWN_IDS = ['square','fountain','townhall','clock','bakeryShop','cafe','pharmacy','post','bookshop','florist','house','tree','bench','streetlamp','bicycle','pigeon','stall','apple','postbox','cloud'];
+Object.assign(PV.NOTES.en, {
+ square:{fr:'« Square » tout seul veut aussi dire « carré ».',pl:'Samo „square” znaczy też „kwadrat”.'},
+ post:{fr:'En anglais américain : post office aussi, mais la boîte aux lettres se dit mailbox.',pl:'W USA skrzynka pocztowa to mailbox.'}
+});
+Object.assign(PV.NOTES.pl, {
+ square:{fr:'Le « rynek » est la grande place au cœur des villes polonaises, comme à Cracovie.'},
+ townhall:{fr:'Le ratusz se trouve souvent au milieu du rynek.'}
+});
+PV.SCENE.en.signs = { bakeryShop: 'BAKERY', cafe: 'CAFÉ ROSIE', pharmacy: 'PHARMACY', post: 'POST OFFICE', bookshop: 'BOOKSHOP', florist: 'FLOWERS', townhall: 'TOWN HALL' };
+PV.SCENE.pl.signs = { bakeryShop: 'PIEKARNIA', cafe: 'KAWIARNIA ROSIE', pharmacy: 'APTEKA', post: 'POCZTA', bookshop: 'KSIĘGARNIA', florist: 'KWIACIARNIA', townhall: 'RATUSZ' };
+PV.PLACES.unshift({ id: 'square', key: 'placeSquare', status: 'open', color: '#e7a06b' });
+PV.PLACES.find(p => p.id === 'market').status = 'square';
+Object.assign(PV.UI.fr, {
+ placeSquare: 'La place du marché', backToSquare: 'Retour sur la place', enterBtn: 'Entrer', locked: 'Bientôt ouvert',
+ photo: 'Photo', photoHint: "Choisis l'heure, puis prends ta photo.", shoot: 'Prendre la photo', photoSaved: 'Photo enregistrée !', hourLbl: 'Heure', realTime: 'Heure réelle',
+ t_town: 'Découvre 6 mots sur la place',
+ townIntroTitle: 'Bienvenue sur la place de', townIntroText: "Une petite ville où tout se passe en {l}. Promène-toi, touche les maisons et les objets pour apprendre leur nom, puis va faire tes courses.",
+ tstep1: 'Fais glisser pour regarder, touche le sol pour marcher', tstep2: 'Touche une maison ou un objet pour apprendre son nom', tstep3: 'Trouve la boulangerie et entre chez {b}', onSquare: 'Sur la place'
+});
+Object.assign(PV.UI.pl, {
+ placeSquare: 'Rynek', backToSquare: 'Wróć na rynek', enterBtn: 'Wejdź', locked: 'Wkrótce otwarte',
+ photo: 'Zdjęcie', photoHint: 'Wybierz godzinę i zrób zdjęcie.', shoot: 'Zrób zdjęcie', photoSaved: 'Zdjęcie zapisane!', hourLbl: 'Godzina', realTime: 'Prawdziwa godzina',
+ t_town: 'Odkryj 6 słów na rynku',
+ townIntroTitle: 'Witaj na rynku', townIntroText: 'Małe miasteczko, gdzie wszystko dzieje się po {l}. Spaceruj, dotykaj domów i przedmiotów, żeby poznać ich nazwy, a potem idź na zakupy.',
+ tstep1: 'Przeciągnij, żeby się rozejrzeć; dotknij ziemi, żeby iść', tstep2: 'Dotknij domu lub przedmiotu, żeby poznać nazwę', tstep3: 'Znajdź piekarnię i wejdź do: {b}', onSquare: 'Na rynku'
+});

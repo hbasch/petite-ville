@@ -200,7 +200,7 @@ canvas.addEventListener('pointerleave',()=>{hl(hov,false);hov=null;tip.classList
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)});
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clock=new THREE.Clock();const tmp=new THREE.Vector3();
-function loop(){requestAnimationFrame(loop);const t=clock.getElapsedTime();
+function loop(){requestAnimationFrame(loop);if(H.active&&!H.active())return;const t=clock.getElapsedTime();
  let talking=false;try{talking=speechSynthesis.speaking}catch(e){}
  if(!reduce){baker.position.y=Math.sin(t*(talking?7:1.6))*(talking?.012:.008);bubble.position.y=2.5+Math.sin(t*2.4)*.04;
   ovenL.intensity=1.1+Math.sin(t*9)*.12+Math.sin(t*23)*.08}
