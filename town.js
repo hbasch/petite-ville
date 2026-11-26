@@ -24,7 +24,7 @@ function jitter(geo, a) { const p = geo.attributes.position; for (let i = 0; i <
 const hits = [];
 function item(id, parent) { const g = new THREE.Group(); g.userData.id = id; hits.push(g); (parent || scene).add(g); return g; }
 const glowT = tex(64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,220,150,1)'); gr.addColorStop(.35, 'rgba(255,190,110,.45)'); gr.addColorStop(1, 'rgba(255,170,90,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); });
-const halos = [], winMats = [], lampMats = [];
+const halos = [], winMats = [], lampMats = [], clockMats = [];
 
 /* ---------- ciel : dôme dégradé + soleil/lune + étoiles ---------- */
 const skyU = { top: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, bot: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color() } };
@@ -32,7 +32,7 @@ const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 32, 16), new THREE.Shad
   uniforms: skyU, side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: false,
   vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix*vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }',
   fragmentShader: 'uniform vec3 top; uniform vec3 hor; uniform vec3 bot; uniform vec3 sunDir; uniform vec3 sunCol; varying vec3 vW;\n' +
-    'void main(){ vec3 d = normalize(vW - cameraPosition); float h = d.y; vec3 c = h > 0.0 ? mix(hor, top, pow(h, 0.55)) : mix(hor, bot, pow(-h, 0.45));\n' +
+    'void main(){ vec3 d = normalize(vW - cameraPosition); float h = d.y; vec3 c = h > 0.0 ? mix(hor, top, pow(h, 0.55)) : mix(hor, bot, pow(-h, 0.7) * 0.75);\n' +
     ' float s = max(dot(d, normalize(sunDir)), 0.0); c += sunCol * (smoothstep(0.9985, 0.9993, s) * 1.6 + pow(s, 14.0) * 0.28);\n' +
     ' gl_FragColor = linearToOutputTexel(vec4(c, 1.0)); }'
 }));
@@ -59,10 +59,10 @@ const l2 = mk(jitter(cyl(11.5, 6, 3.2, 32, 3), .45), F('#7d5139'), 0, -4.6, 0);
 const l3 = mk(jitter(new THREE.ConeGeometry(6, 5, 24, 3), .5), F('#61402d'), 0, -8.7, 0); l3.rotation.x = Math.PI;
 [[9, -3, 4], [-7, -4, 9], [3, -5.5, -10]].forEach(([x, y, z]) => mk(jitter(ico(1.4, 1), .25), F('#7a5038'), x, y, z));
 const cobT = tex(512, 512, (g, w, h) => {
-  g.fillStyle = '#b8a48c'; g.fillRect(0, 0, w, h);
-  const cols = ['#d8c6ad', '#cbb69a', '#e2d3bd', '#c2ab8f', '#d1bfa6'];
-  for (let y = 0; y < h; y += 26) for (let x = (y / 26 % 2) * 14; x < w; x += 28) { g.fillStyle = cols[(Math.random() * cols.length) | 0]; g.beginPath(); g.ellipse(x + rnd(-2, 2), y + rnd(-2, 2), 12, 10.5, rnd(-.3, .3), 0, TAU); g.fill(); g.strokeStyle = 'rgba(90,70,50,.18)'; g.lineWidth = 2; g.stroke(); }
-}, [7, 7]);
+  g.fillStyle = '#a8957d'; g.fillRect(0, 0, w, h);
+  const cols = ['#d8c6ad', '#cbb69a', '#e2d3bd', '#c2ab8f', '#d1bfa6', '#bfae96', '#cdb08f'];
+  for (let y = 0; y < h + 18; y += 17) { let x = rnd(-8, 0); while (x < w + 10) { const sw = rnd(13, 22); g.fillStyle = cols[(Math.random() * cols.length) | 0]; g.beginPath(); g.ellipse(x + sw / 2, y + rnd(-1.5, 1.5), sw / 2 - 1.5, rnd(6, 7.5), rnd(-.15, .15), 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.ellipse(x + sw / 2 - 2, y - 2, sw / 4, 2.5, 0, 0, TAU); g.fill(); x += sw; } }
+}, [10, 10]);
 const square = item('square');
 const pav = mk(new THREE.CircleGeometry(9.9, 72), M('#ffffff', { map: cobT, roughness: .95 }), 0, .015, 0, square); pav.rotation.x = -Math.PI / 2; pav.receiveShadow = true;
 const ring = mk(new THREE.RingGeometry(9.9, 10.25, 72), M('#9c8a74'), 0, .02, 0, square); ring.rotation.x = -Math.PI / 2;
@@ -141,7 +141,7 @@ function building(sp, ang, rad) {
   g.position.set(Math.sin(ang) * rad, 0, Math.cos(ang) * rad); g.rotation.y = ang + Math.PI;
   const fa = facade(sp), wall = M(sp.color), front = M('#ffffff', { map: fa.map, emissive: '#ffffff', emissiveMap: fa.emi, emissiveIntensity: 0 });
   winMats.push(front);
-  const body = mk(box(sp.w, sp.h, d), [wall, wall, wall, wall, front, wall], 0, sp.h / 2, 0, g);
+  const body = mk(box(sp.w, sp.h, d), [wall, wall, wall, wall, front, front], 0, sp.h / 2, 0, g);
   const trim = M(sp.trim || '#f7f1e6');
   mk(box(sp.w + .22, .2, d + .2), trim, 0, sp.h + .1, 0, g);
   const rh = sp.flat ? 1.2 : 1.7, roofM = M(sp.roof || '#b5523b', { map: tileT, roughness: .8 });
@@ -196,7 +196,7 @@ const hands = [];
 const clock = item('clock', hall);
 [[0, 0], [Math.PI / 2, 1], [-Math.PI / 2, 1]].forEach(([ry]) => {
   const f = new THREE.Group(); f.rotation.y = ry; f.position.set(0, ty + th * .62, -.4); clock.add(f);
-  mk(new THREE.CircleGeometry(.85, 32), M('#ffffff', { map: clockFaceT, emissive: '#fff4d6', emissiveIntensity: 0 }), 0, 0, tw / 2 + .02, f); winMats.push(f.children[0].material);
+  mk(new THREE.CircleGeometry(.85, 32), M('#ffffff', { map: clockFaceT, emissive: '#fff4d6', emissiveIntensity: 0 }), 0, 0, tw / 2 + .02, f); clockMats.push(f.children[0].material);
   const hh = new THREE.Group(), mh = new THREE.Group(); hh.position.z = mh.position.z = tw / 2 + .05; f.add(hh, mh);
   mk(box(.09, .45, .03), M('#2a2233'), 0, .2, 0, hh); mk(box(.06, .68, .03), M('#2a2233'), 0, .32, .02, mh);
   hands.push([hh, mh]);
@@ -331,11 +331,11 @@ pav.castShadow = false; top.castShadow = false;
 const KF = [
   [0, '#0b1033', '#1f2a5a', '#0e1228', '#9fb2ff', .28, '#3a4680', '#1a1630', .38, '#1a2350', 1, 1],
   [5, '#141a48', '#3d3f78', '#16163a', '#a0a8ff', .3, '#3d4680', '#1a1630', .4, '#2a2d5e', 1, .7],
-  [6.5, '#4a5ea8', '#f2a37a', '#6a5a7a', '#ffb48a', .8, '#a6a8d0', '#5a4038', .5, '#e8a58a', .55, .1],
+  [6.5, '#4a5ea8', '#f2a37a', '#a08a9a', '#ffb48a', .8, '#a6a8d0', '#5a4038', .5, '#e8a58a', .55, .1],
   [8, '#6fa8e8', '#cfe6f5', '#9ab7c9', '#fff1d6', 1.25, '#cfe6ff', '#6b4a35', .62, '#cfe2ee', 0, 0],
   [13, '#4f92e2', '#d2eafa', '#a8c4d6', '#ffffff', 1.4, '#d6ecff', '#6b4a35', .68, '#d6ecfa', 0, 0],
-  [16.5, '#6d8fd0', '#ffd7a8', '#b98e7a', '#ffd08a', 1.2, '#d0d6f0', '#6b4a35', .6, '#f3d0aa', .15, 0],
-  [18.3, '#4a5a9a', '#ff9f6a', '#7a4a6a', '#ff8f5a', .8, '#b0a0c8', '#5a3a3a', .5, '#eba07a', .65, .05],
+  [16.5, '#6d8fd0', '#ffd7a8', '#e2c2aa', '#ffd08a', 1.2, '#d0d6f0', '#6b4a35', .6, '#f3d0aa', .15, 0],
+  [18.3, '#4a5a9a', '#ff9f6a', '#c08a86', '#ff8f5a', .8, '#b0a0c8', '#5a3a3a', .5, '#eba07a', .65, .05],
   [19.6, '#252a68', '#7a5a9a', '#2a2448', '#a6aaff', .38, '#5a5a90', '#2a2030', .42, '#4a4278', 1, .5],
   [21, '#0e1438', '#26305e', '#10142e', '#9fb2ff', .3, '#3a4680', '#1a1630', .38, '#1d2654', 1, .9],
   [24, '#0b1033', '#1f2a5a', '#0e1228', '#9fb2ff', .28, '#3a4680', '#1a1630', .38, '#1a2350', 1, 1]
@@ -355,7 +355,7 @@ function applyHour(h) {
   const dir = day ? new THREE.Vector3(Math.cos(az) * Math.cos(el * 1.3), Math.max(.12, Math.sin(el * 1.25)), Math.sin(az) * Math.cos(el * 1.3)) : new THREE.Vector3(-Math.cos(az) * .6, .7, -Math.sin(az) * .6);
   dir.normalize(); skyU.sunDir.value.copy(dir); sun.position.copy(dir).multiplyScalar(45); sun.target.position.set(0, 0, 0);
   skyU.sunCol.value.copy(day ? sun.color : new THREE.Color('#dfe6ff')).convertSRGBToLinear().multiplyScalar(day ? 1 : .55);
-  winMats.forEach(m => { m.emissiveIntensity = lightsOn * 1.15; });
+  winMats.forEach(m => { m.emissiveIntensity = lightsOn * 1.15; }); clockMats.forEach(m => { m.emissiveIntensity = lightsOn * .28; });
   lampMats.forEach(m => { m.emissiveIntensity = .15 + lightsOn * 2.2; });
   halos.forEach(s => { s.material.opacity = lightsOn * .85; });
   lampLights.forEach(p => { p.intensity = lightsOn * 1.4; });
