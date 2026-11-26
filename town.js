@@ -839,15 +839,15 @@ for (let i = 0; i < (COUNTRY === 'pl' ? 11 : 6); i++) {
 const EYE_W = C('#ffffff', { roughness: .2, bumpScale: 0 }), PUPIL = C('#120e18', { roughness: .2, bumpScale: 0 }), SHINE = new THREE.MeshBasicMaterial({ color: '#ffffff' });
 function hair(lk, head, m) {
   const cap = mk(G_('hcap2', () => lump(new THREE.SphereGeometry(.305, 26, 16, 0, TAU, 0, Math.PI * .56), .006)), m, 0, .03, -.025, head); cap.rotation.x = -.3;
-  /* mèches en boudins posées sur le crâne, du front vers la nuque, comme roulées entre les doigts */
+  /* mèches en boudins à peine saillantes, du sommet du crâne vers la nuque (le devant reste lisse, avec la frange) */
   if (['bun', 'bob', 'short', 'curly'].includes(lk.style)) {
     /* chaque mèche : un arc de boudin à bouts arrondis, à peine en relief sur la calotte */
-    const sg = G_('strand3', () => { const t0 = .62, t1 = 2.72, R0 = .288, r0 = .034, t = new THREE.TorusGeometry(R0, r0, 6, mobile ? 12 : 16, t1 - t0), parts = [t];
+    const sg = G_('strand3', () => { const t0 = 1.05, t1 = 2.75, R0 = .284, r0 = .03, t = new THREE.TorusGeometry(R0, r0, 6, mobile ? 12 : 16, t1 - t0), parts = [t];
       [t0, t1].forEach(a => { const e = new THREE.SphereGeometry(r0, 8, 6); e.translate(R0 * Math.cos(a - t0), R0 * Math.sin(a - t0), 0); parts.push(e); });
       const out = mergeGeos(parts); out.rotateZ(t0); out.rotateY(-Math.PI / 2); return lump(out, .003); });
     /* serrées les unes contre les autres : une masse striée, comme peignée à l'ébauchoir */
     const n = lk.style === 'short' ? 7 : 9;
-    for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .056, k = Math.sqrt(.288 * .288 - x * x) / .288, st = mk(sg, m, x, .03, -.03, head); st.scale.set(1, k, k); st.rotation.set(-.03 + (i % 2) * .03, 0, -x * .35); }
+    for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .056, k = Math.sqrt(.284 * .284 - x * x) / .284, st = mk(sg, m, x, .03, -.03, head); st.scale.set(1, k, k); st.rotation.set(-.03 + (i % 2) * .03, 0, -x * .35); }
   }
   if (lk.fringe) for (let i = 0; i < 5; i++) { const x = -.16 + i * .08, f = mk(G_('fr', () => lump(sph(.07, 10), .004)), m, x, .17 - Math.abs(x) * .3, .2 - Math.abs(x) * .25, head); f.scale.set(.9, .6, .7); f.rotation.z = -x * 1.5; }
   if (lk.style === 'bun') { mk(G_('bun2', () => lump(sph(.13, 16), .008)), m, 0, .27, -.15, head); const coil = mk(G_('coil', () => new THREE.TorusGeometry(.1, .03, 8, 18)), m, 0, .22, -.12, head); coil.rotation.x = Math.PI / 2 - .5; }
@@ -895,7 +895,7 @@ function makeChar(lk) {
     const lw = new THREE.Group(); lw.scale.z = .85; e.add(lw); const lid = new THREE.Group(); lw.add(lid); mk(G_('lid', () => new THREE.SphereGeometry(.074, 16, 8, 0, TAU, 0, Math.PI / 2)), skinM, 0, 0, 0, lid); lid.rotation.x = -1.25; P.lids.push(lid);
     if (lk.lashes) { const l = mk(G_('lash', () => new THREE.TorusGeometry(.066, .009, 4, 10, Math.PI * .8)), PUPIL, 0, .006, .02, e); l.rotation.z = Math.PI * .1 + (sg < 0 ? 0 : 0); }
     return e; });
-  P.brows = [-1, 1].map(sg => { const bg = new THREE.Group(); bg.position.set(sg * .1, .125, .235); head.add(bg); mk(G_('brow2', () => rbox(.1, .028, .025, .012, 1)), C(shade(lk.hair, -.12)), 0, 0, 0, bg).rotation.z = -sg * .18; return bg; });
+  P.brows = [-1, 1].map(sg => { const bg = new THREE.Group(); bg.position.set(sg * .1, .125, .235); head.add(bg); const bw = mk(G_('brow3', () => sph(.05, 10)), C(shade(lk.hair, -.12)), 0, 0, 0, bg); bw.scale.set(1, .3, .34); bw.rotation.z = -sg * .18; return bg; });
   mk(G_('nose2', () => sph(.05, 12)), C(shade(lk.skin, -.05), { roughness: .46, emissive: lk.skin, emissiveIntensity: .035, sss: SSS_SKIN }), 0, -.035, .265, head).scale.set(1.05, .9, 1.1);
   [-1, 1].forEach(sg => mk(G_('cheek', () => sph(.052, 10)), C('#ff8f8f', { roughness: .5 }), sg * .16, -.07, .2, head).scale.set(1, .68, .4));
   const mouth = new THREE.Group(); mouth.position.set(0, -.115, .238); head.add(mouth); P.mouth = mouth;
