@@ -366,7 +366,7 @@ PV.NPCS = {
   dlg: {
    en: { nodes: {
      start: ["Hi! I'm Rosa. What's your name?", { fr: "Salut ! Je suis Rosa. Comment tu t'appelles ?", pl: 'Cześć! Jestem Rosa. Jak masz na imię?' }, 'a'],
-     q2: ['Welcome to Petite Ville! Do you like flowers?', { fr: 'Bienvenue à Petite Ville ! Tu aimes les fleurs ?', pl: 'Witaj w Petite Ville! Lubisz kwiaty?' }, 'b'],
+     q2: ['Welcome to {c}! Do you like flowers?', { fr: 'Bienvenue à {c} ! Tu aimes les fleurs ?', pl: 'Witaj {cl}! Lubisz kwiaty?' }, 'b'],
      end: ['See you soon!', { fr: 'À bientôt !', pl: 'Do zobaczenia!' }],
      huh: ['Sorry, can you say that again?', { fr: 'Pardon, tu peux répéter ?', pl: 'Przepraszam, możesz powtórzyć?' }] },
     opts: {
@@ -378,7 +378,7 @@ PV.NPCS = {
           { t: 'Yes, I like.', tr: { fr: "Oui, j'aime.", pl: 'Tak, lubię.' }, to: 'q2', reply: ['Sorry? Do you like flowers?', { fr: 'Pardon ? Tu aimes les fleurs ?', pl: 'Słucham? Lubisz kwiaty?' }], tip: { fr: "Il manque un complément : « Yes, I do » ou « I like them ».", pl: 'Brakuje dopełnienia: „Yes, I do” albo „I like them”.' } } ] } },
    pl: { nodes: {
      start: ['Cześć! Jestem Rosa. Jak masz na imię?', { fr: "Salut ! Je suis Rosa. Comment tu t'appelles ?" }, 'a'],
-     q2: ['Witaj w Petite Ville! Lubisz kwiaty?', { fr: 'Bienvenue à Petite Ville ! Tu aimes les fleurs ?' }, 'b'],
+     q2: ['Witaj {cl}! Lubisz kwiaty?', { fr: 'Bienvenue à {c} ! Tu aimes les fleurs ?' }, 'b'],
      end: ['Do zobaczenia!', { fr: 'À bientôt !' }],
      huh: ['Przepraszam, możesz powtórzyć?', { fr: 'Pardon, tu peux répéter ?' }] },
     opts: {
@@ -475,6 +475,8 @@ Object.assign(PV.UI.pl, { newFriend: 'Nowy przyjaciel: {n}! +15 XP', friends: 'p
 /* ---------- v6 : première réussite orale, habitants qui s'intéressent à toi, demande du jour, collections ----------
    Répliques dans la langue apprise ([texte, {traductions}]) ; {c} = le nom de la ville (Edinburgh, Wrocław…). */
 PV.CITY_NAME = { gb: 'Edinburgh', pl: 'Wrocław', fr: 'Petite Ville' };
+/* {cl} : « à <ville> » en polonais (locatif) */
+PV.CITY_LOC = { gb: 'w Edynburgu', pl: 'we Wrocławiu', fr: 'w Petite Ville' };
 PV.FIRST = {
  en: { nodes: {
    start: ['Hi! I\'m Rosa. Welcome! Can you say "Hello"?', { fr: 'Salut ! Je suis Rosa. Bienvenue ! Tu peux dire « Hello » ?', pl: 'Cześć! Jestem Rosa. Witaj! Powiesz „Hello”?' }, 'a'],
@@ -602,3 +604,6 @@ PV.FOLLOW2 = {
 };
 Object.assign(PV.UI.fr, { friendsTitle: 'Tes amis', collLeft: 'Encore à trouver dans la ville : {n}', collAll: 'Tout est trouvé, bravo !' });
 Object.assign(PV.UI.pl, { friendsTitle: 'Twoi przyjaciele', collLeft: 'Do znalezienia w mieście: {n}', collAll: 'Wszystko znalezione, brawo!' });
+/* voix enregistrées : mention obligatoire tant qu'elles viennent de l'offre gratuite ElevenLabs */
+Object.assign(PV.UI.fr, { voiceCredit: 'Voix des habitants : elevenlabs.io' });
+Object.assign(PV.UI.pl, { voiceCredit: 'Głosy mieszkańców: elevenlabs.io' });

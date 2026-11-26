@@ -270,7 +270,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  if(H.active&&!H.active()){off=true;return}
  /* revenu après être sorti par la porte : on repart du seuil */
  if(off){off=false;if(gone)reset()}
- let talking=false;try{talking=speechSynthesis.speaking}catch(e){}
+ let talking=false;try{talking=window.PVSpeaking?window.PVSpeaking():speechSynthesis.speaking}catch(e){}
  if(!reduce){baker.position.y=Math.sin(t*(talking?7:1.6))*(talking?.012:.008);bubble.position.y=2.5+Math.sin(t*2.4)*.04;
   ovenL.intensity=1.1+Math.sin(t*9)*.12+Math.sin(t*23)*.08}
  bubble.visible=H.bubble();

@@ -1249,7 +1249,7 @@ function happyPose(o, P, dt) {
   if (o.happy <= 0) { o.happy = 0; if (!sit) { o.c.g.position.y = .03; P.shadow.position.y = .012; P.shadow.scale.setScalar(.42); } }
 }
 function updatePeople(dt, t) {
-  let speaking = false; try { speaking = speechSynthesis.speaking; } catch (e) { /* none */ }
+  let speaking = false; try { speaking = window.PVSpeaking ? window.PVSpeaking() : speechSynthesis.speaking; } catch (e) { /* none */ }
   people.forEach(o => {
     const P = o.c.P; o.t += dt;
     const dx = pos.x - o.grp.position.x, dz = pos.z - o.grp.position.z, dist = Math.hypot(dx, dz);

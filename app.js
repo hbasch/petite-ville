@@ -8,7 +8,7 @@ const today = () => ymd(new Date());
 const dayNum = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 864e5);
 const monthKey = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
 const store = { get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } }, del(k) { try { localStorage.removeItem(k); } catch (e) { /* */ } } };
-const fill = (s, o) => s.replace(/\{(\w)\}/g, (m, k) => (o[k] ?? m));
+const fill = (s, o) => s.replace(/\{(\w+)\}/g, (m, k) => (o[k] ?? m));
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const icon = (id) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#i-' + id); s.appendChild(u); return s; };
 
@@ -30,16 +30,42 @@ function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.rem
 let voice = null, lastAct = Date.now();
 function pickVoice() { try { const v = speechSynthesis.getVoices(), lang = S ? S.voice : 'en-GB'; voice = v.find(x => x.lang === lang && x.localService) || v.find(x => x.lang === lang) || v.find(x => x.lang.slice(0, 2) === lang.slice(0, 2)) || null; } catch (e) { /* none */ } }
 if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = pickVoice;
-function say(t, o) {
-  o = o || {}; lastAct = Date.now();
+/* voix enregistrées (ElevenLabs) : audio/<langue>/index.json = { "qui|réplique": "fichier.mp3" }.
+   Une réplique sans fichier passe par la voix du navigateur, comme avant. File d'attente commune aux deux. */
+let VOX = {}, voxLang = null, voxQ = [], voxBusy = false, voxGen = 0;
+const vox = new Audio(); vox.preload = 'auto';
+const SILENT = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//NwwAAAAAAAAAAAAEluZm8AAAAPAAAABAAAAlgAenp6enp6enp6enp6enp6enp6enp6enp6pqampqampqampqampqampqampqampqamptPT09PT09PT09PT09PT09PT09PT09PT09P/////////////////////////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQCcQAAAAAAAAJY+/rsqgAAAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NCxKMAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+function loadVox() { if (voxLang === T) return; const l = voxLang = T; VOX = {}; fetch('audio/' + l + '/index.json?v=1').then(r => r.ok ? r.json() : {}).then(j => { if (voxLang === l) VOX = j || {}; }).catch(() => { /* pas de voix enregistrées */ }); }
+/* iPhone : un lecteur audio « débloqué » par un premier toucher peut ensuite parler tout seul (habitants qui viennent te voir) */
+document.addEventListener('pointerdown', () => { try { vox.src = SILENT; const p = vox.play(); if (p) p.catch(() => { /* none */ }); } catch (e) { /* none */ } }, { once: true, capture: true });
+function tts(t, o, after) {
+  const end = () => { if (o.onend) o.onend(); if (after) after(); };
   try {
-    if (!o.queue) speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(t); u.lang = S.voice; if (voice) u.voice = voice; u.rate = o.rate || .9; u.pitch = o.pitch || 1;
     if (o.onboundary) u.onboundary = o.onboundary;
-    if (o.onend) { u.onend = o.onend; u.onerror = o.onend; }
+    u.onend = end; u.onerror = end;
     speechSynthesis.speak(u);
-  } catch (e) { if (o.onend) o.onend(); }
+  } catch (e) { end(); }
 }
+function runVox(it) {
+  const g = voxGen; voxBusy = true; let done = false, h = 0;
+  const next = () => { if (done || g !== voxGen) return; done = true; clearTimeout(h); voxBusy = false; const n = voxQ.shift(); if (n) runVox(n); };
+  const viaTts = () => { h = setTimeout(next, 1500 + it.t.length * 110 / (it.o.rate || .9)); tts(it.t, it.o, next); };
+  const f = VOX[(it.o.who || '') + '|' + String(it.t).trim()];
+  if (!f) { viaTts(); return; }
+  vox.onended = () => { if (g === voxGen && it.o.onend) it.o.onend(); next(); };
+  vox.onerror = () => { if (g === voxGen && !done) viaTts(); };
+  vox.src = 'audio/' + T + '/' + f; vox.playbackRate = 1;
+  const p = vox.play(); if (p) p.catch(() => { if (g === voxGen && !done) viaTts(); });
+}
+function say(t, o) {
+  o = o || {}; lastAct = Date.now();
+  if (!o.queue) { voxGen++; voxQ = []; voxBusy = false; try { vox.pause(); } catch (e) { /* none */ } try { speechSynthesis.cancel(); } catch (e) { /* none */ } }
+  const it = { t, o };
+  if (voxBusy) voxQ.push(it); else runVox(it);
+}
+window.PVSpeaking = () => (!vox.paused && !vox.ended && vox.src.indexOf('data:') !== 0) || speechSynthesis.speaking;
+function shush() { voxGen++; voxQ = []; voxBusy = false; try { vox.pause(); } catch (e) { /* none */ } try { speechSynthesis.cancel(); } catch (e) { /* none */ } }
 
 /* ---------- reconnaissance vocale ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -52,7 +78,7 @@ function holdMic() {
 }
 function listen(onInterim, onFinal, onError, onEnd) {
   if (!SR) { onError('unsupported'); if (onEnd) onEnd(); return; }
-  try { speechSynthesis.cancel(); } catch (e) { /* none */ }
+  shush();
   if (rec) try { rec.abort(); } catch (e) { /* none */ }
   /* un seul module d'écoute, réutilisé : sur iPhone, en recréer un redemande la permission à chaque fois */
   if (!recInst) recInst = new SR();
@@ -240,7 +266,7 @@ async function boot() {
 /* ---------- démarrage ---------- */
 function start() {
   ui = P.ui; T = (P.ui === 'pl' && P.t === 'pl') ? 'en' : P.t; P.t = T; store.set('pv_ui', ui);
-  S = PV.SCENE[T]; D = PV.DLG[T]; L = P.L[T]; pickVoice();
+  S = PV.SCENE[T]; D = PV.DLG[T]; L = P.L[T]; pickVoice(); loadVox();
   touchDay(); applyUI(); save();
   $('onb').classList.add('hidden');
   ['hud', 'nav'].forEach(id => $(id).classList.remove('hidden'));
@@ -266,7 +292,7 @@ function showIntro(kind) {
   $('step3').textContent = fill(t ? U.tstep3 : U.step3, { b: S.baker });
   $('intro').classList.remove('hidden');
 }
-$('enter').onclick = () => { $('intro').classList.add('hidden'); if (place === 'town' && !L.firstWin) firstWin(); else say(T === 'pl' ? 'Dzień dobry!' : 'Hello!'); };
+$('enter').onclick = () => { $('intro').classList.add('hidden'); if (place === 'town' && !L.firstWin) firstWin(); else say(T === 'pl' ? 'Dzień dobry!' : 'Hello!', { who: 'passerby' }); };
 
 /* ---------- la place et la boulangerie ---------- */
 function setPlaceUI() {
@@ -287,7 +313,7 @@ function enterBakery() {
   }
   if (window.PVBakery && PVBakery.reset) PVBakery.reset();
   if (!L.found.some(id => !TOWN.has(id))) showIntro('bakery');
-  say(T === 'pl' ? 'Dzień dobry!' : 'Hello!');
+  say(T === 'pl' ? 'Dzień dobry!' : 'Hello!', { who: 'passerby' });
 }
 function exitBakery() { place = 'town'; show(null); if (town) town.placeAtBakery(); setPlaceUI(); }
 
@@ -365,11 +391,11 @@ function showWord(id) {
   const canEnter = place === 'town' && (id === 'bakeryShop' || id === 'cafe');
   $('wEnter').classList.toggle('hidden', !canEnter);
   if (canEnter) $('wEnterTxt').textContent = id === 'cafe' ? U.enterBtn + ' · ' + U.plusTag : U.enterBtn + ' · ' + S.baker;
-  updSave(); show('card'); say(w[T]);
+  updSave(); show('card'); say(w[T], { who: 'word' });
 }
 function updSave() { $('wSaveTxt').textContent = L.cards[curWord] ? U.saved : U.save; }
 $('wEnter').onclick = () => { if (curWord === 'bakeryShop') enterBakery(); else toast(U.plusTag + ' · ' + (ui === 'pl' ? '45 zł' : '10 €')); };
-$('wListen').onclick = () => { const w = W[curWord]; say(w[T]); say(w.ex[T], { queue: true }); };
+$('wListen').onclick = () => { const w = W[curWord]; say(w[T], { who: 'word' }); say(w.ex[T], { queue: true, who: 'word' }); };
 $('wSave').onclick = () => { if (L.cards[curWord]) delete L.cards[curWord]; else L.cards[curWord] = { box: 1, due: dayNum() }; save(); updSave(); updHud(); };
 $('wRepeat').onclick = () => {
   const btn = $('wRepeat'), out = $('wPron'), target = norm(W[curWord][T]).join(' ');
@@ -403,9 +429,10 @@ function renderMap() {
 }
 
 /* ---------- dialogue ---------- */
-let lastLine = '', curOpts = [], curNpc = null;
+let lastLine = '', lastWho = '', curOpts = [], curNpc = null;
+const whoNow = () => curNpc || 'baker';
 let curDlg = null, dlgMode = null;
-const CV = () => ({ c: PV.CITY_NAME[country()] || 'Petite Ville' });
+const CV = () => ({ c: PV.CITY_NAME[country()] || 'Petite Ville', cl: PV.CITY_LOC[country()] || 'w Petite Ville' });
 const DD = () => curDlg || (curNpc ? PV.NPCS[curNpc].dlg[T] : D);
 const voiceP = () => curNpc ? PV.NPCS[curNpc].pitch : .95;
 function render(line, tr, key) {
@@ -420,11 +447,11 @@ function render(line, tr, key) {
   $('dMic').disabled = !SR || !curOpts.length;
   $('dHeard').textContent = curOpts.length ? (SR ? U.speakNow : U.noMic) : '';
 }
-function go(id, line, queue) { const n = DD().nodes[id]; const l = fill(line ? line[0] : n[0], CV()); render(l, line ? line[1] : n[1], n[2]); say(l, { queue, pitch: voiceP() }); }
+function go(id, line, queue) { const n = DD().nodes[id]; const l = fill(line ? line[0] : n[0], CV()); render(l, line ? line[1] : n[1], n[2]); lastWho = whoNow(); say(l, { queue, pitch: voiceP(), who: lastWho }); }
 function choose(o, spoken) {
   document.querySelectorAll('#dOpts .opt').forEach(b => b.classList.toggle('picked', b.firstChild && b.firstChild.textContent === o.t));
   $('dMe').textContent = U.you + ' : « ' + o.t + ' »';
-  if (!spoken) say(o.t, { pitch: 1.25, rate: 1 });
+  if (!spoken) say(o.t, { pitch: 1.25, rate: 1, who: 'you' });
   if (o.task) tasks[o.task] = true;
   if (o.task === 'order') setTimeout(() => questProgress('bakery'), 2600);
   if (o.tip) { mistakes++; $('dTip').textContent = o.tip[ui]; $('dTip').classList.remove('hidden'); } else $('dTip').classList.add('hidden');
@@ -432,7 +459,7 @@ function choose(o, spoken) {
   else if (!o.tip) praise(false);
   updMission();
   if (o.to === 'END') {
-    const e = o.reply || DD().nodes.end; render(e[0], e[1], null); say(fill(e[0], CV()), { queue: true, pitch: voiceP() });
+    const e = o.reply || DD().nodes.end; render(e[0], e[1], null); lastWho = whoNow(); say(fill(e[0], CV()), { queue: true, pitch: voiceP(), who: lastWho });
     if (dlgMode === 'first') celebrateFirst();
     if (curNpc) { const who = curNpc; setTimeout(() => { if (curNpc === who) { show(null); finishNpc(who); } }, 3200); return; }
     setTimeout(() => { if (tasks.order && tasks.pay) win(); else show(null); }, 2400); return;
@@ -440,7 +467,7 @@ function choose(o, spoken) {
   go(o.to, o.reply, true);
 }
 function openDlg() { curNpc = null; curDlg = null; dlgMode = null; $('dWho').textContent = S.baker; tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
-$('dReplay').onclick = () => say(lastLine);
+$('dReplay').onclick = () => say(lastLine, { pitch: voiceP(), who: lastWho });
 $('dTr').onclick = () => $('dlg').classList.toggle('tr');
 $('dMic').onclick = () => {
   const mic = $('dMic'), out = $('dHeard');
@@ -451,7 +478,7 @@ $('dMic').onclick = () => {
     alts.forEach(a => curOpts.forEach(o => { const s = score(a, o.t); if (s > bs) { if (best !== o) second = bs; bs = s; best = o; heard = a; } else if (o !== best && s > second) second = s; }));
     out.textContent = '« ' + heard + ' »'; out.appendChild(el('small', null, U.heard));
     if (best && bs >= .5 && bs - second >= .08) choose(best, true);
-    else { $('dTip').textContent = U.notUnderstood; $('dTip').classList.remove('hidden'); say(DD().nodes.huh[0], { pitch: voiceP() }); }
+    else { $('dTip').textContent = U.notUnderstood; $('dTip').classList.remove('hidden'); say(fill(DD().nodes.huh[0], CV()), { pitch: voiceP(), who: whoNow() }); }
   }, err => micError(err, out), () => mic.classList.remove('on'));
 };
 
@@ -524,7 +551,7 @@ function questProgress(type, id) {
   L.quest.done = true; const g = PV.NPCS[q.giver];
   addXP(30, fill(U.questDone, { n: g.name })); friendUp(q.giver, false); confetti();
   if (town && town.cheer) { town.cheer(q.giver); town.marker(q.giver, 'heart', 5); }
-  say(T === 'pl' ? 'Dziękuję!' : 'Thank you!', { pitch: g.pitch }); updMission();
+  say(T === 'pl' ? 'Dziękuję!' : 'Thank you!', { pitch: g.pitch, who: q.giver }); updMission();
 }
 function collect(id, cid) {
   if (L.coll[cid]) return; L.coll[cid] = 1;
@@ -569,7 +596,7 @@ function celebrateFirst() {
 function greetPasserby(obj) {
   const list = PV.GREET[T] || [], g = list[(Math.random() * list.length) | 0]; if (!g) return;
   if (town && town.greet) town.greet(obj);
-  say(g[0], { pitch: .9 + Math.random() * .4 }); toast('« ' + g[0] + ' » — ' + (g[1][ui] || ''));
+  say(g[0], { pitch: .9 + Math.random() * .4, who: 'passerby' }); toast('« ' + g[0] + ' » — ' + (g[1][ui] || ''));
 }
 function win() {
   show(null); L.missions++; addXP(50, U.xpMission);
@@ -664,7 +691,7 @@ function renderDeck() {
     const box = el('div'); const b = el('b', null, w[T]);
     if (L.cards[id].due <= d) b.appendChild(el('span', 'due', U.due));
     box.append(b, el('div', 't', w[ui]));
-    const p = el('button', 'ib'); p.type = 'button'; p.setAttribute('aria-label', U.listen); p.appendChild(icon('spk')); p.onclick = () => say(w[T]);
+    const p = el('button', 'ib'); p.type = 'button'; p.setAttribute('aria-label', U.listen); p.appendChild(icon('spk')); p.onclick = () => say(w[T], { who: 'word' });
     const r = el('button', 'ib', '×'); r.type = 'button'; r.setAttribute('aria-label', U.close);
     r.onclick = () => { delete L.cards[id]; save(); renderDeck(); if (curWord === id) updSave(); };
     li.append(box, p, r); ul.appendChild(li);
@@ -681,7 +708,7 @@ function flash() {
   $('fShow').classList.remove('hidden'); $('fAgain').classList.add('hidden'); $('fKnew').classList.add('hidden');
 }
 $('revBtn').onclick = () => { const d = dayNum(); queue = Object.keys(L.cards).filter(id => L.cards[id].due <= d); $('flash').classList.remove('hidden'); flash(); $('flash').scrollIntoView({ behavior: 'smooth' }); };
-$('fShow').onclick = () => { $('fA').classList.remove('hidden'); $('fShow').classList.add('hidden'); $('fAgain').classList.remove('hidden'); $('fKnew').classList.remove('hidden'); say(W[queue[0]][T]); };
+$('fShow').onclick = () => { $('fA').classList.remove('hidden'); $('fShow').classList.add('hidden'); $('fAgain').classList.remove('hidden'); $('fKnew').classList.remove('hidden'); say(W[queue[0]][T], { who: 'word' }); };
 $('fKnew').onclick = () => { const id = queue.shift(), c = L.cards[id]; c.box = Math.min(5, c.box + 1); c.due = dayNum() + GAP[c.box]; addXP(2); renderDeck(); flash(); };
 $('fAgain').onclick = () => { const id = queue.shift(), c = L.cards[id]; c.box = 1; c.due = dayNum(); queue.push(id); save(); renderDeck(); flash(); };
 
@@ -743,7 +770,7 @@ function renderProgress() {
     const b = el('button', 'qOpt', W[id][ui]); b.type = 'button';
     if (doneQ) { b.disabled = true; if (id === q.id) b.classList.add('ok'); else if (id === P.quizPick) b.classList.add('no'); }
     b.onclick = () => {
-      P.quizDay = key; P.quizPick = id; P.quizRes = id === q.id ? 'ok' : 'no'; say(W[q.id][T]);
+      P.quizDay = key; P.quizPick = id; P.quizRes = id === q.id ? 'ok' : 'no'; say(W[q.id][T], { who: 'word' });
       if (id === q.id) addXP(15, U.quizOk); else { toast(fill(U.quizNo, { a: W[q.id][ui] })); save(); }
       renderProgress();
     };
@@ -781,6 +808,7 @@ function renderProgress() {
   const ch = el('button', 'btn line', U.saveLang); ch.type = 'button';
   ch.onclick = async () => { P.ui = s1.value; P.t = s2.value; await save(true); location.reload(); };
   lc.appendChild(ch); box.appendChild(lc);
+  box.appendChild(el('p', 'credit', U.voiceCredit));
 }
 async function loadBoard() {
   let res;
