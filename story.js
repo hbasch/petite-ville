@@ -35,7 +35,7 @@
     $('carnetCoins').textContent = '£' + (s.coins || 0) + (s.has && s.has.photo ? ' · 📷' : '');
     $('carnet').classList.remove('hidden');
   }
-  function objective(key) { const s = st(); s.obj = S1().obj[key] || key; A().save(); carnet(); }
+  function objective(key) { const s = st(); s.obj = S1().obj[key] || key; A().save(); carnet(); setTimeout(remark, 50); }
   function card(title, text, buttons) {
     ui(); const c = $('stCard'); c.innerHTML = '';
     const box = document.createElement('div'); box.className = 'stBox';
@@ -95,19 +95,25 @@
     card(t.title, t.text, [[t.deb, () => begin('deb', false)], [t.test, () => begin('conf', true)], [t.free, () => { A().L().story = { off: 1 }; A().save(); A().freeStart(); }, 'btn ghost']]);
   }
   function begin(reg, withTest) { A().L().story = { ch: 1, step: 'prologue', reg, coins: 0, has: {}, test: withTest ? 1 : 0 }; A().save(); prologue(); }
+  let fIv = 0;
   function prologue() {
     const T = town(); if (!T || !T.actor) { setTimeout(prologue, 400); return; }
     busy = true; T.lock(true); T.suitcase('me');
     caption(S1().cap.arrive, () => {
-      const p = T.mePos(), ex = T.exitPt(13.5), L = Math.hypot(p.x - ex[0], p.z - ex[1]) || 1, ux = (ex[0] - p.x) / L, uz = (ex[1] - p.z) / L;
-      const near = [p.x + ux * .7, p.z + uz * .7];
-      T.actor('thief', { show: true, at: [p.x + ux * 7, p.z + uz * 7] });
-      T.goTo('thief', [near], 4.2, () => {
-        T.suitcase('thief');
-        T.goTo('thief', [[p.x + ux * 7, p.z + uz * 7], ex], 4.6, () => { T.actor('thief', { show: false }); T.suitcase(null); });
-        setTimeout(() => caption(S1().cap.stolen, () => { set('step', 'tom'); tom(); }), 1400);
-      });
+      busy = false; T.lock(false); objective('fountain');
+      const t0 = Date.now(); clearInterval(fIv);
+      fIv = setInterval(() => { const p = T.mePos(); if (Math.hypot(p.x, p.z) < 3.6 || Date.now() - t0 > 40000) { clearInterval(fIv); thiefScene(); } }, 300);
     });
+  }
+  function thiefScene() {
+    const T = town(); busy = true; T.lock(true);
+    const p = T.mePos(), ex = T.exitPt(13.5), L = Math.hypot(p.x - ex[0], p.z - ex[1]) || 1, ux = (ex[0] - p.x) / L, uz = (ex[1] - p.z) / L;
+    T.actor('thief', { show: true, at: [p.x + ux * 6, p.z + uz * 6] });
+    T.goTo('thief', [[p.x + ux * 1.1, p.z + uz * 1.1]], 1.3, () => talk('thief', 'thief', () => {
+      T.suitcase('thief');
+      T.goTo('thief', [[p.x + ux * 7, p.z + uz * 7], ex], 4.8, () => { T.actor('thief', { show: false }); T.suitcase(null); });
+      setTimeout(() => caption(S1().cap.stolen, () => { set('step', 'tom'); tom(); }), 1600);
+    }));
   }
   function tom() {
     const T = town(); busy = true; T.lock(true);
@@ -124,7 +130,10 @@
   function toWork() { const T = town(); busy = false; T.lock(false); T.actor('tom', { show: false, home: true }); set('step', 'work'); objective('work'); }
   function work() {
     busy = true;
-    talk('tom', 'shop', () => talk('jack', 'jack', () => talk('patel', 'patel', () => talk('tom', 'pay', () => { busy = false; set('step', 'errands'); errands(); }))));
+    const B = window.PVBakery || {}, LK = S1().looks;
+    if (B.jobStart) B.jobStart();
+    const custom = (who, cb) => B.cust ? B.cust(LK[who], () => talk(who, who, () => B.custLeave(cb))) : talk(who, who, cb);
+    talk('tom', 'shop', () => custom('jack', () => custom('patel', () => talk('tom', 'pay', () => { if (B.jobEnd) B.jobEnd(); busy = false; set('step', 'errands'); errands(); }))));
   }
   function errands() {
     const s = st(), T = town();
@@ -142,6 +151,18 @@
     });
   }
 
+  function marks() {
+    const s = st(); if (!s || s.off) return [];
+    if (s.step === 'errands') return [!s.has.police && 'jones', !s.has.brush && 'okafor'].filter(Boolean);
+    if (s.step === 'clue') return ['maya']; if (s.step === 'lie') return ['pemberton'];
+    return [];
+  }
+  const remark = () => { try { A().refreshMarkers(); } catch (e) { /* */ } };
+  /* recommencer : l'histoire seule, ou tout */
+  function restart(all) {
+    const R = S1().restart;
+    card(R.title, all ? R.all : R.story, [[R.yes, () => { A().restart(all); }], [R.no, () => {}, 'btn ghost']]);
+  }
   /* ---------- branchements : le jeu demande à l'histoire si elle veut prendre la main ---------- */
   window.PVStory = {
     /* au lancement de la ville : true si l'histoire s'en occupe (carte de départ ou reprise) */
@@ -151,6 +172,7 @@
       if (!s) { startCard(); return true; }
       const T = town();
       if (s.step === 'prologue') { prologue(); return true; }
+      setTimeout(remark, 600);
       if (s.step === 'tom') { tom(); return true; }
       if (s.step === 'errands') errands();
       if (s.step === 'lie' && T) T.actor('pemberton', { show: true, home: true });
@@ -158,7 +180,7 @@
     },
     active: () => { const s = st(); return !!(s && !s.off && s.step !== 'done'); },
     busy: () => busy,
-    choose, has,
+    choose, has, marks, restart,
     /* fin d'un dialogue de l'histoire */
     dlgEnd() { const f = after; after = null; if (f) setTimeout(f, 250); },
     /* toucher un habitant : true si l'histoire répond à sa place */
@@ -174,6 +196,8 @@
     /* toucher l'étiquette d'un objet : la cabine rouge */
     obj(id) {
       const s = st(); if (!s || s.off || busy) return false;
+      if (s.step === 'errands' && id === 'pharmacy' && !s.has.brush) return this.npc('okafor');
+      if (s.step === 'errands' && id === 'townhall' && !s.has.police) return this.npc('jones');
       if (s.step === 'phone' && id === 'phonebox') { talk('operator', 'operator', () => caption(S1().cap.mum, () => { set('step', 'clue'); objective('clue'); })); return true; }
       return false;
     },

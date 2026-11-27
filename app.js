@@ -523,6 +523,8 @@ $('phClose').onclick = () => { town.setPhoto(false); document.body.classList.rem
 function helpShow(on) { $('ctrlHelp').classList.toggle('hidden', !on); if (!on) store.set('pv_help', '1'); }
 $('helpBtn').onclick = e => { e.stopPropagation(); helpShow($('ctrlHelp').classList.contains('hidden')); };
 $('helpOk').onclick = () => helpShow(false);
+$('restartStory').onclick = () => { helpShow(false); if (window.PVStory) PVStory.restart(false); };
+$('restartAll').onclick = () => { helpShow(false); if (window.PVStory) PVStory.restart(true); };
 /* rapport de bug : appareil, écran, carte graphique, dernières erreurs ; copié pour être collé dans la conversation */
 $('bugBtn').onclick = () => {
   let gpu = '?'; try { const g = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl'); const x = g && g.getExtension('WEBGL_debug_renderer_info'); gpu = x ? g.getParameter(x.UNMASKED_RENDERER_WEBGL) : '?'; try { const lc = g && g.getExtension('WEBGL_lose_context'); if (lc) lc.loseContext(); } catch (e2) { /* */ } } catch (e) { /* */ }
@@ -782,7 +784,7 @@ function questHint() {
   return q.type === 'find' ? fill(U.questFind, { w: w(q.target) }) : q.type === 'talk' ? fill(U.questTalk, { w: w(q.target) }) : q.type === 'say' ? fill(U.questSay, { k: Math.min(L.quest.n || 0, q.n), t: q.n }) : U.questBakery;
 }
 function announceQuest() { const q = questToday(); if (!q || L.quest.told || L.quest.done || place !== 'town') return; refreshMarkers(); toast(fill(U.questFrom, { n: PV.NPCS[q.giver].name })); }
-function refreshMarkers() { if (!town || !town.marker) return; const q = questToday(); Object.keys(PV.NPCS).forEach(id => town.marker(id, q && q.giver === id && !L.quest.told && !L.quest.done ? 'quest' : null)); }
+function refreshMarkers() { if (!town || !town.marker) return; const q = questToday(), sm = (window.PVStory && PVStory.marks) ? PVStory.marks() : []; Object.keys(PV.NPCS).forEach(id => town.marker(id, sm.includes(id) || (q && q.giver === id && !L.quest.told && !L.quest.done) ? 'quest' : null)); }
 function questProgress(type, id) {
   const q = questToday(); if (!q || !L.quest.told || L.quest.done || q.type !== type) return;
   let ok = false;
@@ -1071,7 +1073,17 @@ window.PVA = {
   openStory(who, label, dlg, pitch) { curNpc = who; curDlg = dlg; dlgMode = 'story'; storyPitch = pitch || 1; $('dWho').textContent = label; $('dMe').textContent = ''; $('dTip').classList.add('hidden'); document.body.classList.add('storyDlg'); if (place === 'town' && town && town.talkTo && PV.NPCS[who]) town.talkTo(who); show('dlg'); go('start'); },
   closeDlg() { const who = curNpc; show(null); finishNpc(who); },
   freeStart() { if (!L.found.some(id => TOWN.has(id))) showIntro('town'); },
-  reward(n) { addXP(n); }
+  reward(n) { addXP(n); },
+  refreshMarkers: () => refreshMarkers(),
+  /* recommencer : l'histoire seule (les mots restent), ou tout (nouveau joueur) */
+  restart(all) {
+    if (all) { P = normalizeP({ ui: P.ui, t: P.t }); ['pv_help', 'pv_nomic', 'pv_micInfo'].forEach(k => { try { localStorage.removeItem(k); } catch (e) { /* */ } }); }
+    else L.story = null;
+    /* on attend que la progression remise à zéro soit bien enregistrée (en ligne aussi) avant de recharger */
+    clearTimeout(saveH); store.set('pv_guest', P);
+    const go = () => location.reload();
+    if (SB && user) SB.from('progress').upsert({ user_id: user.id, data: P, updated_at: new Date().toISOString() }).then(go, go); else setTimeout(go, 150);
+  }
 };
 /* tests automatiques seulement (?test) */
 if (/[?&]test\b/.test(location.search)) window.PVT = { openNpc, opts: () => curOpts, markMaybe, enterBakery, exitBakery, story: () => L && L.story, dlgOpen: () => !$('dlg').classList.contains('hidden') };

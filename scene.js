@@ -363,7 +363,13 @@ canvas.addEventListener('pointerleave',()=>{hl(hov,false);hov=null;tip.classList
 function reset(){camInit=false;pos.set(START.x,EYE,START.z);yaw=tYaw=START.yaw;pitch=tPitch=START.pitch;vel.set(0,0,0);target=null;stuckT=0;bob=0;zoomT=zoomV=1;gone=false;
  down=null;pinch=null;multi=false;touches.clear();for(const k in keys)keys[k]=false;hl(hov,false);hov=null;tip.classList.add('hidden');place()}
 reset();
-window.PVBakery={reset};
+/* histoire : tu tiens le comptoir. Toi derrière, Tom à côté, les clients entrent par la porte, viennent au comptoir puis repartent */
+let job=null;
+function jobStart(){job={cust:null};baker.position.x=1.75;pos.x=-1.05;pos.z=-1.95;vel.set(0,0,0);target=null;if(me)me.yaw=0}
+function jobEnd(){if(job&&job.cust)scene.remove(job.cust.c.g);job=null;baker.position.x=.25;reset()}
+function cust(look,cb){if(!job)return;const c=PVClay.char(look,{});if(look.scale)c.g.scale.setScalar(look.scale);scene.add(c.g);c.yaw=Math.PI;c.ph=0;c.g.position.set(DX,0,FZ-.7);job.cust={c,to:[-1.05,-.25],cb}}
+function custLeave(cb){if(!job||!job.cust){if(cb)cb();return}const J=job.cust;J.to=[DX,FZ-.5];J.cb=()=>{scene.remove(J.c.g);if(job)job.cust=null;if(cb)cb()}}
+window.PVBakery={reset,jobStart,jobEnd,cust,custLeave};
 if(/[?&]debug\b/.test(location.search))window.PVBAK={cam,R,scene,go(x,z,yw,pt){pos.set(x,EYE,z);yaw=tYaw=yw||0;pitch=tPitch=pt||0;target=null;vel.set(0,0,0);place()}};
 
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)});
@@ -375,7 +381,9 @@ const me=ACI?PVClay.char(PVClay.playerLook,{}):null;
 if(me){scene.add(me.g);me.yaw=Math.PI;const sh=new THREE.Mesh(new THREE.CircleGeometry(.36,24),new THREE.MeshBasicMaterial({color:'#3a2418',transparent:true,opacity:.22,depthWrite:false}));sh.rotation.x=-Math.PI/2;sh.position.y=.012;me.g.add(sh)}
 const camP=new THREE.Vector3(),camL=new THREE.Vector3(),_cw=new THREE.Vector3(),_cl=new THREE.Vector3(),_bk=new THREE.Vector3();
 function placeAC(dt){const asp=innerWidth/innerHeight,port=asp<1,dlg=document.body.classList.contains('dlg-open');let fov;
- if(dlg){fov=port?44:32;baker.getWorldPosition(_bk);const Hv=port?3.6:2.9,back=Hv/(2*Math.tan(fov*Math.PI/360));_cw.set(_bk.x+.6,1.0+back*.36,_bk.z+back);_cl.set(_bk.x,port?.2:.62,_bk.z)}
+ if(job&&job.cust){fov=port?50:36;const g=job.cust.c.g.position;_cw.set(g.x+.7,2.5,-3.35);_cl.set(g.x,.75,g.z+.3)}
+ else if(job&&!dlg){fov=port?50:36;_cw.set(-.2,2.9,-3.4);_cl.set(.2,.6,1.2)}
+ else if(dlg){fov=port?44:32;baker.getWorldPosition(_bk);const Hv=port?3.6:2.9,back=Hv/(2*Math.tan(fov*Math.PI/360));_cw.set(_bk.x+.6,1.0+back*.36,_bk.z+back);_cl.set(_bk.x,port?.2:.62,_bk.z)}
  else{fov=port?50:34;const tx=port?pos.x*.8:pos.x*.3,tz=port?pos.z-1.5:pos.z*.35;_cl.set(tx,.3,tz);const dist=(port?11.5:12.8)*zoomV,el=.88;_cw.set(_cl.x,_cl.y+dist*Math.sin(el),_cl.z+dist*Math.cos(el))}
  const k=camInit?1-Math.exp(-dt*(dlg?4:6)):1;camInit=true;camP.lerp(_cw,k);camL.lerp(_cl,k);cam.position.copy(camP);cam.lookAt(camL);
  if(Math.abs(cam.fov-fov)>.05){cam.fov+=(fov-cam.fov)*k;cam.updateProjectionMatrix()}
@@ -404,15 +412,18 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  if(keys.arrowleft)tYaw+=1.6*dt;if(keys.arrowright)tYaw-=1.6*dt;
  if(wish.lengthSq()>0){target=null;wish.normalize().multiplyScalar(SPEED)}
  else if(target){const ddx=target.x-pos.x,ddz=target.z-pos.z,L=Math.hypot(ddx,ddz);if(L<.08)target=null;else{const sp=Math.min(SPEED,L*2.2);wish.set(ddx/L*sp,0,ddz/L*sp)}}
+ if(job){wish.set(0,0,0);target=null}
  vel.lerp(wish,1-Math.exp(-dt*(wish.lengthSq()>0?7:9)));
  const px=pos.x,pz=pos.z;pos.addScaledVector(vel,dt);collide(pos);
+ if(job){pos.x=-1.05;pos.z=-1.95}
  if(dt>0){vel.x=(pos.x-px)/dt;vel.z=(pos.z-pz)/dt}
  const spd=Math.hypot(vel.x,vel.z);
  if(target&&wish.lengthSq()>.25&&spd<.2){if((stuckT+=dt)>.7){target=null;stuckT=0}}else stuckT=0;
  /* sur le paillasson en avançant vers la porte : on sort */
  if(!gone&&Math.abs(pos.x-DX)<.5&&pos.z>FZ-.5&&wish.z>.1){leave();return}
  yaw+=(tYaw-yaw)*(1-Math.exp(-dt*16));pitch+=(tPitch-pitch)*(1-Math.exp(-dt*16));bob+=dt*spd*3.4;zoomV+=(zoomT-zoomV)*(1-Math.exp(-dt*12));
- if(ACI){placeAC(dt);if(me){me.g.position.set(pos.x,0,pos.z);const dlg=document.body.classList.contains('dlg-open');let want=me.yaw;if(dlg){baker.getWorldPosition(_bk);want=Math.atan2(_bk.x-pos.x,_bk.z-pos.z)}else if(spd>.2)want=Math.atan2(vel.x,vel.z);PVClay.walk(me,dt,t,spd,want)}}
+ if(ACI){placeAC(dt);if(me){me.g.position.set(pos.x,0,pos.z);const dlg=document.body.classList.contains('dlg-open');let want=me.yaw;if(job)want=0;else if(dlg){baker.getWorldPosition(_bk);want=Math.atan2(_bk.x-pos.x,_bk.z-pos.z)}else if(spd>.2)want=Math.atan2(vel.x,vel.z);PVClay.walk(me,dt,t,spd,want)}
+  if(job&&job.cust){const J=job.cust,g=J.c.g.position,dx=J.to[0]-g.x,dz=J.to[1]-g.z,L=Math.hypot(dx,dz);let sp=0;if(L>.05){const st=Math.min(L,1.3*dt);g.x+=dx/L*st;g.z+=dz/L*st;sp=1.3}else if(J.cb){const f=J.cb;J.cb=null;f()}PVClay.walk(J.c,dt,t,sp,L>.05?Math.atan2(dx,dz):Math.PI)}}
  else{place();{const f=FOV*zoomV;if(Math.abs(cam.fov-f)>.01){cam.fov=f;cam.updateProjectionMatrix()}}}
  /* le boulanger tourne la tête vers nous */
  cam.getWorldPosition(tmp);const dx=tmp.x-baker.position.x,dz=tmp.z-baker.position.z;head.rotation.y+=(Math.max(-.6,Math.min(.6,Math.atan2(dx,dz)))-head.rotation.y)*.08;

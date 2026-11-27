@@ -20,6 +20,7 @@ PV.STORY1 = {
     noMoney: "Tu n'as pas d'argent. Il faut d'abord travailler chez Tom."
   },
   obj: {
+    fountain: 'Avance jusqu\u2019à la fontaine, au milieu de la place.',
     work: "Va travailler à la boulangerie de Tom (passe devant, puis touche l'étiquette « bakery »).",
     errands: 'Déclare le vol au policier, devant la mairie · Achète une brosse à dents à la pharmacie',
     police: 'Déclare le vol au policier, devant la mairie.',
@@ -31,9 +32,21 @@ PV.STORY1 = {
   },
   endCard: { title: 'Chapitre 1 terminé !', text: "Tu n'as plus rien, mais tu as un toit, un travail, un premier ami, et une piste : un ciré jaune. La suite arrive bientôt : « Les garants ».", ok: 'Continuer à explorer' },
   skip: 'Passer le test',
-  who: { tom: 'Tom · le boulanger', jack: 'Jack · un petit garçon', patel: 'Mrs Patel · une cliente', okafor: 'Mr Okafor · le pharmacien', jones: 'Agent Jones · la police', operator: "L'opératrice", maya: 'Maya · l’étudiante', pemberton: 'Mr Pemberton · le notaire' },
-  pitch: { tom: .9, jack: 1.35, patel: 1.1, okafor: .85, jones: .8, operator: 1.15, maya: 1.15, pemberton: .82 },
+  who: { thief: 'Un jeune homme', tom: 'Tom · le boulanger', jack: 'Jack · un petit garçon', patel: 'Mrs Patel · une cliente', okafor: 'Mr Okafor · le pharmacien', jones: 'Agent Jones · la police', operator: "L'opératrice", maya: 'Maya · l’étudiante', pemberton: 'Mr Pemberton · le notaire' },
+  pitch: { thief: 1.0, tom: .9, jack: 1.35, patel: 1.1, okafor: .85, jones: .8, operator: 1.15, maya: 1.15, pemberton: .82 },
+  /* allure des clients de la boulangerie */
+  looks: {
+    jack: { skin: '#eec2a2', hair: '#c2752e', style: 'short', shirt: '#4b8fd8', pants: '#2f3a5a', shoes: '#f4efe6', scale: .78 },
+    patel: { skin: '#c38866', hair: '#d8d8d8', style: 'bun', outfit: 'cardigan', shirt: '#c94f7c', pants: '#5a4a3a', shoes: '#3a2a22' }
+  },
+  restart: { title: 'Recommencer ?', story: "L'histoire repart du prologue. Tes mots appris restent.", all: 'Tout est effacé : progression, mots, réglages. Tu repars comme un nouveau joueur.', yes: 'Recommencer', no: 'Annuler' },
   dlg: {
+    /* le voleur : il te distrait en demandant l'heure */
+    thief: { nodes: {
+      start: ['Excuse me! What time is it?', { fr: 'Pardon ! Quelle heure est-il ?' }, 'a', 'Sorry to bother you, mate. Have you got the time?'],
+      end: ['Never mind. Thanks!', { fr: 'Tant pis. Merci !' }], huh: ['Sorry?', { fr: 'Pardon ?' }] },
+      opts: { a: [{ t: "Sorry, I don't know.", tc: "Sorry, I'm not sure.", tr: { fr: 'Désolé, je ne sais pas.' }, to: 'END', reply: ['Never mind. Thanks!', { fr: 'Tant pis. Merci !' }, 'No worries. Cheers!'] },
+                  { t: "Um… it's twelve o'clock?", tr: { fr: 'Euh… il est midi ?' }, to: 'END', reply: ['Thanks!', { fr: 'Merci !' }, 'Cheers!'] }] } },
     /* le petit test : Tom te trouve sur la place. On s'arrête après deux réponses ratées. */
     test: { nodes: {
       start: ["Hello! I'm Tom. What's your name?", { fr: 'Bonjour ! Je suis Tom. Comment tu t’appelles ?' }, 'q1'],
