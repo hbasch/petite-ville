@@ -127,7 +127,8 @@ const poolM = new THREE.MeshBasicMaterial({ map: null, color: '#ffc77a', transpa
 
 /* ---------- l'île en argile ---------- */
 const G = 0.7; /* direction de l'entrée */
-const grass = mk(cyl(15, 15, .7, 72), [C(EARTH), C(shade(PAL.leaf, .12)), C(EARTH)], 0, -.35, 0); grass.receiveShadow = true;
+const grassTop = DA_AC ? C('#46a12f', { roughness: 1, bumpScale: 0 }) : C(shade(PAL.leaf, .12)); grassTop.metalness = 0; grassTop.envMapIntensity = .25;
+const grass = mk(cyl(44, 44, .7, 96), [C(EARTH), grassTop, C(EARTH)], 0, -.35, 0); grass.receiveShadow = true;
 mk(lump(cyl(15.1, 11.5, 2.6, 48, 6), .3), C(EARTH), 0, -1.95, 0);
 mk(lump(cyl(11.5, 6, 3.2, 40, 6), .4), C(shade(EARTH, -.08)), 0, -4.8, 0);
 const tipM = mk(lump(new THREE.ConeGeometry(6, 5, 32, 6), .45), C(shade(EARTH, -.15)), 0, -8.9, 0); tipM.rotation.x = Math.PI;
@@ -497,6 +498,14 @@ if (COUNTRY === 'gb') {
 /* bâtiments plus bas, comme dans un jeu de village : les deux du bout (côté caméra) n'ont qu'un étage, pour ne pas boucher la vue */
 B[0].h = Math.min(B[0].h, B[0].shop ? 5.0 : 4.6); B[B.length - 1].h = Math.min(B[B.length - 1].h, B[B.length - 1].shop ? 5.0 : 4.6);
 const RAD = 11.6, span = 250 * Math.PI / 180, a0 = G + Math.PI - span / 2;
+/* place façon village (Animal Crossing) : les maisons, posées en cercle par le code d'origine, sont « déroulées » en une rue
+   face à la caméra (u = de gauche à droite, v = vers le fond), légèrement courbe. Le côté caméra reste ouvert. */
+const BKV = [Math.sin(G + Math.PI), Math.cos(G + Math.PI)], RTV = [Math.cos(G + Math.PI), -Math.sin(G + Math.PI)], KU = RAD, CURV = .006, UMAX = 21;
+const S2W = (u, v) => [RTV[0] * u + BKV[0] * v, RTV[1] * u + BKV[1] * v];
+const W2S = (x, z) => [x * RTV[0] + z * RTV[1], x * BKV[0] + z * BKV[1]];
+function toStreet(x, z) { const r = Math.hypot(x, z), a = Math.atan2(x, z), d = Math.atan2(Math.sin(a - G - Math.PI), Math.cos(a - G - Math.PI)), u = d * KU; const [nx, nz] = S2W(u, r + CURV * u * u); return { x: nx, z: nz, dr: -d }; }
+const frontV = u => RAD - 2.2 + CURV * u * u;
+const walkable = (x, z) => { const [u, v] = W2S(x, z); return Math.abs(u) < UMAX && v > -7 && v < frontV(u); };
 const bld = {};
 /* comme dans un jeu de village, le côté caméra (vers l'entrée) reste ouvert : pas de maison aux deux bouts, la caméra ne se coince plus contre une façade */
 const OPEN = i => i === 0 || i === B.length - 1, BLDC = [];
@@ -603,6 +612,7 @@ function lamp(x, z, light) {
   if (mobile) { poolM.map = glowT; const pool = mk(G_('pool', () => new THREE.CircleGeometry(2.6, 24)), poolM, x, .06, z); pool.rotation.x = -Math.PI / 2; pool.renderOrder = 2; }
   colliders.push({ x, z, r: .38 }); sblob(x, z, .55);
 }
+const KEEP0 = { ch: scene.children.length, bl: sblobs.length, co: colliders.length };
 for (let i = 0; i < 6; i++) { const a = G + .5 + i * (TAU - 1) / 5; lamp(Math.sin(a) * 8.7, Math.cos(a) * 8.7, i % 2 === 0); }
 
 /* ---------- guirlandes : fanions le jour, ampoules la nuit ---------- */
@@ -626,6 +636,7 @@ const flagS = new THREE.Shape(); flagS.moveTo(-.115, 0); flagS.lineTo(.115, 0); 
 const flagIM = new THREE.InstancedMesh(new THREE.ExtrudeGeometry(flagS, { depth: .02, bevelEnabled: true, bevelSize: .014, bevelThickness: .012, bevelSegments: 2, curveSegments: 3 }).translate(0, 0, -.01), C('#ffffff', { roughness: .8 }), flagPts.length), fc2 = new THREE.Color();
 flagPts.forEach(([p, tg], i) => { bo.position.copy(p); bo.rotation.set(0, Math.atan2(tg.x, tg.z) + Math.PI / 2, 0); bo.updateMatrix(); flagIM.setMatrixAt(i, bo.matrix); const BU = CITY.bunting || [PAL.accent, PAL.walls[0], PAL.walls[1], TRIM, PAL.roofs[0]]; fc2.set(BU[i % BU.length]); flagIM.setColorAt(i, fc2); });
 if (flagIM.instanceColor) flagIM.instanceColor.needsUpdate = true; flagIM.castShadow = true; scene.add(flagIM);
+const KEEP1 = { ch: scene.children.length, bl: sblobs.length, co: colliders.length };
 
 /* vélo près de la boulangerie */
 {
@@ -722,7 +733,7 @@ function tree(x, z, s) {
 [[11.2, 2.4], [11.6, -2.5], [13.2, 3.4], [13.0, -3.6], [12.2, 4.7], [12.4, -4.8], [14.0, 2.2], [14.1, -2.3]].forEach(([r, s]) => tree(Math.sin(G) * r + Math.cos(G) * s, Math.cos(G) * r - Math.sin(G) * s, rnd(.9, 1.2)));
 /* plus d'arbres au milieu de la place, côté caméra : ils cachaient Rosa et les habitants en conversation ; des jardinières basses à la place */
 [G + 1.3, G - 1.3].forEach(a => planter(scene, Math.sin(a) * 7.4, Math.cos(a) * 7.4, true));
-for (let i = 0; i < 30; i++) { const a = G + rnd(.15, TAU - .15), r = rnd(13.6, 14.6); mk(lump(sph(rnd(.35, .6), 12), .04, 2), C(shade(PAL.leaf, rnd(-.1, .04))), Math.sin(a) * r, .22, Math.cos(a) * r); }
+/* (l'ancienne haie en anneau est remplacée par une haie basse au bord de la rue, côté caméra) */
 
 /* ---------- ce qui fait chaque ville ---------- */
 const collectibles = [];
@@ -930,7 +941,7 @@ function holdSuitcase(who) {
 let locked = false;
 /* ---------- ton personnage ---------- */
 const me = ACCAM ? makeChar(PVClay.playerLook) : null;
-if (me) { me.g.userData.id = 'me'; scene.add(me.g); me.g.traverse(c => { if (c.isMesh && c !== me.P.shadow) c.castShadow = true; }); me.yaw = G + Math.PI; me.ph = 0; me.blinkT = 2; me.g.position.set(Math.sin(G) * 9.2, .03, Math.cos(G) * 9.2); }
+if (me) { me.g.userData.id = 'me'; scene.add(me.g); me.g.traverse(c => { if (c.isMesh && c !== me.P.shadow) c.castShadow = true; }); me.yaw = G + Math.PI; me.ph = 0; me.blinkT = 2; { const [x, z] = S2W(-UMAX + 2.5, 1); me.g.position.set(x, .03, z); } }
 const walkers = [];
 
 /* ---------- habitants modelés : bouche en relief et « squelette » automatique ----------
@@ -1125,6 +1136,45 @@ const dropGeo = new THREE.BufferGeometry(); dropGeo.setAttribute('position', new
 const dropsPts = new THREE.Points(dropGeo, new THREE.PointsMaterial({ map: dotT, size: .07, transparent: true, opacity: .8, depthWrite: false, color: '#dff4ff' })); scene.add(dropsPts);
 colliders.push(...people.filter(p => p.mode !== 'walk').map(p => ({ x: p.grp.position.x, z: p.grp.position.z, r: .45 })));
 
+/* ---------- la rue : on déroule tout ce qui est posé sur l'anneau des façades ---------- */
+{
+  const inBand = (x, z) => { const r = Math.hypot(x, z); return r > 8.15 && r < 13.4; };
+  const kept = (i, k) => i >= KEEP0[k] && i < KEEP1[k];
+  scene.children.slice().forEach((o, i) => {
+    if (kept(i, 'ch') || o.isInstancedMesh || o === sky || o.isLight && !o.isPointLight) return;
+    const p = o.position; if (!inBand(p.x, p.z)) return;
+    const t = toStreet(p.x, p.z); p.x = t.x; p.z = t.z; o.rotation.y += t.dr;
+    const pp = people.find(q => q.grp === o); if (pp) { pp.base += t.dr; if (pp.home) pp.home = [t.x, t.z, pp.home[2] + t.dr]; }
+  });
+  sblobs.forEach((b, i) => { if (kept(i, 'bl') || !inBand(b[0], b[1])) return; const t = toStreet(b[0], b[1]); b[0] = t.x; b[1] = t.z; b[4] += t.dr; });
+  colliders.forEach((c, i) => { if (kept(i, 'co') || !inBand(c.x, c.z)) return; const t = toStreet(c.x, c.z); c.x = t.x; c.z = t.z; });
+  BLDC.length = 0; B.forEach((sp, i) => { if (OPEN(i)) return; const g = hits.find(h => h.userData.id === sp.id && h.parent === scene); if (g) BLDC.push({ x: g.position.x, z: g.position.z, r: sp.w / 2 + 2.4 }); });
+  /* chemin de sable devant les boutiques, jusqu'à l'arrêt de bus (à gauche) et à la barrière du parc (à droite) */
+  const sandM = C(PAL.ground, { bumpScale: .01 });
+  for (let k = -12; k <= 12; k++) { const u = k * 1.9, [x, z] = S2W(u, frontV(u) - .9); const m = mk(rbox(2.1, .05, 2.6, .02, 1), sandM, x, .02, z); m.rotation.y = G; m.receiveShadow = true; }
+  /* haie basse au bord, côté caméra */
+  for (let k = -14; k <= 14; k++) { const u = k * 1.55, [x, z] = S2W(u, -7.8); mk(lump(sph(rnd(.28, .38), 12), .04, 2), C(shade(PAL.leaf, rnd(-.1, .04))), x, .26, z); }
+  /* arrêt de bus (à gauche) : poteau, panneau, petit abri */
+  { const [x, z] = S2W(-UMAX - 1.2, 1.5), g = new THREE.Group(); scene.add(g); g.position.set(x, 0, z); g.rotation.y = G + Math.PI / 2;
+    mk(cyl(.05, .05, 2.4, 8), C('#3a3a48'), 0, 1.2, -1.4, g); mk(cyl(.32, .32, .06, 18), C('#c8202a'), 0, 2.45, -1.4, g).rotation.x = Math.PI / 2;
+    mk(rbox(2.4, .12, 1.1, .05, 2), C('#3a3a48'), 0, 2.3, 0, g); [-1.1, 1.1].forEach(dx => mk(cyl(.05, .05, 2.3, 8), C('#3a3a48'), dx, 1.15, -.45, g));
+    mk(rbox(2.2, .08, .4, .03, 2), C('#b07a4a'), 0, .5, -.35, g); colliders.push({ x, z, r: 1.0 }); sblob(x, z, 1.4, .8); }
+  /* barrière du parc (à droite), fermée jusqu'au chapitre 2 */
+  { const [x, z] = S2W(UMAX + 1.2, 1.5), g = new THREE.Group(); scene.add(g); g.position.set(x, 0, z); g.rotation.y = G + Math.PI / 2;
+    const wood = C('#b07a4a'); [-1.6, 1.6].forEach(dx => mk(rbox(.22, 1.3, .22, .06, 2), wood, dx, .65, 0, g)); [.45, .9].forEach(y => mk(rbox(3.2, .12, .1, .04, 2), wood, 0, y, 0, g)); }
+  /* la maison d'Arthur, au fond sur la colline : on voit son but dès le début */
+  /* les deux bouts de la rue : quelques arbres et des massifs de fleurs */
+  [[-18.5, 7.2, 1.1], [-23, -4.5, 1.0], [-26, 6, 1.2], [18.5, 7.2, 1.05], [24, -5, 1.0]].forEach(([u, v, sc]) => { const [x, z] = S2W(u, v); tree(x, z, sc); });
+  const FL = ['#ff6f91', '#ffd35a', '#fff4e2', PAL.walls[4], PAL.accent];
+  [[-14, -4], [-9, -5.2], [9, -5.2], [14, -4], [-20, 3.5], [20, 3.5]].forEach(([u, v], k) => { const [x, z] = S2W(u, v); mk(lump(sph(.55, 12), .04, 2), C(shade(PAL.leaf, -.05)), x, .2, z).scale.set(1.3, .45, 1); for (let j = 0; j < 7; j++) { const a = j / 7 * TAU; mk(G_('fl2', () => sph(.09, 8)), C(FL[(j + k) % 5]), x + Math.cos(a) * .5, .38, z + Math.sin(a) * .35); } });
+  /* la maison d'Arthur : sur la colline, au-delà de la barrière du parc ; on la voit en marchant vers la droite */
+  { const [x, z] = S2W(UMAX + 11, 9), hill = mk(lump(sph(9, 24), .05, 2), C('#62b843'), x, -3.4, z); hill.scale.set(1, .62, 1);
+    const g = new THREE.Group(); scene.add(g); g.position.set(x, 2.3, z); g.rotation.y = G;
+    mk(lump(rbox(4.2, 2.6, 3.4, .3, 5), .03, .7), C('#f7e7c4'), 0, 1.3, 0, g);
+    const roof = mk(new THREE.ConeGeometry(3.3, 1.9, 4), C('#e2604e'), 0, 3.5, 0, g); roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, .82);
+    mk(rbox(.5, 1.1, .5, .1, 2), C('#b07a4a'), 1.1, 4.1, .2, g); mk(rbox(.8, 1.4, .1, .05, 2), C('#22b2a0'), 0, .7, 1.72, g);
+    [-1.3, 1.3].forEach(dx => mk(rbox(.7, .7, .1, .05, 2), C('#9fcbef', { roughness: .2 }), dx, 1.6, 1.72, g)); }
+}
 { const im = new THREE.InstancedMesh(G_('blobG', () => new THREE.CircleGeometry(1, 24)), BLOB, sblobs.length), o = new THREE.Object3D();
   sblobs.forEach(([x, z, sx, sz, yw], i) => { o.position.set(x, .068, z); o.rotation.set(-Math.PI / 2, yw, 0, 'YXZ'); o.scale.set(sx, sz, 1); o.updateMatrix(); im.setMatrixAt(i, o.matrix); });
   im.renderOrder = 1; im.frustumCulled = false; scene.add(im); }
@@ -1215,7 +1265,7 @@ let hourOverride = null;
 applyHour(realHour());
 
 /* ---------- déplacement à la première personne ---------- */
-const pos = new THREE.Vector3(Math.sin(G) * 9.2, 1.45, Math.cos(G) * 9.2);
+const pos = new THREE.Vector3(...(() => { const [x, z] = S2W(-UMAX + 2.5, 1); return [x, 1.45, z]; })());
 let yaw = G, pitch = -.06, tYaw = G, tPitch = -.06, target = null, bob = 0;
 let camYaw = G, camPitch = .5, camInit = false; const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), _cw = new THREE.Vector3(), _cl = new THREE.Vector3();
 const vel = new THREE.Vector3(), wish = new THREE.Vector3();
@@ -1224,10 +1274,7 @@ const keys = {}, fwd = new THREE.Vector3(), right = new THREE.Vector3();
 addEventListener('keydown', e => { if (!H.active() || /INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || '')) return; keys[e.key.toLowerCase()] = true; });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 function collide(p) {
-  const dx = p.x, dz = p.z, d = Math.hypot(dx, dz);
-  const ang = Math.atan2(dx, dz), onPath = Math.abs(Math.atan2(Math.sin(ang - G), Math.cos(ang - G))) < .09 || (d > 9 && Math.abs(Math.sin(ang - G) * d) < 1.1);
-  const lim = onPath ? 14.2 : 9.3;
-  if (d > lim) { p.x = dx / d * lim; p.z = dz / d * lim; }
+  { let [u, v] = W2S(p.x, p.z); u = Math.max(-UMAX, Math.min(UMAX, u)); v = Math.max(-7, Math.min(frontV(u), v)); const [x, z] = S2W(u, v); p.x = x; p.z = z; }
   { const ex = p.x - dog.d.position.x, ez = p.z - dog.d.position.z, dd = Math.hypot(ex, ez); if (dd < .6 && dd > 1e-4) { p.x = dog.d.position.x + ex / dd * .6; p.z = dog.d.position.z + ez / dd * .6; } }
   people.forEach(o => { if (o.mode !== 'walk') return; const ex = p.x - o.grp.position.x, ez = p.z - o.grp.position.z, dd = Math.hypot(ex, ez), rr = .75; if (dd < rr && dd > 1e-4) { p.x = o.grp.position.x + ex / dd * rr; p.z = o.grp.position.z + ez / dd * rr; } });
   for (let it = 0; it < 4; it++) colliders.forEach(c => { const ex = p.x - c.x, ez = p.z - c.z, dd = Math.hypot(ex, ez), rr = c.r + .25; if (dd < rr && dd > 1e-4) { p.x = c.x + ex / dd * rr; p.z = c.z + ez / dd * rr; } });
@@ -1621,12 +1668,12 @@ function talkPlan(o) {
   let best = null;
   for (const da of [0, .35, -.35, .7, -.7, 1.0, -1.0]) {
     const a = base + da, sx = n.x + Math.sin(a) * (sit ? 2.3 : 1.5), sz = n.z + Math.cos(a) * (sit ? 2.3 : 1.5);
-    if (Math.hypot(sx, sz) > 9 || colliders.some(c => Math.hypot(c.x - n.x, c.z - n.z) > .1 && Math.hypot(c.x - sx, c.z - sz) < c.r + .5)) continue;
+    if (!walkable(sx, sz) || colliders.some(c => Math.hypot(c.x - n.x, c.z - n.z) > .1 && Math.hypot(c.x - sx, c.z - sz) < c.r + .5)) continue;
     for (const ca of [.35, -.35, .55, -.55, .75, -.75]) {
       const v = a + ca, cp = new THREE.Vector3(n.x + Math.sin(v) * back, 1 + back * .34, n.z + Math.cos(v) * back);
       rc.set(cp, head.clone().sub(cp).normalize()); rc.far = cp.distanceTo(head) - .3;
       const occ = rc.intersectObjects(obst, true).length;
-      const sc = occ * 3 + Math.abs(da) * .6 + Math.abs(ca) * .4 + (Math.hypot(cp.x, cp.z) > 8.6 ? 5 : 0);
+      const sc = occ * 3 + Math.abs(da) * .6 + Math.abs(ca) * .4 + (BLDC.some(b => Math.hypot(cp.x - b.x, cp.z - b.z) < b.r) ? 5 : 0);
       if (!best || sc < best.s) best = { s: sc, sx, sz, v };
     }
   }
@@ -1672,9 +1719,7 @@ function updateTPS(dt, t, spd) {
     /* distance permise calculée en continu (plus de marches d'escalier), puis lissée : la caméra ne fait plus d'à-coups près des bords
        et ne se colle jamais contre une maison */
     const okAt = dd => {
-      const pp = camPitch + (1 - dd / dist) * .65, cx = _cl.x - fx * dd * Math.cos(pp), cz = _cl.z - fz * dd * Math.cos(pp), rr = Math.hypot(cx, cz);
-      if (rr < 9.4) return true;
-      const a = Math.atan2(cx, cz), da = Math.abs(Math.atan2(Math.sin(a - G), Math.cos(a - G))); if (da > 1.1) return false;
+      const pp = camPitch + (1 - dd / dist) * .65, cx = _cl.x - fx * dd * Math.cos(pp), cz = _cl.z - fz * dd * Math.cos(pp);
       return !BLDC.some(b => Math.hypot(cx - b.x, cz - b.z) < b.r);
     };
     let lo = .38 * dist, hi = dist;
@@ -1767,7 +1812,7 @@ loop();
 /* sortir de la boulangerie : devant sa porte, face à la place */
 /* outil de test : ?debug dans l'adresse donne window.PVDBG pour placer la caméra (captures de vérification) */
 if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges, tag: () => ({ on: tagFor && tagFor.userData.id, x: +pos.x.toFixed(2), z: +pos.z.toFixed(2), n: hits.length, t: tagT, near: hits.filter(o => o.userData.box).map(o => [o.userData.id, +o.userData.box.distanceToPoint(new THREE.Vector3(pos.x, (o.userData.box.min.y + o.userData.box.max.y) / 2, pos.z)).toFixed(2)]).sort((a, b) => a[1] - b[1]).slice(0, 4), talking: !!talking }) };
-function placeAtBakery() { const a = bld.bakery.ang; pos.set(Math.sin(a) * 8.0, 1.45, Math.cos(a) * 8.0); yaw = tYaw = a; pitch = tPitch = -.05; target = null; vel.set(0, 0, 0); camYaw = Math.atan2(-pos.x, -pos.z); camInit = false; if (me) me.yaw = a; }
+function placeAtBakery() { const g = bld.bakery.g, [bu] = W2S(g.position.x, g.position.z), [bx, bz] = S2W(bu - 1.2, frontV(bu) - .4), a = G + Math.PI; pos.set(bx, 1.45, bz); yaw = tYaw = a; pitch = tPitch = -.05; target = null; vel.set(0, 0, 0); camYaw = Math.atan2(-pos.x, -pos.z); camInit = false; if (me) me.yaw = a; }
 
 /* horizon arrondi aussi pour les matières qui ne sont pas en pâte */
 if (ACCAM) scene.traverse(o => { if (o === stars || o === sky) return; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => PVClay.bendify(m)); });
@@ -1777,7 +1822,7 @@ return {
   actor: (id, o) => { const p = people.find(q => q.id === id); if (!p) return; o = o || {}; if (o.show != null) p.grp.visible = !!o.show; if (o.home && p.home) { p.go = null; p.appr = null; p.grp.position.set(p.home[0], 0, p.home[1]); p.grp.rotation.y = p.base = p.home[2]; } if (o.at) { p.grp.position.set(o.at[0], 0, o.at[1]); } },
   goTo: (id, pts, spd, cb) => { const p = people.find(q => q.id === id); if (!p) return; p.appr = null; p.go = { pts, i: 0, spd: spd || 1.5, cb }; },
   suitcase: holdSuitcase, lock: on => { locked = !!on; if (on) { target = null; joyEnd(); } },
-  mePos: () => ({ x: pos.x, z: pos.z }), spot: (id, r) => spotAt(angOf(id), r || 8.6), exitPt: r => spotAt(G, r || 13.5),
+  mePos: () => ({ x: pos.x, z: pos.z }), spot: (id, r) => spotAt(angOf(id), r || 8.6), exitPt: r => S2W(-UMAX - 2 - Math.max(0, (r || 13.5) - 13.5), 0),
   cheer: id => { const o = people.find(p => p.id === id); if (o) o.happy = 1.5; },
   marker: (id, kind, secs) => { const o = people.find(p => p.id === id); if (!o) return; if (kind === 'heart') o.heartUntil = clockT.elapsedTime + (secs || 3); else o.quest = kind === 'quest'; },
   approach: (id, cb) => { const o = people.find(p => p.id === id); if (!o || o.appr || talking || photo) return false; o.appr = { state: 'go', t: 0, cb, hx: o.grp.position.x, hz: o.grp.position.z }; o.pause = 0; return true; },
