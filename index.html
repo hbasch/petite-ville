@@ -8,7 +8,7 @@
 <meta name="description" content="Apprends l'anglais ou le polonais en parlant aux habitants d'une petite ville en 3D.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=27">
+<link rel="stylesheet" href="style.css?v=29">
 <script>
 /* pas de zoom de la page entière (iPhone) : le pincement sert à zoomer dans la ville */
 document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
@@ -21,6 +21,7 @@ if (/[?&]debug\b/.test(location.search)) {
 </script>
 </head>
 <body>
+<script>/* journal des erreurs, pour le rapport de bug */ window.PVLOG = []; addEventListener('error', e => PVLOG.push('error: ' + e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno)); addEventListener('unhandledrejection', e => PVLOG.push('promise: ' + (e.reason && e.reason.message || e.reason))); (function () { const ce = console.error; console.error = function () { try { PVLOG.push('console: ' + [].map.call(arguments, String).join(' ').slice(0, 300)); } catch (x) {} return ce.apply(console, arguments); }; })();</script>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
  <symbol id="i-spk" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
  <symbol id="i-mic" viewBox="0 0 24 24"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v7a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V22h2v-3.1A7 7 0 0 0 19 12h-2z"/></symbol>
@@ -132,7 +133,7 @@ if (/[?&]debug\b/.test(location.search)) {
 <div id="ctrlHelp" class="hidden" role="dialog" aria-label="Commandes">
  <b data-i="helpTitle"></b>
  <ul><li data-i="helpTap"></li><li data-i="helpDrag"></li><li data-i="helpKeys"></li><li data-i="helpTalk"></li><li data-i="helpZoom"></li></ul>
- <button class="btn sm" id="helpOk" type="button" data-i="helpOk"></button>
+ <div class="helpBtns"><button class="btn sm" id="helpOk" type="button" data-i="helpOk"></button><button class="btn sm ghost" id="bugBtn" type="button" data-i="bugBtn"></button></div>
 </div>
 <div id="timePop" class="hidden" role="dialog" aria-label="Heure">
  <div class="phRow"><span data-i="hourLbl"></span> <b id="tpHour">12:00</b><button class="btn sm" id="tpReal" type="button" data-i="realTime"></button></div>
@@ -276,10 +277,10 @@ if (/[?&]debug\b/.test(location.search)) {
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="config.js?v=10"></script>
-<script src="data.js?v=21"></script>
+<script src="data.js?v=22"></script>
 <script src="clay.js?v=18"></script>
 <script src="scene.js?v=22"></script>
-<script src="town.js?v=53"></script>
-<script src="app.js?v=26"></script>
+<script src="town.js?v=55"></script>
+<script src="app.js?v=27"></script>
 </body>
 </html>

@@ -397,6 +397,15 @@ $('phClose').onclick = () => { town.setPhoto(false); document.body.classList.rem
 function helpShow(on) { $('ctrlHelp').classList.toggle('hidden', !on); if (!on) store.set('pv_help', '1'); }
 $('helpBtn').onclick = e => { e.stopPropagation(); helpShow($('ctrlHelp').classList.contains('hidden')); };
 $('helpOk').onclick = () => helpShow(false);
+/* rapport de bug : appareil, écran, carte graphique, dernières erreurs ; copié pour être collé dans la conversation */
+$('bugBtn').onclick = () => {
+  let gpu = '?'; try { const g = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl'); const x = g && g.getExtension('WEBGL_debug_renderer_info'); gpu = x ? g.getParameter(x.UNMASKED_RENDERER_WEBGL) : '?'; } catch (e) { /* */ }
+  const lines = ['Rapport Chatterville ' + new Date().toISOString(), location.href, navigator.userAgent, 'écran ' + innerWidth + 'x' + innerHeight + ' @' + devicePixelRatio, 'GPU ' + gpu, 'lieu ' + place + ' · mode compatible ' + (window.PVClay && PVClay.SAFE ? 'oui' : 'non'), 'erreurs :'].concat((window.PVLOG || []).slice(-15));
+  const txt = lines.join('\n');
+  const done = () => toast(U.bugCopied);
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => { prompt('Copie ce texte :', txt); });
+  else prompt('Copie ce texte :', txt);
+};
 /* heure de la ville sans passer par le mode photo : une pastille dans le haut de l'écran, un curseur, et « Heure réelle » pour revenir au temps vrai */
 function updTime() {
   if (!town || !town.hour) return; const h = town.hour(), man = !!(town.manual && town.manual());

@@ -378,3 +378,6 @@ body.photo #timePop{display:none!important}
 #ctrlHelp b{font:800 20px var(--disp)}
 #ctrlHelp ul{margin:8px 0 12px;padding-left:20px;font:700 15px/1.5 Nunito,sans-serif}
 body.photo #ctrlHelp,body.dlg-open #ctrlHelp{display:none!important}
+
+.helpBtns{display:flex;gap:8px;flex-wrap:wrap}
+#ctrlHelp .btn.ghost{color:#4a3a2a;border:2px solid #e6d3a8;background:#fff}

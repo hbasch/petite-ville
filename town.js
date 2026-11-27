@@ -1229,10 +1229,38 @@ canvas.addEventListener('pointerup', e => {
   if (lift(e)) return;
   if (photo || !down || down.id !== e.pointerId) { down = null; return; }
   const moved = down.moved; down = null; if (moved > 8) return;
-  const p = pick(e); if (!p) return;
+  let p = pick(e);
+  /* aide au toucher : si le doigt tombe à côté, on prend l'habitant ou l'objet le plus proche à l'écran */
+  if (ACCAM && (!p || p.id === 'square')) { const q = nearPick(e, (mobile ? 52 : 28)); if (q) p = q; }
+  if (ACCAM && (!p || p.id === 'square')) { const g = groundPick(e); if (g) { target = new THREE.Vector3(g.x, 1.45, g.z); return; } }
+  if (!p) return;
   if (p.id === 'square') { target = new THREE.Vector3(p.point.x, 1.45, p.point.z); return; }
   H.pick(p.id, p.obj);
 });
+/* l'horizon arrondi abaisse ce qui est loin : pour viser juste, on applique la même descente aux calculs du toucher */
+function bendDrop(x, z) { if (!ACCAM || photo) return 0; const bd = (x - pos.x) * -Math.sin(camYaw) + (z - pos.z) * -Math.cos(camYaw); return BENDK * bd * bd; }
+const _np = new THREE.Vector3(), _nb = new THREE.Box3();
+function nearPick(e, radius) {
+  const r = canvas.getBoundingClientRect(); let best = null, bd = radius;
+  hits.forEach(o => {
+    const id = o.userData.id; if (!id || id === 'square' || !o.visible) return;
+    if (id.startsWith('npc:')) o.getWorldPosition(_np).add(new THREE.Vector3(0, .9, 0));
+    else { _nb.setFromObject(o); if (_nb.isEmpty()) return; _nb.getCenter(_np); }
+    _np.y -= bendDrop(_np.x, _np.z); _np.project(cam); if (_np.z > 1 || _np.z < -1) return;
+    const sx = (_np.x + 1) / 2 * r.width + r.left, sy = (1 - _np.y) / 2 * r.height + r.top;
+    /* les habitants se « captent » de loin, les objets seulement tout près (sinon un tap pour marcher ouvrirait un mot) */
+    const d = Math.hypot(sx - e.clientX, sy - e.clientY) * (id.startsWith('npc:') ? 1 : 2.4);
+    if (d < bd) { bd = d; best = { id, obj: o, point: _np.clone() }; }
+  });
+  return best;
+}
+/* sol visé : on avance le long du rayon jusqu'à toucher le sol tel qu'il est dessiné (abaissé au loin) */
+function groundPick(e) {
+  const r = canvas.getBoundingClientRect(); ptr.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ptr, cam);
+  const o = ray.ray.origin, d = ray.ray.direction;
+  for (let s = .5; s < 80; s += .2) { const x = o.x + d.x * s, y = o.y + d.y * s, z = o.z + d.z * s; if (y <= .02 - bendDrop(x, z)) return { x, z }; }
+  return null;
+}
 canvas.addEventListener('wheel', e => { if (photo) return; e.preventDefault(); setZoom(zoomT * (1 + Math.max(-.2, Math.min(.2, e.deltaY * .0012)))); }, { passive: false });
 canvas.addEventListener('pointerleave', () => { tip.classList.add('hidden'); });
 
