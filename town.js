@@ -861,6 +861,42 @@ person('maya', { skin: SK[3], hair: '#1a1a22', style: 'curly', lashes: true, eye
 [[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1, tote: i === 0 ? '#efe3cf' : null, balloon: i === 2 ? '#e8423a' : null }, 'walk', 0, 0, 0, { r: i === 1 ? 6.6 : rnd(6.5, 8.2), a: rnd(0, TAU), sp: (i === 1 ? .05 : rnd(.05, .085)) * (i % 2 ? 1 : -1), pause: 0, dog: i === 1 }));
 const walkers = [];
 
+/* ---------- habitants modelés (images Gemini puis Meshy) : remplacent la version en code quand le fichier est là ---------- */
+const GLB_CHARS = { rosa: { url: 'assets/rosa.glb?v=1', h: 1.42 } };
+if (THREE.GLTFLoader && !/[?&]glb=0/.test(location.search)) {
+  const ld = new THREE.GLTFLoader();
+  Object.entries(GLB_CHARS).forEach(([id, cfg]) => {
+    const o = people.find(p => p.id === id); if (!o) return;
+    ld.load(cfg.url, gl => {
+      const m = gl.scene, box = new THREE.Box3().setFromObject(m), sz = box.getSize(new THREE.Vector3()), s = cfg.h / sz.y;
+      m.scale.setScalar(s); m.position.set(-(box.min.x + box.max.x) / 2 * s, -box.min.y * s, -(box.min.z + box.max.z) / 2 * s);
+      m.traverse(c => { if (!c.isMesh) return; c.castShadow = !mobile; c.receiveShadow = true;
+        const mt = c.material; mt.metalness = 0; mt.roughness = .58; mt.envMapIntensity = .6; if (mt.map) mt.map.anisotropy = 4;
+        PVClay.apply(mt, .035, [.35, .12, .06]); });
+      /* le pivot sert aux mouvements : on bascule autour des pieds, comme une figurine qu'on déplace */
+      const pivot = new THREE.Group(); pivot.add(m); o.grp.add(pivot);
+      o.c.g.traverse(c => { if (c.isMesh && c !== o.c.P.shadow) c.visible = false; });
+      o.glb = { pivot, acc: 0, px: o.grp.position.x, pz: o.grp.position.z, walk: 0, ph: 0 };
+      if (R.shadowMap.autoUpdate === false) R.shadowMap.needsUpdate = true;
+    }, undefined, () => { /* fichier absent ou illisible : on garde la version en code */ });
+  });
+}
+/* animation « image par image » : 12 poses par seconde comme en stop-motion ; respiration, balancement,
+   petits sauts quand on parle ou qu'on est content, dandinement quand on marche */
+function animGlb(o, dt, talk) {
+  const G = o.glb, gp = o.grp.position;
+  const sp = Math.hypot(gp.x - G.px, gp.z - G.pz) / Math.max(dt, 1e-3); G.px = gp.x; G.pz = gp.z;
+  G.walk += ((sp > .15 ? 1 : 0) - G.walk) * Math.min(1, dt * 6); G.ph += dt * (4 + sp * 5);
+  G.acc += dt; if (G.acc < 1 / 12) return; G.acc = 0;
+  const t = o.t, w = G.walk, hap = Math.max(0, o.happy || 0), p = G.pivot;
+  const breath = Math.sin(t * 2.1) * .014, talkB = talk ? Math.abs(Math.sin(t * 8.5)) * .03 : 0;
+  p.position.y = w * Math.abs(Math.sin(G.ph)) * .05 + hap * Math.abs(Math.sin(t * 9)) * .07 + talkB * .6;
+  p.rotation.z = Math.sin(t * 1.1) * .02 + w * Math.sin(G.ph) * .09;
+  p.rotation.x = (talk ? Math.sin(t * 6.3) * .035 : 0) + w * .05;
+  p.rotation.y = talk ? Math.sin(t * 2.3) * .06 : 0;
+  p.scale.set(1 - breath * .5 - talkB * .3, 1 + breath + talkB, 1 - breath * .5 - talkB * .3);
+}
+
 /* ---------- un chien en laisse (avec un passant) et un chat qui dort sur un banc ---------- */
 function makeDog() {
   const d = item('dog'), tan = C('#c98a4a'), dark = C('#8a5a32'), white = C('#f6efe2'), P = {};
@@ -1278,6 +1314,7 @@ function updatePeople(dt, t) {
       o.bub.position.y = 1.78 + Math.sin(o.t * (o.quest ? 4 : 2.5)) * (o.quest ? .08 : .04);
     }
     if (o.happy > 0) happyPose(o, P, dt);
+    if (o.glb) animGlb(o, dt, isTalk && speaking);
     /* sourcils : se lèvent quand on parle ou qu'on est content */
     const brow = (o.happy > 0 ? 1 : 0) + (isTalk && speaking ? .5 + .5 * Math.sin(o.t * 5) : isTalk ? .3 : 0);
     P.brows.forEach(b => { b.position.y += (P.browY + Math.min(1, brow) * .03 - b.position.y) * .2; });
