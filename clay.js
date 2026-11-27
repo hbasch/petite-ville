@@ -39,7 +39,9 @@
   function bendify(m) {
     if (SAFE || /[?&]nobendify\b/.test(location.search) || !m || m.userData.clayAmt || m.userData.bent || m.isShaderMaterial) return;
     if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) return;
-    if (!(m.isMeshBasicMaterial || m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial || m.isPointsMaterial || m.isSpriteMaterial)) return;
+    /* pas les sprites ni les points : three.js ne leur transmet pas viewMatrix, le calcul donnait un grand carré
+       qui recouvrait tout l'écran sous Direct3D (écran bleu nuit ou beige sous Windows) */
+    if (!(m.isMeshBasicMaterial || m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial)) return;
     m.userData.bent = true; m.onBeforeCompile = bendPatch; m.customProgramCacheKey = () => 'bend1'; m.needsUpdate = true;
   }
   /* ton personnage : se tourne vers wantYaw, marche selon sa vitesse, respire, cligne des yeux */
