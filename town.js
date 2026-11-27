@@ -498,7 +498,9 @@ if (COUNTRY === 'gb') {
 B[0].h = Math.min(B[0].h, B[0].shop ? 5.0 : 4.6); B[B.length - 1].h = Math.min(B[B.length - 1].h, B[B.length - 1].shop ? 5.0 : 4.6);
 const RAD = 11.6, span = 250 * Math.PI / 180, a0 = G + Math.PI - span / 2;
 const bld = {};
-B.forEach((sp, i) => { const ang = a0 + span * i / (B.length - 1); const g = building(sp, ang, RAD + (sp.id === 'townhall' ? .3 : 0)); if (sp.id === 'bakeryShop') bld.bakery = { g, ang }; if (sp.id === 'townhall') bld.hall = { g, sp }; });
+/* comme dans un jeu de village, le côté caméra (vers l'entrée) reste ouvert : pas de maison aux deux bouts, la caméra ne se coince plus contre une façade */
+const OPEN = i => i === 0 || i === B.length - 1;
+B.forEach((sp, i) => { if (OPEN(i)) return; const ang = a0 + span * i / (B.length - 1); const g = building(sp, ang, RAD + (sp.id === 'townhall' ? .3 : 0)); if (sp.id === 'bakeryShop') bld.bakery = { g, ang }; if (sp.id === 'townhall') bld.hall = { g, sp }; });
 
 /* enseignes peintes dans la langue du pays (toutes dans une texture, une seule géométrie) */
 let signMat = null;
@@ -896,7 +898,7 @@ B.forEach((sp, i) => { if (sp.id !== 'florist') return; const a = a0 + span * i 
 { const a = G + 1.2, bx = Math.sin(a) * 4.15, bz = Math.cos(a) * 4.15; person('leo', { skin: SK[1], hair: '#ece8e0', style: COUNTRY === 'fr' ? 'beret' : 'flatcap', hat: COUNTRY === 'gb' ? '#6a5e48' : COUNTRY === 'pl' ? '#4a4a55' : '#3a4a6a', mustache: true, eyes: '#3a5a8a', outfit: 'cardigan', shirt: '#9a6a44', buttons: '#e8c35a', scarf: PAL.walls[0], pants: '#4a4a5a', shoes: '#3a2a22' }, 'sit', bx, bz, a); }
 person('maya', { skin: SK[3], hair: '#1a1a22', style: 'curly', lashes: true, eyes: '#3a2418', outfit: 'hoodie', shirt: PAL.walls[1], backpack: PAL.accent, pants: '#2f3a5a', shoes: '#f4efe6' }, 'walk', 0, 7.2, 0, { r: 7.2, a: 1.2, sp: .055, pause: 0 });
 { const a = G - .55, r = 5.6 - .95; person('sam', { skin: SK[2], hair: '#3a2418', style: 'cap', hat: PAL.roofs[0], mustache: true, eyes: '#3a2418', shirt: '#f3efe6', stripes: PAL.roofs[0], rolled: true, apron: '#c99a62' }, 'idle', Math.sin(a) * r, Math.cos(a) * r, a); }
-[[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1, tote: i === 0 ? '#efe3cf' : null, balloon: i === 2 ? '#e8423a' : null }, 'walk', 0, 0, 0, { r: i === 1 ? 6.6 : rnd(6.5, 8.2), a: rnd(0, TAU), sp: (i === 1 ? .05 : rnd(.05, .085)) * (i % 2 ? 1 : -1), pause: 0, dog: i === 1 }));
+[[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => (mobile && i !== 1) ? null : person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1, tote: i === 0 ? '#efe3cf' : null, balloon: i === 2 ? '#e8423a' : null }, 'walk', 0, 0, 0, { r: i === 1 ? 6.6 : rnd(6.5, 8.2), a: rnd(0, TAU), sp: (i === 1 ? .05 : rnd(.05, .085)) * (i % 2 ? 1 : -1), pause: 0, dog: i === 1 }));
 /* ---------- ton personnage ---------- */
 const me = ACCAM ? makeChar(PVClay.playerLook) : null;
 if (me) { me.g.userData.id = 'me'; scene.add(me.g); me.g.traverse(c => { if (c.isMesh && c !== me.P.shadow) c.castShadow = true; }); me.yaw = G + Math.PI; me.ph = 0; me.blinkT = 2; me.g.position.set(Math.sin(G) * 9.2, .03, Math.cos(G) * 9.2); }
@@ -1100,6 +1102,22 @@ colliders.push(...people.filter(p => p.mode !== 'walk').map(p => ({ x: p.grp.pos
 
 /* regroupement des objets immobiles : beaucoup moins d'appels de dessin */
 PVClay.bake(scene);
+/* mode léger : les décors fixes (façades, étals, lampadaires, cabine, château) de toutes les maisons sont fusionnés
+   en quelques grands objets, une fois par matière : beaucoup moins d'appels de dessin, surtout sur téléphone.
+   Les objets ne se touchent plus : on garde seulement leur boîte, pour l'étiquette du mot. ?nobigbake pour comparer. */
+(function bigBake() {
+  if (/[?&]nobigbake\b/.test(location.search)) return;
+  const ids = new Set(B.filter((b, i) => !OPEN(i)).map(b => b.id).concat(['stall', 'streetlamp', 'phonebox', 'castle']));
+  const root = new THREE.Group(); scene.add(root); scene.updateMatrixWorld(true);
+  hits.forEach(o => {
+    if (!ids.has(o.userData.id)) return;
+    o.userData.box = new THREE.Box3().setFromObject(o);
+    const list = [];
+    o.traverse(c => { if (c.isMesh && !c.isInstancedMesh && !c.isSkinnedMesh && c.visible && !c.children.length && c.material && !Array.isArray(c.material) && !c.material.transparent && !c.material.map && (c.userData.baked || !Object.keys(c.userData).length)) list.push(c); });
+    list.forEach(c => { const m = c.matrixWorld.clone(); c.parent.remove(c); m.decompose(c.position, c.quaternion, c.scale); delete c.userData.baked; root.add(c); });
+  });
+  PVClay.bake(root);
+})();
 
 /* ombres : sur téléphone, la carte d'ombre n'est recalculée que quand le soleil bouge (toutes les 5 s),
    et les personnages, oiseaux et feuilles n'en projettent pas (ils ont une ombre douce peinte au sol) */
@@ -1621,7 +1639,7 @@ function updateTPS(dt, t, spd) {
     let d = dist, p = camPitch;
     for (let it = 0; it < 10; it++) {
       const cx = _cl.x - fx * d * Math.cos(p), cz = _cl.z - fz * d * Math.cos(p), rr = Math.hypot(cx, cz), da = Math.abs(Math.atan2(Math.sin(Math.atan2(cx, cz) - G), Math.cos(Math.atan2(cx, cz) - G)));
-      if (rr < 9.4 || da < .42) break; d *= .9; p = Math.min(1.15, p + .06);
+      if (rr < 9.4 || da < 1.1) break; d *= .9; p = Math.min(1.15, p + .06);
     }
     _cw.set(_cl.x - fx * d * Math.cos(p), .95 + d * Math.sin(p), _cl.z - fz * d * Math.cos(p));
   }

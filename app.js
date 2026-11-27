@@ -526,7 +526,7 @@ $('helpBtn').onclick = e => { e.stopPropagation(); helpShow($('ctrlHelp').classL
 $('helpOk').onclick = () => helpShow(false);
 /* rapport de bug : appareil, écran, carte graphique, dernières erreurs ; copié pour être collé dans la conversation */
 $('bugBtn').onclick = () => {
-  let gpu = '?'; try { const g = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl'); const x = g && g.getExtension('WEBGL_debug_renderer_info'); gpu = x ? g.getParameter(x.UNMASKED_RENDERER_WEBGL) : '?'; } catch (e) { /* */ }
+  let gpu = '?'; try { const g = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl'); const x = g && g.getExtension('WEBGL_debug_renderer_info'); gpu = x ? g.getParameter(x.UNMASKED_RENDERER_WEBGL) : '?'; try { const lc = g && g.getExtension('WEBGL_lose_context'); if (lc) lc.loseContext(); } catch (e2) { /* */ } } catch (e) { /* */ }
   const lines = ['Rapport Chatterville ' + new Date().toISOString(), location.href, navigator.userAgent, 'écran ' + innerWidth + 'x' + innerHeight + ' @' + devicePixelRatio, 'GPU ' + gpu, 'lieu ' + place + ' · mode compatible ' + (window.PVClay && PVClay.SAFE ? 'oui' : 'non'), 'reconnaissance vocale ' + (SR ? (window.SpeechRecognition ? 'oui' : 'webkit') : 'non') + (noMic() ? ' · mode sans micro' : ''), 'erreurs :'].concat((window.PVLOG || []).slice(-15), ['micro :'], MICLOG.slice(-40));
   const txt = lines.join('\n');
   const done = () => toast(U.bugCopied);

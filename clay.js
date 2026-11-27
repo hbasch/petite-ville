@@ -62,7 +62,8 @@
     vec3 cab = clayCutB - clayCutA; float ctt = dot(vClayW - clayCutA, cab) / dot(cab, cab);
     if (ctt > 0.02 && ctt < 0.97) {
       float cdl = length(vClayW - (clayCutA + cab * ctt));
-      float ca = (1.0 - smoothstep(1.2, 2.0, cdl)) * (1.0 - smoothstep(0.86, 0.96, ctt));
+      float crr = mix(7.0, 1.2, clamp(ctt * 1.8, 0.0, 1.0));
+      float ca = (1.0 - smoothstep(crr, crr + 0.8, cdl)) * (1.0 - smoothstep(0.86, 0.96, ctt));
       float cth = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
       if (ca > cth) discard;
     }
