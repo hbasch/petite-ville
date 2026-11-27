@@ -430,3 +430,8 @@ body.askmic #dMic,body.askmic #dHeard,body.askmic #dNoMic,body.askmic #dUseMic{d
 /* le × des feuilles passe au-dessus du contenu (la boîte de la demande du jour le recouvrait) */
 .x{z-index:2}
 @media(max-width:640px){.pillBtn{height:36px}}
+/* écran de chargement avec petit logo */
+#loader{position:fixed;inset:0;z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:radial-gradient(circle at 50% 42%,#2b3170 0,#1d2142 70%);color:#fff8e6;font:800 17px Nunito,sans-serif;transition:opacity .5s}
+#loader svg{animation:loadBob 1.1s ease-in-out infinite;filter:drop-shadow(0 8px 14px rgba(0,0,0,.3))}
+#loader.gone{opacity:0;pointer-events:none}
+@keyframes loadBob{50%{transform:translateY(-8px) rotate(-3deg)}}

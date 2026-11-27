@@ -407,7 +407,7 @@ function drawBadge(b) {
   if (lab === '?') {
     g.fillStyle = '#ffb547'; g.strokeStyle = '#fff8ee'; g.lineWidth = 8; g.beginPath(); g.arc(212, 38, 32, 0, TAU); g.fill(); g.stroke();
     g.fillStyle = INK; g.font = '800 44px "Baloo 2",Nunito,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', 212, 41);
-  } else {
+  } else if (false) { /* le mot s'affiche dans l'étiquette de proximité, pas deux fois */
     let fs = 40; g.font = '800 ' + fs + 'px "Baloo 2",Nunito,sans-serif'; while (g.measureText(lab).width > 210 && fs > 22) { fs -= 2; g.font = '800 ' + fs + 'px "Baloo 2",Nunito,sans-serif'; }
     const w = Math.min(244, g.measureText(lab).width + 34); g.fillStyle = 'rgba(29,33,66,.92)'; g.beginPath(); g.roundRect ? g.roundRect(128 - w / 2, 258, w, 54, 27) : g.rect(128 - w / 2, 258, w, 54); g.fill();
     g.fillStyle = '#fff8ee'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(lab, 128, 287);
@@ -499,8 +499,8 @@ B[0].h = Math.min(B[0].h, B[0].shop ? 5.0 : 4.6); B[B.length - 1].h = Math.min(B
 const RAD = 11.6, span = 250 * Math.PI / 180, a0 = G + Math.PI - span / 2;
 const bld = {};
 /* comme dans un jeu de village, le côté caméra (vers l'entrée) reste ouvert : pas de maison aux deux bouts, la caméra ne se coince plus contre une façade */
-const OPEN = i => i === 0 || i === B.length - 1;
-B.forEach((sp, i) => { if (OPEN(i)) return; const ang = a0 + span * i / (B.length - 1); const g = building(sp, ang, RAD + (sp.id === 'townhall' ? .3 : 0)); if (sp.id === 'bakeryShop') bld.bakery = { g, ang }; if (sp.id === 'townhall') bld.hall = { g, sp }; });
+const OPEN = i => i === 0 || i === B.length - 1, BLDC = [];
+B.forEach((sp, i) => { if (OPEN(i)) return; const ang = a0 + span * i / (B.length - 1); const g = building(sp, ang, RAD + (sp.id === 'townhall' ? .3 : 0)); BLDC.push({ x: g.position.x, z: g.position.z, r: sp.w / 2 + 2.4 }); if (sp.id === 'bakeryShop') bld.bakery = { g, ang }; if (sp.id === 'townhall') bld.hall = { g, sp }; });
 
 /* enseignes peintes dans la langue du pays (toutes dans une texture, une seule géométrie) */
 let signMat = null;
@@ -1611,6 +1611,7 @@ function clearAngle(n, ux, uz, back) {
   }
   return best;
 }
+let camDS = 1;
 function updateTPS(dt, t, spd) {
   zoomV += (zoomT - zoomV) * (1 - Math.exp(-dt * 12));
   const asp = innerWidth / innerHeight, port = asp < 1;
@@ -1636,11 +1637,18 @@ function updateTPS(dt, t, spd) {
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
     _cl.set(pos.x + fx * (port ? 1.1 : .7), .95, pos.z + fz * (port ? 1.1 : .7));
     /* la caméra ne passe jamais derrière les façades : si elle sortirait de la place, elle se rapproche et monte */
-    let d = dist, p = camPitch;
-    for (let it = 0; it < 10; it++) {
-      const cx = _cl.x - fx * d * Math.cos(p), cz = _cl.z - fz * d * Math.cos(p), rr = Math.hypot(cx, cz), da = Math.abs(Math.atan2(Math.sin(Math.atan2(cx, cz) - G), Math.cos(Math.atan2(cx, cz) - G)));
-      if (rr < 9.4 || da < 1.1) break; d *= .9; p = Math.min(1.15, p + .06);
-    }
+    /* distance permise calculée en continu (plus de marches d'escalier), puis lissée : la caméra ne fait plus d'à-coups près des bords
+       et ne se colle jamais contre une maison */
+    const okAt = dd => {
+      const pp = camPitch + (1 - dd / dist) * .65, cx = _cl.x - fx * dd * Math.cos(pp), cz = _cl.z - fz * dd * Math.cos(pp), rr = Math.hypot(cx, cz);
+      if (rr < 9.4) return true;
+      const a = Math.atan2(cx, cz), da = Math.abs(Math.atan2(Math.sin(a - G), Math.cos(a - G))); if (da > 1.1) return false;
+      return !BLDC.some(b => Math.hypot(cx - b.x, cz - b.z) < b.r);
+    };
+    let lo = .38 * dist, hi = dist;
+    if (okAt(hi)) lo = hi; else for (let it = 0; it < 8; it++) { const mid = (lo + hi) / 2; if (okAt(mid)) lo = mid; else hi = mid; }
+    camDS = camInit ? camDS + (lo / dist - camDS) * (1 - Math.exp(-dt * 3)) : lo / dist;
+    const d = dist * camDS, p = camPitch + (1 - camDS) * .65;
     _cw.set(_cl.x - fx * d * Math.cos(p), .95 + d * Math.sin(p), _cl.z - fz * d * Math.cos(p));
   }
   const k = camInit ? 1 - Math.exp(-dt * (talking ? 4 : 8)) : 1; camInit = true;
@@ -1707,12 +1715,14 @@ function loop() {
   zoomV += (zoomT - zoomV) * (1 - Math.exp(-dt * 12)); { const f = (mobile ? 70 : 62) * zoomV; if (Math.abs(cam.fov - f) > .01) { cam.fov = f; cam.updateProjectionMatrix(); } }
   }
   if (ACCAM) updWordTag(t);
+  if (!window.PVTownReady) requestAnimationFrame(() => { window.PVTownReady = true; });
   sky.position.copy(cam.position); stars.position.copy(cam.position);
   if (!fp && !fpFailed) { try { fp = makeFP(); } catch (e) { fpFailed = true; console.warn(e); } }
   perfT += dt; perfN++;
   /* qualité adaptative : on baisse la résolution si l'image rame ; en dernier recours (téléphone faible),
      on rend directement, sans étalonnage ni anticrénelage */
   if (perfT > 2 && fp && pr <= 1) { if (perfT / perfN > 1 / 28) { if (++slowN > 1 && !/[?&]debug\b/.test(location.search)) { fp = null; fpFailed = true; } } else slowN = 0; }
+  if (perfT > 2) window.PVFPS = Math.round(perfN / perfT);
   if (perfT > 2) { if (perfT / perfN > 1 / 40 && pr > 1) { pr = Math.max(1, pr - .25); R.setPixelRatio(pr); R.setSize(innerWidth, innerHeight); if (fp) { fp.setPixelRatio(pr); if (fxaa) { const s = R.getDrawingBufferSize(new THREE.Vector2()); fxaa.uniforms.resolution.value.set(1 / s.x, 1 / s.y); } } } perfT = 0; perfN = 0; }
   clayEnv();
   if (fp) fp.render(); else R.render(scene, cam);
