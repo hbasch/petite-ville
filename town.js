@@ -1335,7 +1335,7 @@ function happyPose(o, P, dt) {
   if (!sit) { P.arms[0].rotation.z = -.12 - up + wig; P.arms[0].rotation.x = -.15 * env; }
   P.head.rotation.z = Math.sin(u * Math.PI * 2) * .14 * env; if (sit) P.head.rotation.x = -.1 + Math.sin(u * Math.PI * 4) * .12 * env;
   P.lids.forEach(l => { l.rotation.x = -1.25 + 1.05 * env; });
-  P.open.scale.y = Math.max(P.open.scale.y, .75 * env); P.smile.visible = P.open.scale.y < .3;
+  P.open.scale.y = Math.max(P.open.scale.y, .75 * env); P.smile.visible = !o.glb && P.open.scale.y < .3;
   if (o.happy <= 0) { o.happy = 0; if (!sit) { o.c.g.position.y = .03; P.shadow.position.y = .038; P.shadow.scale.setScalar(.42); } }
 }
 function updatePeople(dt, t) {
@@ -1375,7 +1375,7 @@ function updatePeople(dt, t) {
     o.blink -= dt; const closed = o.blink < 0; if (o.blink < -.12) o.blink = rnd(2, 5);
     P.lids.forEach(l => { l.rotation.x += ((closed ? 1.45 : -1.25) - l.rotation.x) * .6; });
     const mouthOpen = isTalk && speaking ? (.4 + Math.abs(Math.sin(o.t * 14)) * .9) : .01;
-    P.open.scale.y += (mouthOpen - P.open.scale.y) * .4; P.smile.visible = P.open.scale.y < .3;
+    P.open.scale.y += (mouthOpen - P.open.scale.y) * .4; P.smile.visible = !o.glb && P.open.scale.y < .3;
     if (o.bub) {
       const heart = o.heartUntil > t, mp = heart ? heartT : o.quest ? questT : bubbleT;
       if (o.bub.material.map !== mp) { o.bub.material.map = mp; o.bub.material.needsUpdate = true; }
