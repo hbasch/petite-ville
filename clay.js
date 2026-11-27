@@ -37,7 +37,7 @@
     else sh.vertexShader = sh.vertexShader.replace('vec4 mvPosition = modelViewMatrix * vec4( 0.0, 0.0, 0.0, 1.0 );', 'vec4 bwS = modelMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ); float bdS = dot(bwS.xz - clayBend.xy, clayBend.zw); bwS.y -= clayBendK * bdS * bdS; vec4 mvPosition = viewMatrix * bwS;');
   }
   function bendify(m) {
-    if (SAFE || !m || m.userData.clayAmt || m.userData.bent || m.isShaderMaterial) return;
+    if (SAFE || /[?&]nobendify\b/.test(location.search) || !m || m.userData.clayAmt || m.userData.bent || m.isShaderMaterial) return;
     if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) return;
     if (!(m.isMeshBasicMaterial || m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial || m.isPointsMaterial || m.isSpriteMaterial)) return;
     m.userData.bent = true; m.onBeforeCompile = bendPatch; m.customProgramCacheKey = () => 'bend1'; m.needsUpdate = true;
