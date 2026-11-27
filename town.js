@@ -117,7 +117,7 @@ const GRADE = { uniforms: { tDiffuse: { value: null }, sat: { value: 1.24 }, con
 const hemi = new THREE.HemisphereLight('#cfe6ff', '#6b4a35', .6); scene.add(hemi);
 const sun = new THREE.DirectionalLight('#ffffff', 1.2); scene.add(sun, sun.target);
 sun.castShadow = true; sun.shadow.mapSize.set(mobile ? 1024 : 2048, mobile ? 1024 : 2048);
-Object.assign(sun.shadow.camera, { left: -17, right: 17, top: 17, bottom: -17, near: 1, far: 90 }); sun.shadow.bias = -.0007; sun.shadow.normalBias = .02; sun.shadow.radius = 3;
+Object.assign(sun.shadow.camera, { left: -17, right: 17, top: 17, bottom: -17, near: 1, far: 90 }); sun.shadow.bias = -.0008; sun.shadow.normalBias = .012; sun.shadow.radius = 3;
 const lampLights = [];
 const poolM = new THREE.MeshBasicMaterial({ map: null, color: '#ffc77a', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
 

@@ -32,7 +32,11 @@ function paint(g,fn){const p=g.attributes.position,c=new Float32Array(p.count*3)
 /* bas d'un meuble plus sombre (lumière qui n'y arrive pas) */
 const footAO=(h,k)=>(x,y)=>1-(k||.35)*sstep(h*.35,-h/2,y);
 const wood=(c)=>M(c||'#c9935d',{roughness:.55});
-const GLOW=new THREE.MeshBasicMaterial({color:'#fff1c4'});
+/* fusionne des formes lumineuses (matière simple) en un seul objet : [géométrie, x, y, z, rotX, échelleY, couleur] */
+function glowMerge(parts){const P=[],C=[],I=[];let vo=0;const o=new THREE.Object3D(),v=new THREE.Vector3(),c=new THREE.Color();
+ parts.forEach(([g,x,y,z,rx,sy,col])=>{o.position.set(x,y,z);o.rotation.set(rx||0,0,0);o.scale.set(1,sy||1,1);o.updateMatrix();c.set(col||'#ffffff');const p=g.attributes.position;
+  for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrix);P.push(v.x,v.y,v.z);C.push(c.r,c.g,c.b)}const ix=g.index?g.index.array:[...Array(p.count).keys()];ix.forEach(i=>I.push(i+vo));vo+=p.count});
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g.setIndex(I);return g}
 
 /* ---------- la pièce : murs, plafond, sol en pâte ; coins, pied des murs et dessous des meubles plus sombres ---------- */
 const HT=3.5,WAIN=1.05,cWall=new THREE.Color(PAL.walls[3]),cWain=new THREE.Color(PAL.walls[2]);
@@ -165,7 +169,7 @@ const bubble=new THREE.Sprite(new THREE.SpriteMaterial({map:bubT,depthTest:false
 const oven=item('oven');
 mk(paint(rbox(1.5,1.7,1,.1,3),footAO(1.7,.3)),MV('#d9c3a2',{roughness:.9}),2.7,.85,-3.45,oven);
 {const bg=rbox(.23,.088,.06,.022,2),BC=['#a8492f','#b5553a','#94402a','#bd6244','#a24a33'].map(c=>new THREE.Color(c)),L=[];
- for(let r=0;r<16;r++){const y=.07+r*.1;for(let c=0;c<7;c++){const x=1.97+.115*(r%2)+c*.245;if(x>3.43)continue;if(Math.abs(x-2.7)<.48&&y>.5&&y<1.2)continue;L.push([x,y,-2.94,0])}
+ for(let r=0;r<16;r++){const y=.07+r*.1;for(let c=0;c<7;c++){const x=1.97+.115*(r%2)+c*.245;if(x>3.43)continue;if(Math.abs(x-2.7)<.5&&y>.44&&(y<.82||Math.hypot(x-2.7,y-.82)<.49))continue;L.push([x,y,-2.94,0])}
   for(let c=0;c<4;c++){const z=-3.82+.115*(r%2)+c*.245;if(z>-3.0)continue;L.push([1.94,y,z,Math.PI/2])}}
  const im=new THREE.InstancedMesh(bg,M('#ffffff',{roughness:.8}),L.length),o=new THREE.Object3D(),cc=new THREE.Color();
  L.forEach(([x,y,z,ry],i)=>{o.position.set(x+(Math.random()-.5)*.01,y,z);o.rotation.set((Math.random()-.5)*.03,ry+(Math.random()-.5)*.04,(Math.random()-.5)*.04);o.updateMatrix();im.setMatrixAt(i,o.matrix);cc.copy(BC[i%5]).offsetHSL(0,0,(Math.random()-.5)*.06).multiplyScalar(1-.3*sstep(.4,0,y));im.setColorAt(i,cc)});
@@ -173,10 +177,12 @@ mk(paint(rbox(1.5,1.7,1,.1,3),footAO(1.7,.3)),MV('#d9c3a2',{roughness:.9}),2.7,.
 {const arch=mk(new THREE.TorusGeometry(.4,.055,10,28,Math.PI),M('#8a3a26',{roughness:.8}),2.7,.82,-2.92,oven);arch.scale.y=1.05;
  mk(rbox(.86,.08,.12,.03,2),M('#8a3a26',{roughness:.8}),2.7,.47,-2.9,oven);}
 mk(rbox(1.62,.1,1.12,.04,2),M('#5b3a2a'),2.7,1.75,-3.45,oven);
-mk(new THREE.CircleGeometry(.4,24,0,Math.PI),B('#1a0f0a'),2.7,.82,-2.935,oven);
-const fire=mk(new THREE.PlaneGeometry(.6,.3),B('#ff7a1a'),2.7,.66,-2.93,oven);fire.userData.glow=true;
-const fire2=mk(new THREE.PlaneGeometry(.44,.14),B('#ffd36b'),2.7,.6,-2.925,oven);fire2.userData.glow=true;
-for(let k=0;k<5;k++){const e=mk(sph(.05,8),B(k%2?'#ff9a3a':'#ffcf6a'),2.48+k*.11,.54,-2.96,oven);e.scale.y=.5;e.userData.glow=true}
+/* gueule du four : arche sombre (rectangle + demi-cercle) */
+{const sh=new THREE.Shape();sh.moveTo(-.4,-.33);sh.lineTo(.4,-.33);sh.lineTo(.4,0);sh.absarc(0,0,.4,0,Math.PI,false);sh.lineTo(-.4,-.33);mk(new THREE.ShapeGeometry(sh,16),B('#0e0705'),2.7,.82,-2.935,oven)}
+/* flammes et braises : un seul objet */
+const flame=new THREE.PlaneGeometry(.66,.42,1,2);
+const fire=mk(glowMerge([[flame,0,.7,.004,0,1,'#ffffff']].concat([0,1,2,3,4].map(k=>[sph(.05,8),-.22+k*.11,.54,-.025,0,.5,k%2?'#ff7a1a':'#ffb63a']))),new THREE.MeshBasicMaterial({vertexColors:true,toneMapped:false}),2.7,0,-2.935,oven);fire.userData.glow=true;
+{const c=fire.geometry.attributes.color,p=fire.geometry.attributes.position,lo=new THREE.Color('#ffa63a'),mid=new THREE.Color('#c8400e'),hi=new THREE.Color('#0e0705');for(let i=0;i<6;i++){const y=p.getY(i);const k=(y-.49)/.42;const col=k<.5?lo.clone().lerp(mid,k*2):mid.clone().lerp(hi,(k-.5)*2);c.setXYZ(i,col.r,col.g,col.b)}}
 mk(paint(cyl(.12,.13,1.8,16),(x,y)=>1-.3*sstep(.3,.9,y)),MV('#3a302a',{roughness:.6}),2.7,2.6,-3.6,oven);
 const ovenL=new THREE.PointLight('#ff8a2a',1.2,3.5,2);ovenL.position.set(2.7,.75,-2.55);scene.add(ovenL);
 
@@ -242,11 +248,11 @@ mk(rbox(.66,.3,.05,.02,2),fr(),0,2.47,.02,door);mk(new THREE.PlaneGeometry(.6,.2
 mk(paint(rbox(1.1,.035,.6,.015,3),(x,y,z)=>.85+.15*Math.abs(Math.sin(x*40))),MV('#9a6b3a',{roughness:1}),DX,.045,FZ-.42);
 
 /* ---------- suspensions : abat-jour dont l'intérieur s'illumine, ampoule, halo doux autour ---------- */
-const lamp=item('lamp');
+const lamp=item('lamp'),LAMPIN=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide});
 const LX=[-1.9,.3,2.2];
+{const inner=mk(glowMerge(LX.map(x=>[new THREE.CylinderGeometry(.045,.25,.21,28,1,true),x,2.5,-1.2,0,1,'#ffcf8a'])),LAMPIN,0,0,0,lamp);inner.userData.glow=true;
+ const bulb=mk(glowMerge(LX.map(x=>[sph(.055,14),x,2.42,-1.2,0,1,'#fff1c4'])),new THREE.MeshBasicMaterial({vertexColors:true}),0,0,0,lamp);bulb.userData.glow=true}
 LX.forEach((x,i)=>{mk(cyl(.006,.006,.9,6),M('#222'),x,3.05,-1.2,lamp);mk(new THREE.CylinderGeometry(.05,.26,.22,28,1,true),M('#2f4a3f',{roughness:.4,metalness:.3}),x,2.5,-1.2,lamp);
- const inner=mk(new THREE.CylinderGeometry(.045,.25,.21,28,1,true),new THREE.MeshBasicMaterial({color:'#ffcf8a',side:THREE.BackSide}),x,2.5,-1.2,lamp);inner.userData.glow=true;
- const bulb=mk(sph(.055,14),GLOW,x,2.42,-1.2,lamp);bulb.userData.glow=true;
  if(i<2){const L=new THREE.PointLight('#ffbf73',.85,5.2,2);L.position.set(x,2.3,-1.2);scene.add(L)}});
 /* halos des ampoules : un seul objet (points) */
 {const hT=tex(64,64,(g)=>{const gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(255,220,160,.9)');gr.addColorStop(.3,'rgba(255,200,130,.35)');gr.addColorStop(1,'rgba(255,190,120,0)');g.fillStyle=gr;g.fillRect(0,0,64,64)});
@@ -279,6 +285,14 @@ const sun=new THREE.DirectionalLight("#ffc888",5.2);sun.position.set(-9,4.6,-3.2
 sun.castShadow=true;sun.shadow.mapSize.set(mobile?1024:2048,mobile?1024:2048);Object.assign(sun.shadow.camera,{left:-7,right:7,top:5,bottom:-5,near:1,far:20});sun.shadow.bias=-.0005;sun.shadow.normalBias=.02;
 const fill=new THREE.DirectionalLight('#ffe7d0',.14);fill.position.set(1.5,2.6,7);scene.add(fill);
 const bounce=new THREE.PointLight('#ffb36b',.35,3.5,2);bounce.position.set(-1.5,.3,.3);scene.add(bounce);
+
+/* poussière de farine qui danse dans le rayon de soleil (un seul objet, quelques dizaines de points) */
+const SD=new THREE.Vector3(9,-4.6,2.2).normalize(),MOTES=mobile?40:70,moteP=new Float32Array(MOTES*3),moteS=[];
+function mote(i){const y0=1.1+Math.random()*1.4,t=Math.random()*(y0-.15)/-SD.y;moteP[i*3]=-4.9+SD.x*t;moteP[i*3+1]=y0+SD.y*t;moteP[i*3+2]=-1.35+Math.random()*1.5+SD.z*t;moteS[i]=Math.random()*10}
+for(let i=0;i<MOTES;i++)mote(i);
+const moteG=new THREE.BufferGeometry();moteG.setAttribute('position',new THREE.BufferAttribute(moteP,3));
+const dotT=tex(32,32,(g)=>{const gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,240,210,1)');gr.addColorStop(1,'rgba(255,230,190,0)');g.fillStyle=gr;g.fillRect(0,0,32,32)});
+const motes=new THREE.Points(moteG,new THREE.PointsMaterial({map:dotT,color:'#ffe2b0',size:.03,transparent:true,opacity:.75,depthWrite:false,blending:THREE.AdditiveBlending}));motes.userData.glow=true;motes.frustumCulled=false;scene.add(motes);
 
 const walls=[wallsM];
 [...walls,floor,ceil].forEach(o=>{o.userData.keep=true});
@@ -363,6 +377,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  if(!reduce){baker.position.y=Math.sin(t*(talking?7:1.6))*(talking?.012:.008);bubble.position.y=2.62+Math.sin(t*2.4)*.04;
   ovenL.intensity=1.1+Math.sin(t*9)*.12+Math.sin(t*23)*.08}
  bubble.visible=H.bubble();
+ if(!reduce){for(let i=0;i<MOTES;i++){const k=moteS[i];moteP[i*3]+=Math.sin(t*.4+k)*dt*.03;moteP[i*3+1]+=(Math.sin(t*.3+k*1.7)*.04-.012)*dt;moteP[i*3+2]+=Math.cos(t*.35+k)*dt*.03;if(moteP[i*3+1]<.15)mote(i)}moteG.attributes.position.needsUpdate=true}
  /* le boulanger respire, cligne des yeux ; quand il parle, la bouche s'ouvre et les sourcils montent */
  bkBlink-=dt;const shut=bkBlink<0;if(bkBlink<-.12)bkBlink=1.5+Math.random()*3.5;BP.lids[0].rotation.x+=((shut?1.45:-1.25)-BP.lids[0].rotation.x)*.6;
  const mo=talking?.4+Math.abs(Math.sin(t*14))*.9:.01;BP.open.scale.y+=(mo-BP.open.scale.y)*.4;BP.smile.visible=BP.open.scale.y<.3;
