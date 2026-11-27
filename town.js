@@ -1137,7 +1137,7 @@ applyHour(realHour());
 /* ---------- déplacement à la première personne ---------- */
 const pos = new THREE.Vector3(Math.sin(G) * 9.2, 1.45, Math.cos(G) * 9.2);
 let yaw = G, pitch = -.06, tYaw = G, tPitch = -.06, target = null, bob = 0;
-let camYaw = G, camPitch = .74, camInit = false; const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), _cw = new THREE.Vector3(), _cl = new THREE.Vector3();
+let camYaw = G, camPitch = .5, camInit = false; const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), _cw = new THREE.Vector3(), _cl = new THREE.Vector3();
 const vel = new THREE.Vector3(), wish = new THREE.Vector3();
 let stuckT = 0;
 const keys = {}, fwd = new THREE.Vector3(), right = new THREE.Vector3();
@@ -1153,6 +1153,7 @@ function collide(p) {
   for (let it = 0; it < 4; it++) colliders.forEach(c => { const ex = p.x - c.x, ez = p.z - c.z, dd = Math.hypot(ex, ez), rr = c.r + .25; if (dd < rr && dd > 1e-4) { p.x = c.x + ex / dd * rr; p.z = c.z + ez / dd * rr; } });
 }
 const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), tip = $('hover');
+canvas.style.cursor = PVClay.cursor.hand;
 let down = null, hov = null;
 function pick(e) {
   const r = canvas.getBoundingClientRect(); ptr.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ptr, cam);
@@ -1176,13 +1177,13 @@ canvas.addEventListener('pointermove', e => {
   if (pinch && touches.size >= 2) { setZoom(pinch.z * pinch.d / spread()); return; }
   if (down && down.id === e.pointerId) {
     const dx = e.clientX - down.lx, dy = e.clientY - down.ly; down.lx = e.clientX; down.ly = e.clientY; down.moved += Math.abs(dx) + Math.abs(dy);
-    if (down.moved > 6) { if (ACCAM) { camYaw -= dx * .006; camPitch = Math.max(.45, Math.min(1.05, camPitch + dy * .003)); } else { const k = .0042 * zoomV; tYaw -= dx * k; tPitch = Math.max(-1.1, Math.min(1.0, tPitch - dy * k)); } }
+    if (down.moved > 6) { if (ACCAM) { camYaw -= dx * .006; camPitch = Math.max(.32, Math.min(1.0, camPitch + dy * .003)); } else { const k = .0042 * zoomV; tYaw -= dx * k; tPitch = Math.max(-1.1, Math.min(1.0, tPitch - dy * k)); } }
     return;
   }
   if (e.pointerType !== 'mouse') return;
   const p = pick(e), id = p && p.id !== 'square' ? p.id : null;
   if (id !== hov) hov = id;
-  canvas.style.cursor = id ? 'pointer' : 'grab';
+  canvas.style.cursor = id ? PVClay.cursor.hover : PVClay.cursor.hand;
   if (id) { tip.textContent = H.label(id); tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px'; tip.classList.remove('hidden'); } else tip.classList.add('hidden');
 });
 function lift(e) { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; if (multi) { if (!touches.size) multi = false; down = null; return true; } return false; }
@@ -1461,14 +1462,14 @@ if (/[?&]glerr\b/.test(location.search)) { const d = document.createElement('pre
    Elle regarde ton personnage d'en haut (environ 42°), sans tourner toute seule ; un glissé du doigt la fait pivoter,
    pincer ou la molette rapproche. En conversation, elle vient cadrer l'habitant de face, par-dessus ton épaule.
    Ce qui se trouve entre la caméra et ton personnage (façade, arbre) s'ajoure en pointillé pour qu'on ne le perde jamais. */
-const BENDK = /[?&]plat\b/.test(location.search) ? 0 : .0085;
+const BENDK = /[?&]plat\b/.test(location.search) ? 0 : .0105;
 let talkWho = null;
 /* premier angle (autour de la direction de ton personnage) d'où l'on voit l'habitant sans obstacle */
 function clearAngle(n, ux, uz, back) {
   let best = .35, bestN = 1e9;
   for (const a of [.35, -.35, .7, -.7, 1.05, -1.05, 0]) {
     const ca = Math.cos(a), sa = Math.sin(a), vx = ux * ca + uz * sa, vz = -ux * sa + uz * ca; let hitsN = 0;
-    colliders.forEach(c => { const qx = c.x - n.x, qz = c.z - n.z, along = qx * vx + qz * vz; if (along < .6 || along > back) return; const perp = Math.abs(qx * vz - qz * vx); if (perp < c.r + .35) hitsN++; });
+    colliders.concat([{ x: pos.x, z: pos.z, r: .45 }]).forEach(c => { const qx = c.x - n.x, qz = c.z - n.z, along = qx * vx + qz * vz; if (along < .6 || along > back) return; const perp = Math.abs(qx * vz - qz * vx); if (perp < c.r + .35) hitsN++; });
     if (Math.hypot(n.x + vx * back, n.z + vz * back) > 12.5) hitsN += 2;
     if (hitsN < bestN) { bestN = hitsN; best = a; if (!hitsN) break; }
   }
@@ -1491,10 +1492,10 @@ function updateTPS(dt, t, spd) {
     _cl.set(n.x, hy - (port ? .95 : .42), n.z);
   } else {
     fov = port ? 44 : 30;
-    const Wv = Math.min(15, Math.max(7, asp * 9)), Hv = Wv / asp, dist = Hv / (2 * Math.tan(fov * Math.PI / 360)) * zoomV;
+    const Wv = Math.min(13, Math.max(6.5, asp * 8)), Hv = Wv / asp, dist = Hv / (2 * Math.tan(fov * Math.PI / 360)) * zoomV;
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
-    _cl.set(pos.x + fx * (port ? 1.6 : 1.0), .8, pos.z + fz * (port ? 1.6 : 1.0));
-    _cw.set(_cl.x - fx * dist * Math.cos(camPitch), .8 + dist * Math.sin(camPitch), _cl.z - fz * dist * Math.cos(camPitch));
+    _cl.set(pos.x + fx * (port ? 1.1 : .7), .95, pos.z + fz * (port ? 1.1 : .7));
+    _cw.set(_cl.x - fx * dist * Math.cos(camPitch), .95 + dist * Math.sin(camPitch), _cl.z - fz * dist * Math.cos(camPitch));
   }
   const k = camInit ? 1 - Math.exp(-dt * (talking ? 4 : 8)) : 1; camInit = true;
   camPos.lerp(_cw, k); camLook.lerp(_cl, k);
@@ -1502,7 +1503,7 @@ function updateTPS(dt, t, spd) {
   if (Math.abs(cam.fov - fov) > .05) { cam.fov += (fov - cam.fov) * k; cam.updateProjectionMatrix(); }
   PVClay.U.cutA.value.copy(cam.position);
   /* ajourage : jusqu'à ton personnage ; en conversation, jusqu'à 1,9 m avant l'habitant (ni lui ni toi ne sont ajourés) */
-  if (talking) { const n = talking.grp.position, dx = cam.position.x - n.x, dz = cam.position.z - n.z, d = Math.hypot(dx, dz) || 1; PVClay.U.cutB.value.set(n.x + dx / d * 1.9, 1.0, n.z + dz / d * 1.9); }
+  if (talking) { const n = talking.grp.position, dx = cam.position.x - n.x, dz = cam.position.z - n.z, d = Math.hypot(dx, dz) || 1, e = Math.max(1.9, Math.hypot(pos.x - n.x, pos.z - n.z) + .7); PVClay.U.cutB.value.set(n.x + dx / d * e, 1.0, n.z + dz / d * e); }
   else PVClay.U.cutB.value.set(pos.x, 1.0, pos.z);
   PVClay.U.cutOn.value = 1; PVClay.U.clipOn.value = 0;
   PVClay.U.bend.value.set(pos.x, pos.z, -Math.sin(camYaw), -Math.cos(camYaw)); PVClay.U.bendK.value = BENDK;

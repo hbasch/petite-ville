@@ -283,7 +283,10 @@ float clayHeight(vec3 p, float fine) {
     return saved;
   }
 
-  window.PVClay = { U, SAFE, apply, bake, bendify, walk, playerLook: { skin: '#eec2a2', hair: '#5a3a2a', style: 'short', fringe: true, eyes: '#3a2418', outfit: 'hoodie', shirt: '#ffb547', pants: '#3f5f9a', shoes: '#f4efe6' } };
+  /* curseur : une main de dessin animé, bien visible (crème au repos, dorée sur ce qu'on peut toucher) */
+  const handSvg = fill => "<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'><path d='M13 4c2 0 3.5 1.5 3.5 3.5v10l1-.3V15c0-1.8 1.4-3 3-3s3 1.2 3 3v2.5l.6-.1c0-1.7 1.4-2.9 3-2.9s3 1.3 3 3v1.3c.4-.9 1.3-1.5 2.4-1.5 1.5 0 2.7 1.2 2.7 2.7V26c0 6.6-5 11-11 11h-2.2c-3.5 0-6.6-1.8-8.6-4.7l-5.5-8c-.9-1.4-.5-3.2.9-4.1 1.3-.8 3-.5 3.9.7l2.3 3V7.5C9.5 5.5 11 4 13 4z' fill='" + fill + "' stroke='%234a3a2a' stroke-width='2.4' stroke-linejoin='round'/></svg>";
+  const cursor = { hand: 'url("data:image/svg+xml;utf8,' + handSvg('%23fff8e6') + '") 13 4, pointer', hover: 'url("data:image/svg+xml;utf8,' + handSvg('%23f6cf6e') + '") 13 4, pointer' };
+  window.PVClay = { U, SAFE, cursor, apply, bake, bendify, walk, playerLook: { skin: '#eec2a2', hair: '#5a3a2a', style: 'short', fringe: true, eyes: '#3a2418', outfit: 'hoodie', shirt: '#ffb547', pants: '#3f5f9a', shoes: '#f4efe6' } };
 })();
 
 /* ---------- habitants en pâte : partagés par la place (town.js) et la boulangerie (scene.js) ----------

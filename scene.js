@@ -325,7 +325,7 @@ function collide(p){for(let it=0;it<3;it++){
 function place(){cam.position.set(pos.x,pos.y+Math.sin(bob)*.018*Math.min(1,Math.hypot(vel.x,vel.z)/SPEED),pos.z);cam.rotation.set(pitch,yaw,0,'YXZ')}
 
 /* picking : objets (mots), sol et murs (marcher) */
-const ray=new THREE.Raycaster(),ptr=new THREE.Vector2(),pickables=hits.concat(floor,walls);let hov=null,down=null;const tip=$('hover');
+const ray=new THREE.Raycaster(),ptr=new THREE.Vector2(),pickables=hits.concat(floor,walls);let hov=null,down=null;const tip=$('hover');canvas.style.cursor=PVClay.cursor.hand;
 function pick(e){const r=canvas.getBoundingClientRect();ptr.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ptr,cam);
  const hs=ray.intersectObjects(pickables,true).filter(h=>!h.object.userData.glass&&!(ACI&&h.point.z>FZ-.15));if(!hs.length)return null;
  let o=hs[0].object;if(o.userData.keep)return{walk:true,point:hs[0].point};while(o&&!o.userData.id)o=o.parent;return o?{obj:o}:null}
@@ -344,7 +344,7 @@ canvas.addEventListener('pointermove',e=>{if(touches.has(e.pointerId))touches.se
  if(e.pointerType!=='mouse')return;
  /* survol à la souris : l'objet s'éclaire et son nom s'affiche */
  const p=pick(e),g=p&&p.obj||null;if(g!==hov){hl(hov,false);hov=g;hl(hov,true)}
- canvas.style.cursor=hov?'pointer':'grab';
+ canvas.style.cursor=hov?PVClay.cursor.hover:PVClay.cursor.hand;
  if(hov){const id=hov.userData.id;tip.textContent=id==='door'?exitLab():H.label(id);tip.style.left=e.clientX+'px';tip.style.top=e.clientY+'px';tip.classList.remove('hidden')}else tip.classList.add('hidden')});
 function lift(e){touches.delete(e.pointerId);if(touches.size<2)pinch=null;if(multi){if(!touches.size)multi=false;down=null;return true}return false}
 canvas.addEventListener('pointercancel',e=>{lift(e);down=null});

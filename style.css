@@ -356,3 +356,5 @@ body.photo #timePop{display:none!important}
 #dlg .opt{background:#ffffff;border:2px solid #eadbb4;color:#5a4a3a;font:800 16px Nunito,sans-serif}
 #dlg .opt:hover{border-color:#22b2a0;background:#f2fbf8}
 #dlg .opt .fr{color:#8a7560}
+
+#ct,#c{cursor:pointer}
