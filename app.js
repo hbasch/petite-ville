@@ -473,11 +473,11 @@ function showWord(id) {
   $('wPron').classList.add('hidden'); $('wRepeat').disabled = !SR;
   const canEnter = place === 'town' && (id === 'bakeryShop' || id === 'cafe');
   $('wEnter').classList.toggle('hidden', !canEnter);
-  if (canEnter) $('wEnterTxt').textContent = id === 'cafe' ? U.enterBtn + ' · ' + U.plusTag : U.enterBtn + ' · ' + S.baker;
+  if (canEnter) $('wEnterTxt').textContent = id === 'cafe' ? U.soon : U.enterBtn + ' · ' + S.baker;
   updSave(); show('card'); say(w[T], { who: 'word' });
 }
 function updSave() { $('wSaveTxt').textContent = L.cards[curWord] ? U.saved : U.save; }
-$('wEnter').onclick = () => { if (curWord === 'bakeryShop') enterBakery(); else toast(U.plusTag + ' · ' + (ui === 'pl' ? '45 zł' : '10 €')); };
+$('wEnter').onclick = () => { if (curWord === 'bakeryShop') enterBakery(); else toast(U.soon); }; /* pas de paiement pour l'instant : le café arrive bientôt, gratuit */
 $('wListen').onclick = () => { const w = W[curWord]; say(w[T], { who: 'word' }); say(w.ex[T], { queue: true, who: 'word' }); };
 $('wSave').onclick = () => { if (L.cards[curWord]) delete L.cards[curWord]; else L.cards[curWord] = { box: 1, due: dayNum() }; save(); updSave(); updHud(); };
 $('wRepeat').onclick = () => {

@@ -182,7 +182,7 @@ PV.STORIES = {
 PV.LEVELS = [0, 50, 150, 300, 500, 800, 1200, 1800];
 PV.PLACES = [
  { id: 'bakery', key: 'placeBakery', status: 'open', color: '#f0a35e' },
- { id: 'cafe', key: 'placeCafe', status: 'plus', color: '#b07ad1' },
+ { id: 'cafe', key: 'placeCafe', status: 'soon', color: '#b07ad1' },
  { id: 'market', key: 'placeMarket', status: 'soon', color: '#6fbf8e' },
  { id: 'pharmacy', key: 'placePharmacy', status: 'soon', color: '#5fb3c9' },
  { id: 'post', key: 'placePost', status: 'soon', color: '#e8c24a' },
@@ -233,7 +233,7 @@ PV.UI = {
   step1: 'Touche un objet pour entendre son nom', step2: 'Fais glisser pour regarder autour de toi', step3: 'Touche {b} et réponds-lui à voix haute', enter: "C'est parti",
   winTitle: "Tu l'as fait, en {l}.", winText: '{b} a souri. Demain, il se souviendra de toi.',
   wWords: 'mots découverts', wSpoken: 'phrases dites à voix haute', wXp: 'XP gagnés',
-  palette: 'Couleurs', nextScene: 'La suite : le café de Rosie', plus: 'Avec Petite Ville+ · 10 € par an · toutes les scènes (maquette, aucun paiement)',
+  palette: 'Couleurs', nextScene: 'La suite : le café de Rosie', plus: 'Bientôt, gratuitement',
   againBtn: 'Rejouer', continueBtn: 'Continuer', close: 'Fermer',
   errGeneric: 'Une erreur est survenue : ', errFields: 'Remplis tous les champs.', accSaved: 'Compte créé, progression sauvegardée !',
   xpWord: '+5 XP · nouveau mot', xpMission: '+50 XP · mission réussie', xpPron: '+10 XP · bonne prononciation', xpSpoken: '+5 XP · phrase dite', levelUp: 'Nouveau niveau : {l} !'
@@ -280,7 +280,7 @@ PV.UI = {
   step1: 'Dotknij przedmiotu, żeby usłyszeć nazwę', step2: 'Przeciągnij, żeby się rozejrzeć', step3: 'Dotknij: {b} i odpowiadaj na głos', enter: 'Zaczynamy',
   winTitle: 'Udało się, po {l}!', winText: '{b} się uśmiechnął. Jutro będzie cię pamiętał.',
   wWords: 'odkryte słowa', wSpoken: 'zdania na głos', wXp: 'zdobyte XP',
-  palette: 'Kolory', nextScene: 'Dalej: kawiarnia Rosie', plus: 'W Petite Ville+ · 45 zł rocznie · wszystkie sceny (makieta, bez płatności)',
+  palette: 'Kolory', nextScene: 'Dalej: kawiarnia Rosie', plus: 'Wkrótce, za darmo',
   againBtn: 'Jeszcze raz', continueBtn: 'Dalej', close: 'Zamknij',
   errGeneric: 'Wystąpił błąd: ', errFields: 'Wypełnij wszystkie pola.', accSaved: 'Konto założone, postępy zapisane!',
   xpWord: '+5 XP · nowe słowo', xpMission: '+50 XP · misja zaliczona', xpPron: '+10 XP · dobra wymowa', xpSpoken: '+5 XP · zdanie na głos', levelUp: 'Nowy poziom: {l}!'
