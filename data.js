@@ -540,6 +540,15 @@ PV.QUEST_OK = { en: { t: 'Of course!', tr: { fr: 'Bien sûr !', pl: 'Jasne!' }, 
 PV.COLLECT = { unicorn: 5, dwarf: 5 };
 Object.assign(PV.WORDS, { christmastree: { en: 'Christmas tree', pl: 'choinka', fr: 'sapin de Noël', ex: { en: 'The Christmas tree has lots of lights.', pl: 'Choinka ma dużo światełek.', fr: 'Le sapin de Noël a plein de lumières.' } } });
 PV.TOWN_IDS.push('christmastree');
+/* le marché : un étal de fruits (Sam) et un étal de légumes, chaque cagette a son mot */
+Object.assign(PV.WORDS, {
+  orange: { en: 'orange', pl: 'pomarańcza', fr: 'orange', ex: { en: 'I would like an orange, please.', pl: 'Poproszę pomarańczę.', fr: 'Je voudrais une orange, s\'il vous plaît.' } },
+  pear: { en: 'pear', pl: 'gruszka', fr: 'poire', ex: { en: 'This pear is very juicy.', pl: 'Ta gruszka jest bardzo soczysta.', fr: 'Cette poire est très juteuse.' } },
+  tomato: { en: 'tomato', pl: 'pomidor', fr: 'tomate', ex: { en: 'The tomatoes are red and fresh.', pl: 'Pomidory są czerwone i świeże.', fr: 'Les tomates sont rouges et fraîches.' } },
+  carrot: { en: 'carrot', pl: 'marchewka', fr: 'carotte', ex: { en: 'Rabbits love carrots.', pl: 'Króliki uwielbiają marchewki.', fr: 'Les lapins adorent les carottes.' } },
+  lettuce: { en: 'lettuce', pl: 'sałata', fr: 'salade', ex: { en: 'Can I have a lettuce, please?', pl: 'Poproszę sałatę.', fr: 'Je peux avoir une salade, s\'il vous plaît ?' } }
+});
+PV.TOWN_IDS.push('orange', 'pear', 'tomato', 'carrot', 'lettuce');
 Object.assign(PV.UI.fr, {
   firstWinTitle: 'Bravo !', firstWinText: 'Ta première phrase en {l} ! +10 XP',
   questTitle: 'Demande du jour', questFrom: '{n} a besoin de toi', questDone: 'Demande du jour réussie : {n} te remercie ! +30 XP', questOk: 'Fait !',

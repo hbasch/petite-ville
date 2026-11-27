@@ -658,17 +658,47 @@ B.forEach((sp, i) => {
 });
 
 /* ---------- étals du marché ---------- */
-function stall(a, r, cA, fruit) {
+/* ---------- étals du marché : fruits (Sam derrière) et légumes ----------
+   comptoir en planches, cagettes inclinées vers le client, une étiquette en anglais par cagette (c'est le mot à apprendre),
+   enseigne en anglais sur l'auvent ; chaque cagette se touche pour son propre mot */
+const labelT = {};
+function labelTex(txt, W, Hh, big) {
+  const k = txt + W; if (labelT[k]) return labelT[k];
+  return (labelT[k] = tex(W, Hh, g => {
+    const r = Hh * .32, x = 5, y = 5, w = W - 10, h = Hh - 10;
+    g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+    g.fillStyle = big ? '#fff8e6' : '#fffaf0'; g.fill(); g.lineWidth = 7; g.strokeStyle = '#4a3a2a'; g.stroke();
+    g.fillStyle = '#4a3a2a'; g.font = '800 ' + Math.round(Hh * .5) + 'px "Baloo 2",Nunito,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, W / 2, Hh * .55);
+  }));
+}
+function heap(crate, n, place) { for (let k = 0; k < n; k++) place(k, crate); }
+const GOODS = {
+  apple: c => heap(c, 14, k => { const m = mk(G_('fruit', () => sph(.085, 12)), C(['#d82e2e', '#c8242a', '#e04a30'][k % 3], { roughness: .38 }), (k % 5 - 2) * .11, k < 10 ? .24 : .32, (Math.floor(k / 5) % 2 - .5) * .17 + (k >= 10 ? .04 : 0), c); m.scale.setScalar(.92); }),
+  orange: c => heap(c, 14, k => mk(G_('fruit', () => sph(.085, 12)), C(['#ff9a2e', '#f58a1e'][k % 2], { roughness: .55 }), (k % 5 - 2) * .11, k < 10 ? .24 : .32, (Math.floor(k / 5) % 2 - .5) * .17 + (k >= 10 ? .04 : 0), c)),
+  pear: c => heap(c, 10, k => { const p = mk(G_('fruit', () => sph(.085, 12)), C(['#b8d04a', '#a8c43e'][k % 2], { roughness: .45 }), (k % 5 - 2) * .11, .25, (Math.floor(k / 5) - .5) * .17, c); p.scale.set(.85, 1.25, .85); mk(G_('stem', () => cyl(.008, .01, .06, 5)), C('#6a4a2a'), p.position.x, .37, p.position.z, c); }),
+  tomato: c => heap(c, 14, k => { const m = mk(G_('fruit', () => sph(.085, 12)), C(['#e8402e', '#d8302a'][k % 2], { roughness: .3 }), (k % 5 - 2) * .11, k < 10 ? .23 : .3, (Math.floor(k / 5) % 2 - .5) * .17 + (k >= 10 ? .04 : 0), c); m.scale.set(1, .8, 1); }),
+  carrot: c => heap(c, 9, k => { const z = (k % 3 - 1) * .13, y = .22 + Math.floor(k / 3) * .05; const cr = mk(G_('carrot', () => new THREE.ConeGeometry(.04, .3, 8)), C('#f07a1e', { roughness: .6 }), (Math.floor(k / 3) % 2) * .03, y, z, c); cr.rotation.z = Math.PI / 2; mk(G_('carrotTop', () => sph(.045, 8)), C(PAL.leaf), -.19 + (Math.floor(k / 3) % 2) * .03, y, z, c).scale.set(1.4, .8, .8); }),
+  lettuce: c => heap(c, 3, k => { const l = mk(G_('lettuce', () => lump(sph(.14, 12), .03, 2)), C(['#7cc44a', '#8fd05a', '#6cb63e'][k], { roughness: .7 }), (k - 1) * .19, .27, 0, c); l.scale.set(1, .85, 1); })
+};
+function stall(a, r, cA, goods, sign) {
   const s = item('stall'); s.position.set(Math.sin(a) * r, 0, Math.cos(a) * r); s.rotation.y = a;
-  mk(rbox(2.3, .95, .95, .12, 3), woodM, 0, .48, 0, s);
-  [[-1.08, -.4], [1.08, -.4], [-1.08, .4], [1.08, .4]].forEach(([x, z]) => mk(cyl(.05, .05, 2.3, 8), woodM, x, 1.15, z, s));
+  const plankM = C('#a06e40');
+  mk(rbox(2.3, .09, 1.0, .03, 2), woodM, 0, .9, 0, s);
+  for (let k = 0; k < 3; k++) mk(rbox(2.24, .24, .05, .02, 1), k % 2 ? plankM : woodM, 0, .17 + k * .26, .46, s);
+  [-1.08, 1.08].forEach(x => mk(rbox(.08, .86, .9, .02, 1), plankM, x, .43, 0, s));
+  [[-1.08, -.42], [1.08, -.42], [-1.08, .42], [1.08, .42]].forEach(([x, z]) => mk(cyl(.05, .05, 2.3, 8), woodM, x, 1.15, z, s));
   [-1, 1].forEach(sg => { for (let k = 0; k < 5; k++) { const c = mk(rbox(.5, .1, .82, .05, 2), C(k % 2 ? TRIM : cA), -1.0 + k * .5, 2.4, sg * .32, s); c.rotation.x = sg * .35; } });
-  const ap = item('apple', s);
-  for (let c = 0; c < 3; c++) { mk(rbox(.62, .22, .52, .06, 2), C('#c99a62'), -.72 + c * .72, 1.06, 0, ap); for (let f = 0; f < 7; f++) mk(G_('fruit', () => sph(.085, 12)), C(fruit[c], { roughness: .4 }), -.72 + c * .72 + rnd(-.2, .2), 1.22, rnd(-.16, .16), ap); }
+  const board = mk(new THREE.PlaneGeometry(1.25, .34), new THREE.MeshBasicMaterial({ map: labelTex(sign, 512, 140, true), transparent: true }), 0, 2.07, .46, s); board.userData.keep = true;
+  goods.forEach((g, i) => {
+    const crate = item(g[0], s); crate.position.set(-.72 + i * .72, .95, .1); crate.rotation.x = .32;
+    mk(rbox(.62, .2, .5, .05, 2), C('#c99a62'), 0, .1, 0, crate);
+    GOODS[g[0]](crate);
+    const lab = mk(new THREE.PlaneGeometry(.44, .16), new THREE.MeshBasicMaterial({ map: labelTex(g[1], 256, 92), transparent: true }), 0, .1, .256, crate); lab.userData.keep = true;
+  });
   colliders.push({ x: s.position.x, z: s.position.z, r: 1.45 }); sblob(s.position.x, s.position.z, 1.7, .85, a);
 }
-stall(G - .55, 5.6, PAL.accent, ['#d82e2e', '#ff9a2e', '#9cc84a']);
-stall(G + .55, 5.6, R_[0], ['#e84a3a', '#f2d24a', '#7a2a5a']);
+stall(G - .55, 5.6, PAL.accent, [['apple', 'apples'], ['orange', 'oranges'], ['pear', 'pears']], 'FRESH FRUIT');
+stall(G + .55, 5.6, R_[0], [['tomato', 'tomatoes'], ['carrot', 'carrots'], ['lettuce', 'lettuce']], 'VEGETABLES');
 
 /* ---------- arbres ---------- */
 function tree(x, z, s) {
@@ -1412,7 +1442,9 @@ function talkTo(id) {
   const o = people.find(p => p.id === id); if (!o) return; talking = o; o.pause = 999;
   if (o.mode === 'sit') { const f = o.grp.rotation.y; target = new THREE.Vector3(o.grp.position.x + Math.sin(f) * 2.3, 1.45, o.grp.position.z + Math.cos(f) * 2.3); return; }
   const dx = pos.x - o.grp.position.x, dz = pos.z - o.grp.position.z, d = Math.hypot(dx, dz);
-  const td = ACCAM ? 1.4 : 2.5; if (Math.abs(d - td) > .6) target = new THREE.Vector3(o.grp.position.x + dx / d * td, 1.45, o.grp.position.z + dz / d * td);
+  if (ACCAM) { /* face à l'habitant, côté place (vers le centre), comme dans un jeu de village */
+    const n = o.grp.position, L = Math.hypot(n.x, n.z) || 1; target = new THREE.Vector3(n.x - n.x / L * 1.4, 1.45, n.z - n.z / L * 1.4); return; }
+  if (Math.abs(d - 2.5) > .6) target = new THREE.Vector3(o.grp.position.x + dx / d * 2.5, 1.45, o.grp.position.z + dz / d * 2.5);
 }
 function endTalk() { if (talking) { talking.talkA = null; talking.pause = rnd(2, 3); talking.waved = true; talking.happy = 1.5; } talking = null; }
 function greet(hitObj) { const o = people.find(p => p.grp === hitObj) || people.find(p => p.id === 'passerby'); if (o) { o.wave = 1.6; o.pause = 2.5; } }
@@ -1467,10 +1499,11 @@ let talkWho = null;
 /* premier angle (autour de la direction de ton personnage) d'où l'on voit l'habitant sans obstacle */
 function clearAngle(n, ux, uz, back) {
   let best = .35, bestN = 1e9;
-  for (const a of [.35, -.35, .7, -.7, 1.05, -1.05, 0]) {
+  for (const a of [.35, -.35, .7, -.7, 1.05, -1.05, 1.4, -1.4, 1.8, -1.8, 0]) {
     const ca = Math.cos(a), sa = Math.sin(a), vx = ux * ca + uz * sa, vz = -ux * sa + uz * ca; let hitsN = 0;
-    colliders.concat([{ x: pos.x, z: pos.z, r: .45 }]).forEach(c => { const qx = c.x - n.x, qz = c.z - n.z, along = qx * vx + qz * vz; if (along < .6 || along > back) return; const perp = Math.abs(qx * vz - qz * vx); if (perp < c.r + .35) hitsN++; });
-    if (Math.hypot(n.x + vx * back, n.z + vz * back) > 12.5) hitsN += 2;
+    colliders.concat([{ x: pos.x, z: pos.z, r: .45 }]).forEach(c => { const qx = c.x - n.x, qz = c.z - n.z, along = qx * vx + qz * vz; if (along < .6 || along > back) return; const perp = Math.abs(qx * vz - qz * vx); if (perp < c.r + .9) hitsN++; });
+    /* la caméra reste sur la place, loin des façades (elles sont à 10 m du centre) */
+    const rc = Math.hypot(n.x + vx * back, n.z + vz * back); if (rc > 8.6) hitsN += 3 + (rc - 8.6);
     if (hitsN < bestN) { bestN = hitsN; best = a; if (!hitsN) break; }
   }
   return best;

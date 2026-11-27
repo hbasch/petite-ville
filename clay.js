@@ -58,7 +58,7 @@
   if (clayClipOn > 0.5 && (dot(vClayW, clayClip.xyz) > clayClip.w || dot(vClayW, clayClip2.xyz) > clayClip2.w)) discard;
 `;
   const CUT_CODE = NOCUT ? '' : `
-  if (clayCutOn > 0.5 && vClayW.y > 0.3) {
+  if (clayCutOn > 0.5 && clayNoCut < 0.5 && vClayW.y > 0.3) {
     vec3 cab = clayCutB - clayCutA; float ctt = dot(vClayW - clayCutA, cab) / dot(cab, cab);
     if (ctt > 0.02 && ctt < 0.97) {
       float cdl = length(vClayW - (clayCutA + cab * ctt));
@@ -75,6 +75,7 @@ varying vec3 vClayW;
 uniform vec3 clayCutA;
 uniform vec3 clayCutB;
 uniform float clayCutOn;
+uniform float clayNoCut;
 uniform vec4 clayClip;
 uniform vec4 clayClip2;
 uniform float clayClipOn;
@@ -119,7 +120,7 @@ float clayHeight(vec3 p, float fine) {
     sh.uniforms.clayAmt = { value: this.userData.clayAmt };
     sh.uniforms.clayDay = U.day;
     sh.uniforms.clayGround = U.ground;
-    sh.uniforms.clayCutA = U.cutA; sh.uniforms.clayCutB = U.cutB; sh.uniforms.clayCutOn = U.cutOn;
+    sh.uniforms.clayCutA = U.cutA; sh.uniforms.clayCutB = U.cutB; sh.uniforms.clayCutOn = U.cutOn; sh.uniforms.clayNoCut = { value: this.userData.noCut ? 1 : 0 };
     sh.uniforms.clayBend = U.bend; sh.uniforms.clayBendK = U.bendK; sh.uniforms.clayClip = U.clip; sh.uniforms.clayClip2 = U.clip2; sh.uniforms.clayClipOn = U.clipOn;
     sh.uniforms.claySSS = { value: this.userData.claySSS || SSS0 };
     sh.uniforms.clayEnvK = { value: this.envMapIntensity };
@@ -220,8 +221,9 @@ float clayHeight(vec3 p, float fine) {
   function bakedMat(m) {
     const amt = m.userData.clayAmt || 0;
     const sss = m.userData.claySSS ? m.userData.claySSS.toArray() : null, stone = m.userData.clayStone || 0;
-    const key = [m.roughness, m.metalness, m.emissive.getHexString(), m.emissiveIntensity, amt, m.side, m.flatShading, m.envMapIntensity, sss, stone].join('|');
+    const key = [m.roughness, m.metalness, m.emissive.getHexString(), m.emissiveIntensity, amt, m.side, m.flatShading, m.envMapIntensity, sss, stone, !!m.userData.noCut].join('|');
     if (!bakedMats[key]) bakedMats[key] = apply(new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: m.roughness, metalness: m.metalness, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity, side: m.side, flatShading: m.flatShading, envMapIntensity: m.envMapIntensity }), amt, sss, stone);
+    if (m.userData.noCut) bakedMats[key].userData.noCut = true;
     return { key: 's' + key, mat: bakedMats[key], color: true };
   }
   function bakeable(c) {
@@ -311,7 +313,8 @@ float clayHeight(vec3 p, float fine) {
     const opts = Object.assign({}, o || {}), key = color + JSON.stringify(opts);
     if (mats[key]) return mats[key];
     const amt = opts.bumpScale === 0 ? 0 : (opts.bumpScale ? opts.bumpScale * 1.9 : .04), sss = opts.sss; delete opts.bumpScale; delete opts.sss;
-    return (mats[key] = PVClay.apply(new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .5 }, opts)), amt, sss));
+    const m = new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .5 }, opts)); m.userData.noCut = true; /* habitants : jamais ajourés */
+    return (mats[key] = PVClay.apply(m, amt, sss));
   }
   function mk(geo, mat, x, y, z, p) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); p.add(m); return m; }
   function rbox(w, h, d, r, sg) {

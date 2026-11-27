@@ -358,3 +358,14 @@ body.photo #timePop{display:none!important}
 #dlg .opt .fr{color:#8a7560}
 
 #ct,#c{cursor:pointer}
+
+/* dialogue : une seule colonne centrée — à gauche le micro, à droite les réponses à toucher, la bulle en dessous, la croix dans son coin */
+#dlg{left:50%;right:auto;bottom:0;transform:translateX(-50%);width:min(840px,calc(100% - 20px));display:grid;grid-template-columns:minmax(0,1fr) minmax(0,360px);grid-template-areas:"talk opts" "bubble bubble";column-gap:14px;row-gap:12px;align-items:end;padding:0 0 calc(14px + var(--safeB))}
+#dlg>*{width:auto}
+#dlg .dTop{grid-area:bubble;justify-self:end;align-self:start;z-index:3;transform:translate(-18px,-50%)}
+#dlg .dTop .ib{width:40px;height:40px;border-radius:50%;border:0;background:#f6cf6e;color:#6e4512;font:800 20px Nunito,sans-serif;box-shadow:0 3px 0 #d9a93e;cursor:pointer}
+#dlg .bubble{grid-area:bubble;margin-top:0}
+#dlg .talk{grid-area:talk;justify-self:start;align-self:end;flex-direction:row;align-items:center;padding:0}
+#dlg .opts{grid-area:opts;width:auto;margin:0;justify-self:stretch}
+#dlg .tip{margin-top:8px}
+@media(max-width:640px){#dlg{grid-template-columns:minmax(0,1fr);grid-template-areas:"opts" "talk" "bubble"}#dlg .micBig{width:56px;height:56px}}
