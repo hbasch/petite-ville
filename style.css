@@ -324,3 +324,12 @@ body.dlg-open .exitBtn{display:none}
 .optSpk{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,.08);color:var(--lav)}
 .optSpk svg{width:17px;height:17px}
 .optSpk:active{background:rgba(255,181,71,.3)}
+
+/* ---------- heure de la ville, hors mode photo ---------- */
+.timePill{order:5;font-variant-numeric:tabular-nums}
+.timePill svg{width:18px;height:18px;color:var(--honey)}
+.timePill.manual{box-shadow:inset 0 0 0 2px var(--honey)}
+#timePop{position:fixed;z-index:12;top:calc(66px + var(--safeT));right:calc(12px + var(--safeR));width:min(340px,calc(100% - 24px));background:rgba(22,25,52,.92);backdrop-filter:blur(10px);border-radius:22px;padding:12px 16px 10px;color:#f3efff;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+#tpSlider{width:100%;accent-color:var(--honey);height:32px}
+.tpScale{display:flex;justify-content:space-between;font:700 11px Nunito,sans-serif;opacity:.6;margin-top:-4px}
+body.photo #timePop{display:none!important}

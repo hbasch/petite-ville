@@ -8,7 +8,7 @@
 <meta name="description" content="Apprends l'anglais ou le polonais en parlant aux habitants d'une petite ville en 3D.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=21">
 <script>
 /* pas de zoom de la page entière (iPhone) : le pincement sert à zoomer dans la ville */
 document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
@@ -38,6 +38,7 @@ if (/[?&]debug\b/.test(location.search)) {
  <symbol id="i-umbrella" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 18 0z" fill="currentColor"/><path d="M12 12v7a2 2 0 0 1-4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></symbol>
  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 4h4v16H7zM13 4h4v16h-4z" fill="currentColor"/></symbol>
+ <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="currentColor"/></symbol>
  <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
@@ -55,6 +56,7 @@ if (/[?&]debug\b/.test(location.search)) {
   <button type="button" class="pill" id="goalPill"><span class="goalRing" id="goalRing"><i></i></span><span id="goalTxt">0/15</span></button>
   <button type="button" class="pill" id="misBtn"><span class="txt" data-i="mission"></span> <b id="misN">0/4</b></button>
  </div>
+ <button type="button" class="pill timePill" id="timeBtn" aria-label="Heure" aria-expanded="false"><svg><use href="#i-sun" id="timeIco"/></svg><span id="timeTxt">12:00</span></button>
  <button type="button" class="pill photoPill" id="photoBtn" aria-label="Photo"><svg><use href="#i-cam"/></svg><span class="txt" data-i="photo"></span></button>
  <button type="button" class="pill placePill" id="placeBtn"><span id="placeName"></span><svg><use href="#i-down"/></svg></button>
 </div>
@@ -125,6 +127,11 @@ if (/[?&]debug\b/.test(location.search)) {
  <div class="mini" data-i="voiceNote"></div>
 </section>
 
+<div id="timePop" class="hidden" role="dialog" aria-label="Heure">
+ <div class="phRow"><span data-i="hourLbl"></span> <b id="tpHour">12:00</b><button class="btn sm" id="tpReal" type="button" data-i="realTime"></button></div>
+ <input type="range" id="tpSlider" min="0" max="24" step="0.25" value="12" aria-label="Heure">
+ <div class="tpScale"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span></div>
+</div>
 <div id="photoBar" class="hidden">
  <div class="phRow"><span data-i="hourLbl"></span> <b id="phHour">12:00</b><button class="btn sm" id="phReal" type="button" data-i="realTime"></button></div>
  <div class="phPal"><span data-i="palette"></span><button type="button" data-pal="a" style="--c1:#d9774b;--c2:#9db58a" aria-label="Palette A"></button><button type="button" data-pal="b" style="--c1:#d9a62e;--c2:#3f6b5a" aria-label="Palette B"></button><button type="button" data-pal="c" style="--c1:#f28c28;--c2:#2f5fb3" aria-label="Palette C"></button><button type="button" data-pal="d" style="--c1:#f0a77a;--c2:#b7a3d6" aria-label="Palette D"></button></div>
@@ -265,7 +272,7 @@ if (/[?&]debug\b/.test(location.search)) {
 <script src="data.js?v=18"></script>
 <script src="clay.js?v=8"></script>
 <script src="scene.js?v=19"></script>
-<script src="town.js?v=39"></script>
-<script src="app.js?v=23"></script>
+<script src="town.js?v=40"></script>
+<script src="app.js?v=24"></script>
 </body>
 </html>

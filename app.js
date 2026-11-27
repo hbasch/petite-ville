@@ -341,7 +341,7 @@ function start() {
     const H = { palette: palette(), country: country(), label: id => L.found.includes(id) ? W[id][T] : '?',
       pick: (id, obj) => { if (tab !== 'town' || place !== 'town') return; if (id === 'npc:passerby') greetPasserby(obj); else if (id.startsWith('npc:')) openNpc(id.slice(4)); else { showWord(id); const cid = obj && obj.userData && obj.userData.collect; if (cid) setTimeout(() => collect(id, cid), 900); setTimeout(() => questProgress('find', id), cid ? 2200 : 1100); } },
       active: () => place === 'town' && !document.hidden };
-    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); refreshMarkers(); if (L.firstWin || L.found.length) { L.firstWin = 1; setTimeout(announceQuest, 2500); } });
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); refreshMarkers(); updTime(); if (L.firstWin || L.found.length) { L.firstWin = 1; setTimeout(announceQuest, 2500); } });
   }
   started = true;
 }
@@ -359,6 +359,7 @@ $('enter').onclick = () => { $('intro').classList.add('hidden'); if (place === '
 /* ---------- la place et la boulangerie ---------- */
 function setPlaceUI() {
   const inB = place === 'bakery';
+  $('timeBtn').classList.toggle('hidden', inB); if (inB) timePop(false);
   $('placeName').textContent = inB ? '← ' + U.backToSquare : U.placeSquare;
   $('ct').classList.toggle('hidden', inB); $('c').classList.toggle('hidden', !inB);
   $('photoBtn').classList.toggle('hidden', inB); $('exitBtn').classList.toggle('hidden', !inB);
@@ -386,12 +387,28 @@ function palette() { const q = (location.search.match(/palette=([abcd])/) || [])
 document.querySelectorAll('[data-pal]').forEach(b => { b.classList.toggle('on', b.dataset.pal === palette()); b.onclick = () => { store.set('pv_pal', b.dataset.pal); location.href = location.pathname + '?palette=' + b.dataset.pal; }; });
 const fmtH = h => { const hh = Math.floor(h) % 24, mm = Math.round((h - Math.floor(h)) * 60); return String(hh).padStart(2, '0') + ':' + String(mm === 60 ? 0 : mm).padStart(2, '0'); };
 $('photoBtn').onclick = () => {
-  if (!town) return; show(null); document.body.classList.add('photo'); $('photoBar').classList.remove('hidden');
+  if (!town) return; timePop(false); show(null); document.body.classList.add('photo'); $('photoBar').classList.remove('hidden');
   town.setPhoto(true); const h = town.hour(); $('phSlider').value = h; $('phHour').textContent = fmtH(h);
 };
-$('phSlider').oninput = () => { const h = +$('phSlider').value; $('phHour').textContent = fmtH(h); town.setHour(h); };
+$('phSlider').oninput = () => { const h = +$('phSlider').value; $('phHour').textContent = fmtH(h); town.setHour(h); updTime(); };
 $('phReal').onclick = () => { town.setHour(null); const h = town.hour(); $('phSlider').value = h; $('phHour').textContent = fmtH(h); };
-$('phClose').onclick = () => { town.setPhoto(false); document.body.classList.remove('photo'); $('photoBar').classList.add('hidden'); };
+$('phClose').onclick = () => { town.setPhoto(false); document.body.classList.remove('photo'); $('photoBar').classList.add('hidden'); updTime(); };
+/* heure de la ville sans passer par le mode photo : une pastille dans le haut de l'écran, un curseur, et « Heure réelle » pour revenir au temps vrai */
+function updTime() {
+  if (!town || !town.hour) return; const h = town.hour(), man = !!(town.manual && town.manual());
+  $('timeTxt').textContent = fmtH(h); $('timeIco').setAttribute('href', h >= 6.5 && h < 19.5 ? '#i-sun' : '#i-moon');
+  $('timeBtn').classList.toggle('manual', man); $('tpHour').textContent = fmtH(h); $('tpReal').disabled = !man;
+}
+function timePop(open) {
+  $('timePop').classList.toggle('hidden', !open); $('timeBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) { const r = $('timeBtn').getBoundingClientRect(), p = $('timePop'), w = p.offsetWidth; p.style.top = (r.bottom + 8) + 'px'; p.style.left = Math.max(12, Math.min(r.left, innerWidth - w - 12)) + 'px'; p.style.right = 'auto'; }
+  if (open && town) $('tpSlider').value = town.hour(); updTime();
+}
+$('timeBtn').onclick = e => { e.stopPropagation(); timePop($('timePop').classList.contains('hidden')); };
+$('tpSlider').oninput = () => { if (town) { town.setHour(+$('tpSlider').value); updTime(); } };
+$('tpReal').onclick = () => { if (town) { town.setHour(null); $('tpSlider').value = town.hour(); updTime(); } };
+document.addEventListener('pointerdown', e => { if (!$('timePop').classList.contains('hidden') && !e.target.closest('#timePop,#timeBtn')) timePop(false); });
+setInterval(updTime, 20000);
 $('phShoot').onclick = () => {
   const url = town.snapshot(); const a = document.createElement('a'); a.href = url; a.download = 'petite-ville-' + fmtH(town.hour()).replace(':', 'h') + '.jpg';
   document.body.appendChild(a); a.click(); a.remove();

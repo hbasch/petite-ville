@@ -1499,6 +1499,7 @@ return {
   approaching: () => people.some(p => p.appr && p.appr.state !== 'back'),
   setHour: h => { hourOverride = h; applyHour(h == null ? realHour() : h); },
   hour: () => hourNow,
+  manual: () => hourOverride != null,
   resize: () => { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); R.setSize(innerWidth, innerHeight); }
 };
 };
