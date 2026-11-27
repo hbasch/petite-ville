@@ -14,6 +14,9 @@
     clip: { value: new THREE.Vector4(0, 0, 1, 1e9) }, clip2: { value: new THREE.Vector4(0, 1, 0, 1e9) }, clipOn: { value: 0 },
     /* reflets : couleurs du ciel en haut, à l'horizon et du sol (linéaires), données par la scène */
     envT: { value: new THREE.Color(.45, .62, .85) }, envH: { value: new THREE.Color(.75, .8, .85) }, envG: { value: new THREE.Color(.3, .22, .16) } };
+  /* mode compatible : si la carte graphique refuse les nouveaux effets (horizon arrondi, ajourage, coupe d'intérieur),
+     la ville se recharge sans eux (voir town.js). ?safe le force, ?unsafe le retire. */
+  const SAFE = (() => { try { if (/[?&]unsafe\b/.test(location.search)) localStorage.removeItem('pv_safe'); return localStorage.getItem('pv_safe') === '1' || /[?&]safe\b/.test(location.search); } catch (e) { return /[?&]safe\b/.test(location.search); } })();
   const BEND_DECL = 'uniform vec4 clayBend;\nuniform float clayBendK;';
   const BEND_CODE = `
   if (clayBendK > 0.0) {
@@ -34,7 +37,7 @@
     else sh.vertexShader = sh.vertexShader.replace('vec4 mvPosition = modelViewMatrix * vec4( 0.0, 0.0, 0.0, 1.0 );', 'vec4 bwS = modelMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ); float bdS = dot(bwS.xz - clayBend.xy, clayBend.zw); bwS.y -= clayBendK * bdS * bdS; vec4 mvPosition = viewMatrix * bwS;');
   }
   function bendify(m) {
-    if (!m || m.userData.clayAmt || m.userData.bent || m.isShaderMaterial) return;
+    if (SAFE || !m || m.userData.clayAmt || m.userData.bent || m.isShaderMaterial) return;
     if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) return;
     if (!(m.isMeshBasicMaterial || m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial || m.isPointsMaterial || m.isSpriteMaterial)) return;
     m.userData.bent = true; m.onBeforeCompile = bendPatch; m.customProgramCacheKey = () => 'bend1'; m.needsUpdate = true;
@@ -48,6 +51,18 @@
     me.blinkT = (me.blinkT == null ? 2 : me.blinkT) - dt; const closed = me.blinkT < .12; if (me.blinkT < 0) me.blinkT = 2 + Math.random() * 3;
     if (P.lids) P.lids.forEach(l => { l.rotation.x += ((closed ? 1.45 : -1.25) - l.rotation.x) * .6; });
   }
+  const CUT_CODE = `  /* ajourage et coupe d'intérieur : en toute fin, après les dérivées (Direct3D sous Windows refuse un discard avant) */
+  if (clayClipOn > 0.5 && (dot(vClayW, clayClip.xyz) > clayClip.w || dot(vClayW, clayClip2.xyz) > clayClip2.w)) discard;
+  if (clayCutOn > 0.5 && vClayW.y > 0.3) {
+    vec3 cab = clayCutB - clayCutA; float ctt = dot(vClayW - clayCutA, cab) / dot(cab, cab);
+    if (ctt > 0.02 && ctt < 0.97) {
+      float cdl = length(vClayW - (clayCutA + cab * ctt));
+      float ca = (1.0 - smoothstep(1.2, 2.0, cdl)) * (1.0 - smoothstep(0.86, 0.96, ctt));
+      float cth = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+      if (ca > cth) discard;
+    }
+  }
+`;
   const NOISE = `
 varying vec3 vClayP;
 varying float vClayY;
@@ -122,7 +137,7 @@ float clayHeight(vec3 p, float fine) {
     clayWp = instanceMatrix * clayWp;
   #endif
   vClayW = (modelMatrix * clayWp).xyz;
-` + BEND_CODE);
+` + (SAFE ? '' : BEND_CODE));
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\n' + NOISE)
 
@@ -173,17 +188,7 @@ float clayHeight(vec3 p, float fine) {
     float clayRim = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 3.0);
     gl_FragColor.rgb += mix(diffuseColor.rgb, vec3(1.0, 0.93, 0.85), 0.4) * clayRim * (0.05 + 0.1 * max(0.0, clayWN.y)) * clayDay;
   }
-  /* ajourage et coupe d'intérieur : en toute fin, après les dérivées (Direct3D sous Windows refuse un discard avant) */
-  if (clayClipOn > 0.5 && (dot(vClayW, clayClip.xyz) > clayClip.w || dot(vClayW, clayClip2.xyz) > clayClip2.w)) discard;
-  if (clayCutOn > 0.5 && vClayW.y > 0.3) {
-    vec3 cab = clayCutB - clayCutA; float ctt = dot(vClayW - clayCutA, cab) / dot(cab, cab);
-    if (ctt > 0.02 && ctt < 0.97) {
-      float cdl = length(vClayW - (clayCutA + cab * ctt));
-      float ca = (1.0 - smoothstep(1.2, 2.0, cdl)) * (1.0 - smoothstep(0.86, 0.96, ctt));
-      float cth = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-      if (ca > cth) discard;
-    }
-  }
+` + (SAFE ? '' : CUT_CODE) + `
   #include <tonemapping_fragment>`);
   }
   /* lumière diffusée dans la pâte (rouge orangé), plus forte pour la peau */
@@ -197,7 +202,7 @@ float clayHeight(vec3 p, float fine) {
     if (sss) m.userData.claySSS = new THREE.Vector3().fromArray(sss);
     m.extensions = Object.assign(m.extensions || {}, { derivatives: true });
     m.onBeforeCompile = patch;
-    m.customProgramCacheKey = () => 'clay6';
+    m.customProgramCacheKey = () => SAFE ? 'clay6s' : 'clay6';
     return m;
   }
 
@@ -275,7 +280,7 @@ float clayHeight(vec3 p, float fine) {
     return saved;
   }
 
-  window.PVClay = { U, apply, bake, bendify, walk, playerLook: { skin: '#eec2a2', hair: '#5a3a2a', style: 'short', fringe: true, eyes: '#3a2418', outfit: 'hoodie', shirt: '#ffb547', pants: '#3f5f9a', shoes: '#f4efe6' } };
+  window.PVClay = { U, SAFE, apply, bake, bendify, walk, playerLook: { skin: '#eec2a2', hair: '#5a3a2a', style: 'short', fringe: true, eyes: '#3a2418', outfit: 'hoodie', shirt: '#ffb547', pants: '#3f5f9a', shoes: '#f4efe6' } };
 })();
 
 /* ---------- habitants en pâte : partagés par la place (town.js) et la boulangerie (scene.js) ----------

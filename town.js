@@ -1446,6 +1446,17 @@ function dbgFrame() {
   dbgS.t = 0; dbgS.n = 0; R.info.reset();
 }
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* si un shader n'a pas compilé sur cette carte graphique : on note l'erreur et on recharge en mode compatible (une seule fois) */
+let glCheck = 0;
+function checkGL() {
+  glCheck = -1;
+  const bad = (R.info.programs || []).filter(p => p.diagnostics && p.diagnostics.runnable === false);
+  if (!bad.length) return;
+  const msg = bad.map(p => (p.name || '?') + ' | ' + (p.diagnostics.programLog || '') + ' | ' + (p.diagnostics.vertexShader.log || '') + ' | ' + (p.diagnostics.fragmentShader.log || '')).join('\n').slice(0, 3000);
+  console.error('Chatterville shader', msg);
+  try { localStorage.setItem('pv_glerr', msg); if (!PVClay.SAFE) { localStorage.setItem('pv_safe', '1'); location.reload(); } } catch (e) { /* */ }
+}
+if (/[?&]glerr\b/.test(location.search)) { const d = document.createElement('pre'); d.style.cssText = 'position:fixed;z-index:99;left:8px;right:8px;top:60px;max-height:60vh;overflow:auto;background:#fff8e6;color:#4a3a2a;padding:12px;border-radius:12px;font:12px monospace;white-space:pre-wrap;user-select:text'; let m = ''; try { m = localStorage.getItem('pv_glerr') || 'Aucune erreur enregistrée.'; } catch (e) { m = '?'; } d.textContent = 'Mode compatible : ' + (PVClay.SAFE ? 'oui' : 'non') + '\n' + navigator.userAgent + '\n\n' + m; document.body.appendChild(d); }
 /* ---------- caméra de trois quarts, façon jeu de village ----------
    Elle regarde ton personnage d'en haut (environ 42°), sans tourner toute seule ; un glissé du doigt la fait pivoter,
    pincer ou la molette rapproche. En conversation, elle vient cadrer l'habitant de face, par-dessus ton épaule.
@@ -1555,6 +1566,7 @@ function loop() {
   if (perfT > 2) { if (perfT / perfN > 1 / 40 && pr > 1) { pr = Math.max(1, pr - .25); R.setPixelRatio(pr); R.setSize(innerWidth, innerHeight); if (fp) { fp.setPixelRatio(pr); if (fxaa) { const s = R.getDrawingBufferSize(new THREE.Vector2()); fxaa.uniforms.resolution.value.set(1 / s.x, 1 / s.y); } } } perfT = 0; perfN = 0; }
   clayEnv();
   if (fp) fp.render(); else R.render(scene, cam);
+  if (glCheck >= 0 && ++glCheck > 8) checkGL();
   if (DBG) dbgFrame();
 }
 loop();
