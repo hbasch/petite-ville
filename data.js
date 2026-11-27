@@ -368,6 +368,18 @@ PV.PALS = {
 
 /* ---------- Les habitants : chacun a un dialogue court (salutations, prénom, météo, directions, nombres) ---------- */
 PV.NPCS = {
+ tom: { name: 'Tom', role: { fr: 'le boulanger', pl: 'le boulanger' }, pitch: 0.9,
+  dlg: { en: { nodes: { start: ['Hello! Fresh bread this morning!', { fr: 'Bonjour ! Du pain frais ce matin !' }, 'a'], end: ['Bye!', { fr: 'Au revoir !' }], huh: ['Sorry?', { fr: 'Pardon ?' }] },
+    opts: { a: [{ t: 'Great! See you later, Tom.', tr: { fr: 'Super ! À plus tard, Tom.' }, to: 'END', reply: ['See you!', { fr: 'À plus !' }] }] } } } },
+ jones: { name: 'Agent Jones', role: { fr: 'la police', pl: 'la police' }, pitch: 0.8,
+  dlg: { en: { nodes: { start: ['Good afternoon. All quiet today.', { fr: 'Bonjour. Tout est calme aujourd’hui.' }, 'a'], end: ['Bye!', { fr: 'Au revoir !' }], huh: ['Sorry?', { fr: 'Pardon ?' }] },
+    opts: { a: [{ t: 'Good. Thank you!', tr: { fr: 'Tant mieux. Merci !' }, to: 'END', reply: ['Take care!', { fr: 'Prenez soin de vous !' }] }] } } } },
+ okafor: { name: 'Mr Okafor', role: { fr: 'le pharmacien', pl: 'le pharmacien' }, pitch: 0.85,
+  dlg: { en: { nodes: { start: ['Hello again! Are you feeling well?', { fr: 'Rebonjour ! Vous allez bien ?' }, 'a'], end: ['Bye!', { fr: 'Au revoir !' }], huh: ['Sorry?', { fr: 'Pardon ?' }] },
+    opts: { a: [{ t: 'Yes, I feel great, thanks!', tr: { fr: 'Oui, je vais très bien, merci !' }, to: 'END', reply: ['Wonderful!', { fr: 'Parfait !' }] }] } } } },
+ pemberton: { name: 'Mr Pemberton', role: { fr: 'le notaire', pl: 'le notaire' }, pitch: 0.82,
+  dlg: { en: { nodes: { start: ['Ah, good day to you!', { fr: 'Ah, bonne journée à vous !' }, 'a'], end: ['Bye!', { fr: 'Au revoir !' }], huh: ['Sorry?', { fr: 'Pardon ?' }] },
+    opts: { a: [{ t: 'Good day, Mr Pemberton.', tr: { fr: 'Bonne journée, Mr Pemberton.' }, to: 'END', reply: ['Indeed, indeed!', { fr: 'Absolument !' }] }] } } } },
  rosa: { name: 'Rosa', role: { fr: 'la fleuriste', pl: 'kwiaciarka' }, pitch: 1.18,
   dlg: {
    en: { nodes: {

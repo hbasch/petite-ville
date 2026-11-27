@@ -435,3 +435,20 @@ body.askmic #dMic,body.askmic #dHeard,body.askmic #dNoMic,body.askmic #dUseMic{d
 #loader svg{animation:loadBob 1.1s ease-in-out infinite;filter:drop-shadow(0 8px 14px rgba(0,0,0,.3))}
 #loader.gone{opacity:0;pointer-events:none}
 @keyframes loadBob{50%{transform:translateY(-8px) rotate(-3deg)}}
+/* ---------- histoire : pensées en français, carnet, cartes ---------- */
+#stCap{position:fixed;z-index:30;left:50%;top:calc(70px + var(--safeT, 0px));transform:translateX(-50%);width:min(520px,calc(100% - 24px));background:#fff8e6;color:#4a3a2a;border-radius:22px;padding:16px 18px 12px;box-shadow:0 10px 30px rgba(42,34,51,.35),0 3px 0 #d9a93e;font:700 16px/1.45 Nunito,sans-serif;cursor:pointer;animation:tagIn .3s ease-out}
+#stCap p{margin:0 0 8px;font-style:italic}
+#stCap button{display:block;margin-left:auto;border:0;background:#22b2a0;color:#fff;font:800 14px Nunito,sans-serif;border-radius:99px;padding:8px 16px;cursor:pointer;box-shadow:0 3px 0 #16806f}
+#stCap.hidden,#carnet.hidden,#stCard.hidden{display:none}
+#carnet{position:fixed;z-index:7;left:12px;top:calc(62px + var(--safeT, 0px));max-width:min(330px,calc(100% - 24px));display:flex;align-items:center;gap:8px;text-align:left;border:0;border-radius:16px;padding:7px 12px;background:rgba(255,248,230,.95);color:#4a3a2a;font:700 13px/1.3 Nunito,sans-serif;box-shadow:0 3px 0 #d9a93e;cursor:pointer}
+#carnet b{background:#f6cf6e;color:#6e4512;border-radius:99px;padding:2px 8px;font-size:11px;flex:none}
+#carnet i{font-style:normal;font-weight:800;color:#16806f;flex:none}
+body.dlg-open #carnet,body.photo #carnet{display:none}
+#stCard{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(29,33,66,.55);padding:16px}
+#stCard .stBox{width:min(440px,100%);background:#fff8e6;color:#4a3a2a;border-radius:28px;padding:24px 22px 18px;box-shadow:0 14px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:10px;animation:tagIn .3s ease-out}
+#stCard h2{margin:0;font:800 26px "Baloo 2",Nunito,sans-serif;color:#6e4512}
+#stCard p{margin:0 0 6px;font:600 16px/1.45 Nunito,sans-serif}
+#stCard .btn{border:0;border-radius:16px;padding:12px 14px;background:#22b2a0;color:#fff;font:800 16px Nunito,sans-serif;box-shadow:0 4px 0 #16806f;cursor:pointer}
+#stCard .btn.ghost{background:none;color:#8a7560;box-shadow:none;font-weight:700;font-size:14px;text-decoration:underline}
+body.storyDlg #dlg [data-close="dlg"]{display:none}
+@media(max-width:640px){#stCap{font-size:15px;top:calc(56px + var(--safeT, 0px))}#carnet{top:calc(54px + var(--safeT, 0px));font-size:12px}}

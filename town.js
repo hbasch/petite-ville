@@ -899,6 +899,35 @@ B.forEach((sp, i) => { if (sp.id !== 'florist') return; const a = a0 + span * i 
 person('maya', { skin: SK[3], hair: '#1a1a22', style: 'curly', lashes: true, eyes: '#3a2418', outfit: 'hoodie', shirt: PAL.walls[1], backpack: PAL.accent, pants: '#2f3a5a', shoes: '#f4efe6' }, 'walk', 0, 7.2, 0, { r: 7.2, a: 1.2, sp: .055, pause: 0 });
 { const a = G - .55, r = 5.6 - .95; person('sam', { skin: SK[2], hair: '#3a2418', style: 'cap', hat: PAL.roofs[0], mustache: true, eyes: '#3a2418', shirt: '#f3efe6', stripes: PAL.roofs[0], rolled: true, apron: '#c99a62' }, 'idle', Math.sin(a) * r, Math.cos(a) * r, a); }
 [[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => (mobile && i !== 1) ? null : person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1, tote: i === 0 ? '#efe3cf' : null, balloon: i === 2 ? '#e8423a' : null }, 'walk', 0, 0, 0, { r: i === 1 ? 6.6 : rnd(6.5, 8.2), a: rnd(0, TAU), sp: (i === 1 ? .05 : rnd(.05, .085)) * (i % 2 ? 1 : -1), pause: 0, dog: i === 1 }));
+/* ---------- personnages de l'histoire (chapitre 1) : cachés tant que l'histoire n'en a pas besoin ---------- */
+const angOf = id => { const i = B.findIndex(b => b.id === id); return i < 0 ? G + Math.PI : a0 + span * i / (B.length - 1); };
+const spotAt = (a, r) => [Math.sin(a) * r, Math.cos(a) * r];
+const STORY_ACTORS = {
+  tom: [{ skin: SK[0], hair: '#6a4a2a', style: 'cap', hat: '#fff8ee', mustache: true, shirt: '#fff8ee', apron: '#efe3cf', pants: '#4a4a52', shoes: '#5a3a2a' }, angOf('bakeryShop') + .12, 8.3],
+  thief: [{ skin: SK[1], hair: '#2a1a12', style: 'cap', hat: '#f2c200', outfit: 'hoodie', shirt: '#f2c200', pants: '#2f3a5a', shoes: '#2a2a30' }, G, 13.5],
+  jones: [{ skin: SK[1], hair: '#3a2418', style: 'cap', hat: '#1d2a4a', shirt: '#1d2a4a', pants: '#1d2a4a', shoes: '#111118' }, angOf('townhall') + .22, 8.4],
+  okafor: [{ skin: SK[3], hair: '#1a1a22', style: 'short', shirt: '#ffffff', apron: '#e8f2ee', pants: '#3a4a5a', shoes: '#2a2a30' }, angOf('pharmacy') - .05, 8.4],
+  pemberton: [{ skin: SK[0], hair: '#9a9a9a', style: 'flatcap', hat: '#3a3a44', mustache: true, shirt: '#5a5a6a', outfit: 'cardigan', pants: '#3a3a44', shoes: '#1a1a20' }, angOf('cafe') + .1, 8.4]
+};
+Object.keys(STORY_ACTORS).forEach(id => { const [lk, a, r] = STORY_ACTORS[id], [x, z] = spotAt(a, r); const o = person(id, lk, 'idle', x, z, a + Math.PI); o.story = true; o.home = [x, z, a + Math.PI]; o.grp.visible = false; });
+/* déplacement scénarisé (le voleur qui court, Tom qui arrive) : une liste de points, puis un rappel */
+function goStep(o, P, dt) {
+  const G2 = o.go, g = o.grp.position, [tx, tz] = G2.pts[G2.i], dx = tx - g.x, dz = tz - g.z, L = Math.hypot(dx, dz);
+  if (L < .12) { G2.i++; if (G2.i >= G2.pts.length) { o.go = null; P.legs.forEach(l => { l.rotation.x = 0; }); P.arms.forEach(a => { a.rotation.x = 0; }); if (G2.cb) G2.cb(); } return; }
+  const st = Math.min(L, G2.spd * dt); g.x += dx / L * st; g.z += dz / L * st;
+  let dr = Math.atan2(dx, dz) - o.grp.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); o.grp.rotation.y += dr * Math.min(1, dt * 10);
+  const f = G2.spd > 2.5 ? 13 : 8, s2 = Math.sin(o.t * f); P.legs[0].rotation.x = s2 * .7; P.legs[1].rotation.x = -s2 * .7; P.arms[0].rotation.x = -s2 * .6; P.arms[1].rotation.x = s2 * .6; P.body.position.y = .42 + Math.abs(Math.cos(o.t * f)) * .045;
+}
+/* la valise rouge du prologue */
+const suitcase = new THREE.Group();
+mk(rbox(.34, .26, .13, .04, 2), C('#c8352e'), 0, 0, 0, suitcase); mk(rbox(.12, .04, .04, .015, 1), C('#3a2a22'), 0, .15, 0, suitcase);
+suitcase.visible = false; scene.add(suitcase);
+function holdSuitcase(who) {
+  suitcase.visible = !!who; if (!who) return;
+  const g = who === 'me' ? (me && me.g) : (people.find(p => p.id === who) || {}).grp; if (!g) { suitcase.visible = false; return; }
+  g.add(suitcase); suitcase.position.set(.26, .28, .02); suitcase.rotation.set(0, Math.PI / 2, 0);
+}
+let locked = false;
 /* ---------- ton personnage ---------- */
 const me = ACCAM ? makeChar(PVClay.playerLook) : null;
 if (me) { me.g.userData.id = 'me'; scene.add(me.g); me.g.traverse(c => { if (c.isMesh && c !== me.P.shadow) c.castShadow = true; }); me.yaw = G + Math.PI; me.ph = 0; me.blinkT = 2; me.g.position.set(Math.sin(G) * 9.2, .03, Math.cos(G) * 9.2); }
@@ -1210,7 +1239,7 @@ function pick(e) {
   const r = canvas.getBoundingClientRect(); ptr.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ptr, cam);
   const hs = ray.intersectObjects(hits, true); if (!hs.length) return null;
   /* les objets ne se touchent plus (ça gênait la marche) : on passe à travers jusqu'au sol ou à un habitant */
-  for (const h of hs) { let o = h.object; while (o && !o.userData.id) o = o.parent; if (!o) continue; const id = o.userData.id; if (id === 'square' || id.startsWith('npc:')) return { id, point: h.point, dist: h.distance, obj: o }; }
+  for (const h of hs) { let o = h.object; while (o && !o.userData.id) o = o.parent; if (!o || !o.visible) continue; const id = o.userData.id; if (id === 'square' || id.startsWith('npc:')) return { id, point: h.point, dist: h.distance, obj: o }; }
   return null;
 }
 /* doigts et souris : un doigt = regarder (glisser) ou marcher / toucher (tap) ; deux doigts = zoom (pincer) ;
@@ -1242,12 +1271,14 @@ canvas.addEventListener('pointercancel', e => { lift(e); down = null; });
 /* glisser le doigt ou la souris = un joystick : on marche dans cette direction tant qu'on reste appuyé */
 const joyEl = $('joy'); let joy = null;
 function joyMove(dx, dy) {
+  if (locked) return;
   const L = Math.hypot(dx, dy), k = Math.min(1, L / 70), ux = L ? dx / L : 0, uy = L ? dy / L : 0; joy = { x: ux * k, y: uy * k }; target = null;
   if (joyEl && down) { joyEl.style.left = down.x + 'px'; joyEl.style.top = down.y + 'px'; joyEl.classList.remove('hidden'); joyEl.firstElementChild.style.transform = 'translate(' + (ux * k * 34) + 'px,' + (uy * k * 34) + 'px)'; }
 }
 function joyEnd() { joy = null; if (joyEl) joyEl.classList.add('hidden'); }
 canvas.addEventListener('pointerup', e => {
   if (lift(e)) return;
+  if (locked) { down = null; return; }
   if (photo || !down || down.id !== e.pointerId) { down = null; return; }
   const moved = down.moved; down = null; if (moved > 8) return;
   let p = pick(e);
@@ -1468,6 +1499,7 @@ function updatePeople(dt, t) {
     const dx = pos.x - o.grp.position.x, dz = pos.z - o.grp.position.z, dist = Math.hypot(dx, dz);
     const isTalk = talking === o;
     /* marche */
+    if (o.go) { goStep(o, P, dt); return; }
     if (o.appr) approachStep(o, P, dt);
     else if (o.mode === 'walk' && !isTalk) {
       /* on ne traverse pas le joueur : si on est sur son chemin, il s'arrête et attend */
@@ -1590,7 +1622,7 @@ function talkPlan(o) {
   for (const da of [0, .35, -.35, .7, -.7, 1.0, -1.0]) {
     const a = base + da, sx = n.x + Math.sin(a) * (sit ? 2.3 : 1.5), sz = n.z + Math.cos(a) * (sit ? 2.3 : 1.5);
     if (Math.hypot(sx, sz) > 9 || colliders.some(c => Math.hypot(c.x - n.x, c.z - n.z) > .1 && Math.hypot(c.x - sx, c.z - sz) < c.r + .5)) continue;
-    for (const ca of [.3, -.3, .55, -.55, 0]) {
+    for (const ca of [.35, -.35, .55, -.55, .75, -.75]) {
       const v = a + ca, cp = new THREE.Vector3(n.x + Math.sin(v) * back, 1 + back * .34, n.z + Math.cos(v) * back);
       rc.set(cp, head.clone().sub(cp).normalize()); rc.far = cp.distanceTo(head) - .3;
       const occ = rc.intersectObjects(obst, true).length;
@@ -1698,6 +1730,7 @@ function loop() {
   if (!ACCAM && keys.arrowleft) tYaw += 1.6 * dt;
   if (!ACCAM && keys.arrowright) tYaw -= 1.6 * dt;
   if (joy) { wish.set(0, 0, 0).addScaledVector(right, joy.x).addScaledVector(fwd, -joy.y); }
+  if (locked) wish.set(0, 0, 0);
   const SPEED = 2.6;
   if (wish.lengthSq() > 0) { target = null; const wl = Math.min(1, wish.length()); wish.normalize().multiplyScalar(SPEED * (joy ? Math.max(.35, wl) : 1)); }
   else if (target) { const ddx = target.x - pos.x, ddz = target.z - pos.z, L = Math.hypot(ddx, ddz); if (L < .08) target = null; else { const sp = Math.min(SPEED, L * 2.2); wish.set(ddx / L * sp, 0, ddz / L * sp); } }
@@ -1740,6 +1773,11 @@ function placeAtBakery() { const a = bld.bakery.ang; pos.set(Math.sin(a) * 8.0, 
 if (ACCAM) scene.traverse(o => { if (o === stars || o === sky) return; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => PVClay.bendify(m)); });
 return {
   setPhoto, snapshot, placeAtBakery, talkTo, endTalk, greet,
+  /* histoire : montrer ou cacher un personnage, le faire marcher, la valise, bloquer les commandes pendant une scène */
+  actor: (id, o) => { const p = people.find(q => q.id === id); if (!p) return; o = o || {}; if (o.show != null) p.grp.visible = !!o.show; if (o.home && p.home) { p.go = null; p.appr = null; p.grp.position.set(p.home[0], 0, p.home[1]); p.grp.rotation.y = p.base = p.home[2]; } if (o.at) { p.grp.position.set(o.at[0], 0, o.at[1]); } },
+  goTo: (id, pts, spd, cb) => { const p = people.find(q => q.id === id); if (!p) return; p.appr = null; p.go = { pts, i: 0, spd: spd || 1.5, cb }; },
+  suitcase: holdSuitcase, lock: on => { locked = !!on; if (on) { target = null; joyEnd(); } },
+  mePos: () => ({ x: pos.x, z: pos.z }), spot: (id, r) => spotAt(angOf(id), r || 8.6), exitPt: r => spotAt(G, r || 13.5),
   cheer: id => { const o = people.find(p => p.id === id); if (o) o.happy = 1.5; },
   marker: (id, kind, secs) => { const o = people.find(p => p.id === id); if (!o) return; if (kind === 'heart') o.heartUntil = clockT.elapsedTime + (secs || 3); else o.quest = kind === 'quest'; },
   approach: (id, cb) => { const o = people.find(p => p.id === id); if (!o || o.appr || talking || photo) return false; o.appr = { state: 'go', t: 0, cb, hx: o.grp.position.x, hz: o.grp.position.z }; o.pause = 0; return true; },

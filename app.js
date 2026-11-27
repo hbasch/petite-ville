@@ -461,14 +461,13 @@ function start() {
   ['hud', 'nav'].forEach(id => $(id).classList.remove('hidden'));
   $('dWho').textContent = S.baker;
   setPlaceUI();
-  if (!L.found.some(id => TOWN.has(id))) showIntro('town');
   if (!SR) $('dMic').disabled = true;
   updHud(); updMission(); renderDeck(); renderMap();
   if (!started && window.THREE && window.buildTown) {
     const H = { palette: palette(), country: country(), label: id => L.found.includes(id) ? W[id][T] : '?',
-      pick: (id, obj) => { if (tab !== 'town' || place !== 'town') return; if (id === 'npc:passerby') greetPasserby(obj); else if (id.startsWith('npc:')) openNpc(id.slice(4)); else { showWord(id); const cid = obj && obj.userData && obj.userData.collect; if (cid) setTimeout(() => collect(id, cid), 900); setTimeout(() => questProgress('find', id), cid ? 2200 : 1100); } },
+      pick: (id, obj) => { if (tab !== 'town' || place !== 'town') return; if (id === 'npc:passerby') greetPasserby(obj); else if (id.startsWith('npc:')) openNpc(id.slice(4)); else if (window.PVStory && PVStory.obj(id, obj)) { /* l'histoire répond */ } else { showWord(id); const cid = obj && obj.userData && obj.userData.collect; if (cid) setTimeout(() => collect(id, cid), 900); setTimeout(() => questProgress('find', id), cid ? 2200 : 1100); } },
       active: () => place === 'town' && !document.hidden };
-    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); refreshMarkers(); updTime(); if (!store.get('pv_help')) setTimeout(() => helpShow(true), 1200); if (L.firstWin || L.found.length) { L.firstWin = 1; setTimeout(announceQuest, 2500); } });
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); refreshMarkers(); updTime(); if (!(window.PVStory && PVStory.boot()) && !L.found.some(id => TOWN.has(id))) showIntro('town'); if (!store.get('pv_help')) setTimeout(() => helpShow(true), 1200); if (L.firstWin || L.found.length) { L.firstWin = 1; setTimeout(announceQuest, 2500); } });
   }
   started = true;
 }
@@ -502,7 +501,7 @@ function enterBakery() {
     window.buildScene(H);
   }
   if (window.PVBakery && PVBakery.reset) PVBakery.reset();
-  if (!L.found.some(id => !TOWN.has(id))) showIntro('bakery');
+  if (!(window.PVStory && PVStory.place('bakery')) && !L.found.some(id => !TOWN.has(id))) showIntro('bakery');
   say(T === 'pl' ? 'Dzień dobry!' : 'Hello!', { who: 'passerby' });
 }
 function exitBakery() { place = 'town'; show(null); if (town) town.placeAtBakery(); setPlaceUI(); }
@@ -654,13 +653,14 @@ const whoNow = () => curNpc || 'baker';
 let curDlg = null, dlgMode = null;
 const CV = () => ({ c: PV.CITY_NAME[country()] || 'Petite Ville', cl: PV.CITY_LOC[country()] || 'w Petite Ville' });
 const DD = () => curDlg || (curNpc ? PV.NPCS[curNpc].dlg[T] : D);
-const voiceP = () => curNpc ? PV.NPCS[curNpc].pitch : .95;
+let storyPitch = 1;
+const voiceP = () => dlgMode === 'story' ? storyPitch : (curNpc && PV.NPCS[curNpc]) ? PV.NPCS[curNpc].pitch : .95;
 /* réponses « peut-être » : le micro a hésité entre elles ; les toucher compte comme une réponse parlée */
 let maybe = new Set();
 function markMaybe(list) { maybe = new Set(list); document.querySelectorAll('#dOpts .opt').forEach((b, i) => b.classList.toggle('maybe', maybe.has(curOpts[i]))); }
 function render(line, tr, key) {
   line = fill(line, CV()); lastLine = line; $('dLine').textContent = line; $('dTrTxt').textContent = fill((tr || {})[ui] || '', CV());
-  curOpts = key ? DD().opts[key] : [];
+  curOpts = key ? DD().opts[key].filter(o => !o.need || (window.PVStory && PVStory.has(o.need))) : [];
   const box = $('dOpts'); box.innerHTML = '';
   curOpts.forEach(o => {
     const b = el('button', 'opt'); b.type = 'button';
@@ -676,6 +676,7 @@ function render(line, tr, key) {
 }
 function go(id, line, queue) { const n = DD().nodes[id]; const l = fill(line ? line[0] : n[0], CV()); render(l, line ? line[1] : n[1], n[2]); lastWho = whoNow(); say(l, { queue, pitch: voiceP(), who: lastWho }); }
 function choose(o, spoken) {
+  if (dlgMode === 'story' && window.PVStory) { const alt = PVStory.choose(o); if (alt) o = Object.assign({}, o, alt, { tip: null }); }
   /* une réponse touchée pendant que le micro écoute : on arrête l'écoute (sinon elle répondrait à la question suivante) */
   if (sess) sess.cancel();
   document.querySelectorAll('#dOpts .opt').forEach(b => b.classList.toggle('picked', b.firstChild && b.firstChild.textContent === o.t));
@@ -694,7 +695,7 @@ function choose(o, spoken) {
   }
   go(o.to, (o.self && o.self[curNpc]) || o.reply, true);
 }
-function openDlg() { curNpc = null; curDlg = null; dlgMode = null; $('dWho').textContent = S.baker; tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
+function openDlg() { if (window.PVStory && PVStory.npc('baker')) return; curNpc = null; curDlg = null; dlgMode = null; $('dWho').textContent = S.baker; tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
 $('dReplay').onclick = () => say(lastLine, { pitch: voiceP(), who: lastWho });
 $('dTr').onclick = () => $('dlg').classList.toggle('tr');
 $('dMic').onclick = () => { if (sess) { stopListen(); return; } micReady(dMicGo); };
@@ -721,6 +722,7 @@ function dMicGo() {
 }
 
 function openNpc(id) {
+  if (window.PVStory && PVStory.npc(id)) return;
   const n = PV.NPCS[id]; if (!n) return;
   curNpc = id; curDlg = null; dlgMode = 'npc';
   const q = questToday();
@@ -733,6 +735,8 @@ function openNpc(id) {
 }
 function finishNpc(id) {
   const mode = dlgMode; curNpc = null; curDlg = null; dlgMode = null;
+  document.body.classList.remove('storyDlg');
+  if (mode === 'story') { if (window.PVStory) PVStory.dlgEnd(id); return; }
   if (mode === 'quest') { L.quest.told = true; refreshMarkers(); toast(U.questTitle + ' · ' + questHint()); save(); return; }
   if (mode === 'first') { if (town && town.marker) town.marker('rosa', 'heart', 4); setTimeout(announceQuest, 3500); return; }
   const first = !L.met[id];
@@ -742,7 +746,7 @@ function finishNpc(id) {
 }
 /* ---------- les habitants viennent te voir ---------- */
 let idleT = 0, lastVisit = 0, visits = 0;
-const busyUI = () => SHEETS.some(p => !$(p).classList.contains('hidden')) || ['intro', 'win', 'onb', 'authOv'].some(p => $(p) && !$(p).classList.contains('hidden')) || document.body.classList.contains('photo');
+const busyUI = () => (window.PVStory && PVStory.busy()) || SHEETS.some(p => !$(p).classList.contains('hidden')) || ['intro', 'win', 'onb', 'authOv'].some(p => $(p) && !$(p).classList.contains('hidden')) || document.body.classList.contains('photo');
 setInterval(() => {
   if (!started || !town || !town.approach || place !== 'town' || tab !== 'town' || document.hidden || busyUI() || town.approaching()) { idleT = 0; return; }
   idleT++;
@@ -1061,6 +1065,14 @@ async function loadBoard() {
 }
 
 boot().catch(err => { console.error(err); renderOnb(); $('onb').classList.remove('hidden'); });
+/* accès pour l'histoire (story.js) */
+window.PVA = {
+  L: () => L, P: () => P, save: () => save(), town: () => town,
+  openStory(who, label, dlg, pitch) { curNpc = who; curDlg = dlg; dlgMode = 'story'; storyPitch = pitch || 1; $('dWho').textContent = label; $('dMe').textContent = ''; $('dTip').classList.add('hidden'); document.body.classList.add('storyDlg'); if (place === 'town' && town && town.talkTo && PV.NPCS[who]) town.talkTo(who); show('dlg'); go('start'); },
+  closeDlg() { const who = curNpc; show(null); finishNpc(who); },
+  freeStart() { if (!L.found.some(id => TOWN.has(id))) showIntro('town'); },
+  reward(n) { addXP(n); }
+};
 /* tests automatiques seulement (?test) */
-if (/[?&]test\b/.test(location.search)) window.PVT = { openNpc, opts: () => curOpts, markMaybe };
+if (/[?&]test\b/.test(location.search)) window.PVT = { openNpc, opts: () => curOpts, markMaybe, enterBakery, exitBakery, story: () => L && L.story, dlgOpen: () => !$('dlg').classList.contains('hidden') };
 }
