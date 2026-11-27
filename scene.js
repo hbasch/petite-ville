@@ -387,7 +387,7 @@ function placeAC(dt){const asp=innerWidth/innerHeight,port=asp<1,dlg=document.bo
  else{fov=port?50:34;const tx=port?pos.x*.8:pos.x*.3,tz=port?pos.z-1.5:pos.z*.35;_cl.set(tx,.3,tz);const dist=(port?11.5:12.8)*zoomV,el=.88;_cw.set(_cl.x,_cl.y+dist*Math.sin(el),_cl.z+dist*Math.cos(el))}
  const k=camInit?1-Math.exp(-dt*(dlg?4:6)):1;camInit=true;camP.lerp(_cw,k);camL.lerp(_cl,k);cam.position.copy(camP);cam.lookAt(camL);
  if(Math.abs(cam.fov-fov)>.05){cam.fov+=(fov-cam.fov)*k;cam.updateProjectionMatrix()}
- const E=PVClay.U;E.clipOn.value=1;E.clip.value.set(0,0,1,FZ-.15);E.clip2.value.set(0,1,0,HT-.45);E.cutOn.value=0;E.bendK.value=0}
+ const E=PVClay.U;E.clipOn.value=1;E.clip.value.set(0,0,1,job?99:FZ-.15);E.clip2.value.set(0,1,0,HT-.45);E.cutOn.value=0;E.bendK.value=0}
 /* reflets de la pâte : intérieur chaud (crème au plafond, bois au sol) au lieu du ciel de la place */
 const envT=new THREE.Color('#f6ead4').convertSRGBToLinear().multiplyScalar(.8),envH=new THREE.Color('#efe0c8').convertSRGBToLinear().multiplyScalar(.75),envG=new THREE.Color('#8a5a3a').convertSRGBToLinear().multiplyScalar(.6);
 function clayEnv(){const E=PVClay.U;E.envT.value.copy(envT);E.envH.value.copy(envH);E.envG.value.copy(envG)}
