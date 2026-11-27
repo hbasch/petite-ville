@@ -1199,7 +1199,7 @@ const spread = () => { const [a, b] = [...touches.values()]; return Math.hypot(a
 canvas.addEventListener('pointerdown', e => {
   touches.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { canvas.setPointerCapture(e.pointerId); } catch (er) { /* */ }
   if (touches.size === 1) { multi = false; down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, moved: 0, id: e.pointerId }; }
-  else { multi = true; down = null; if (touches.size === 2) pinch = { d: spread(), z: zoomT }; }
+  else { multi = true; down = null; joyEnd(); if (touches.size === 2) pinch = { d: spread(), z: zoomT }; }
 });
 canvas.addEventListener('pointermove', e => {
   if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1207,7 +1207,7 @@ canvas.addEventListener('pointermove', e => {
   if (pinch && touches.size >= 2) { setZoom(pinch.z * pinch.d / spread()); return; }
   if (down && down.id === e.pointerId) {
     const dx = e.clientX - down.lx, dy = e.clientY - down.ly; down.lx = e.clientX; down.ly = e.clientY; down.moved += Math.abs(dx) + Math.abs(dy);
-    if (down.moved > 6) { if (ACCAM) { camYaw -= dx * .006; camPitch = Math.max(.32, Math.min(1.0, camPitch + dy * .003)); } else { const k = .0042 * zoomV; tYaw -= dx * k; tPitch = Math.max(-1.1, Math.min(1.0, tPitch - dy * k)); } }
+    if (down.moved > 6) { if (ACCAM) joyMove(e.clientX - down.x, e.clientY - down.y); else { const k = .0042 * zoomV; tYaw -= dx * k; tPitch = Math.max(-1.1, Math.min(1.0, tPitch - dy * k)); } }
     return;
   }
   if (e.pointerType !== 'mouse') return;
@@ -1216,8 +1216,15 @@ canvas.addEventListener('pointermove', e => {
   canvas.style.cursor = id ? PVClay.cursor.hover : PVClay.cursor.hand;
   if (id) { tip.textContent = H.label(id); tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px'; tip.classList.remove('hidden'); } else tip.classList.add('hidden');
 });
-function lift(e) { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; if (multi) { if (!touches.size) multi = false; down = null; return true; } return false; }
+function lift(e) { joyEnd(); touches.delete(e.pointerId); if (touches.size < 2) pinch = null; if (multi) { if (!touches.size) multi = false; down = null; return true; } return false; }
 canvas.addEventListener('pointercancel', e => { lift(e); down = null; });
+/* glisser le doigt ou la souris = un joystick : on marche dans cette direction tant qu'on reste appuyé */
+const joyEl = $('joy'); let joy = null;
+function joyMove(dx, dy) {
+  const L = Math.hypot(dx, dy), k = Math.min(1, L / 70), ux = L ? dx / L : 0, uy = L ? dy / L : 0; joy = { x: ux * k, y: uy * k }; target = null;
+  if (joyEl && down) { joyEl.style.left = down.x + 'px'; joyEl.style.top = down.y + 'px'; joyEl.classList.remove('hidden'); joyEl.firstElementChild.style.transform = 'translate(' + (ux * k * 34) + 'px,' + (uy * k * 34) + 'px)'; }
+}
+function joyEnd() { joy = null; if (joyEl) joyEl.classList.add('hidden'); }
 canvas.addEventListener('pointerup', e => {
   if (lift(e)) return;
   if (photo || !down || down.id !== e.pointerId) { down = null; return; }
@@ -1495,6 +1502,9 @@ if (/[?&]glerr\b/.test(location.search)) { const d = document.createElement('pre
    pincer ou la molette rapproche. En conversation, elle vient cadrer l'habitant de face, par-dessus ton épaule.
    Ce qui se trouve entre la caméra et ton personnage (façade, arbre) s'ajoure en pointillé pour qu'on ne le perde jamais. */
 const BENDK = /[?&]plat\b/.test(location.search) ? 0 : .0105;
+/* repère au sol : l'endroit où ton personnage va quand tu touches le sol */
+const mark = new THREE.Mesh(new THREE.RingGeometry(.22, .34, 32), new THREE.MeshBasicMaterial({ color: '#f6cf6e', transparent: true, opacity: .9, depthWrite: false }));
+mark.rotation.x = -Math.PI / 2; mark.renderOrder = 3; mark.visible = false; scene.add(mark); PVClay.bendify(mark.material);
 let talkWho = null;
 /* premier angle (autour de la direction de ton personnage) d'où l'on voit l'habitant sans obstacle */
 function clearAngle(n, ux, uz, back) {
@@ -1528,7 +1538,13 @@ function updateTPS(dt, t, spd) {
     const Wv = Math.min(13, Math.max(6.5, asp * 8)), Hv = Wv / asp, dist = Hv / (2 * Math.tan(fov * Math.PI / 360)) * zoomV;
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
     _cl.set(pos.x + fx * (port ? 1.1 : .7), .95, pos.z + fz * (port ? 1.1 : .7));
-    _cw.set(_cl.x - fx * dist * Math.cos(camPitch), .95 + dist * Math.sin(camPitch), _cl.z - fz * dist * Math.cos(camPitch));
+    /* la caméra ne passe jamais derrière les façades : si elle sortirait de la place, elle se rapproche et monte */
+    let d = dist, p = camPitch;
+    for (let it = 0; it < 10; it++) {
+      const cx = _cl.x - fx * d * Math.cos(p), cz = _cl.z - fz * d * Math.cos(p), rr = Math.hypot(cx, cz), da = Math.abs(Math.atan2(Math.sin(Math.atan2(cx, cz) - G), Math.cos(Math.atan2(cx, cz) - G)));
+      if (rr < 9.4 || da < .42) break; d *= .9; p = Math.min(1.15, p + .06);
+    }
+    _cw.set(_cl.x - fx * d * Math.cos(p), .95 + d * Math.sin(p), _cl.z - fz * d * Math.cos(p));
   }
   const k = camInit ? 1 - Math.exp(-dt * (talking ? 4 : 8)) : 1; camInit = true;
   camPos.lerp(_cw, k); camLook.lerp(_cl, k);
@@ -1540,6 +1556,7 @@ function updateTPS(dt, t, spd) {
   else PVClay.U.cutB.value.set(pos.x, 1.0, pos.z);
   PVClay.U.cutOn.value = 1; PVClay.U.clipOn.value = 0;
   PVClay.U.bend.value.set(pos.x, pos.z, -Math.sin(camYaw), -Math.cos(camYaw)); PVClay.U.bendK.value = BENDK;
+  mark.visible = !!target && !talking; if (mark.visible) { mark.position.set(target.x, .05, target.z); const sc = 1 + Math.sin(t * 6) * .12; mark.scale.set(sc, sc, sc); }
   if (!me) return;
   /* ton personnage : se tourne vers où il va (ou vers l'habitant qui lui parle), marche, respire, cligne des yeux */
   me.g.position.set(pos.x, .03, pos.z);
@@ -1571,12 +1588,13 @@ function loop() {
   wish.set(0, 0, 0);
   if (keys.w || keys.z || keys.arrowup) wish.add(fwd);
   if (keys.s || keys.arrowdown) wish.sub(fwd);
-  if (keys.a || keys.q) wish.sub(right);
-  if (keys.d) wish.add(right);
-  if (keys.arrowleft) { if (ACCAM) camYaw += 1.6 * dt; else tYaw += 1.6 * dt; }
-  if (keys.arrowright) { if (ACCAM) camYaw -= 1.6 * dt; else tYaw -= 1.6 * dt; }
+  if (keys.a || keys.q || (ACCAM && keys.arrowleft)) wish.sub(right);
+  if (keys.d || (ACCAM && keys.arrowright)) wish.add(right);
+  if (!ACCAM && keys.arrowleft) tYaw += 1.6 * dt;
+  if (!ACCAM && keys.arrowright) tYaw -= 1.6 * dt;
+  if (joy) { wish.set(0, 0, 0).addScaledVector(right, joy.x).addScaledVector(fwd, -joy.y); }
   const SPEED = 2.6;
-  if (wish.lengthSq() > 0) { target = null; wish.normalize().multiplyScalar(SPEED); }
+  if (wish.lengthSq() > 0) { target = null; const wl = Math.min(1, wish.length()); wish.normalize().multiplyScalar(SPEED * (joy ? Math.max(.35, wl) : 1)); }
   else if (target) { const ddx = target.x - pos.x, ddz = target.z - pos.z, L = Math.hypot(ddx, ddz); if (L < .08) target = null; else { const sp = Math.min(SPEED, L * 2.2); wish.set(ddx / L * sp, 0, ddz / L * sp); } }
   vel.lerp(wish, 1 - Math.exp(-dt * (wish.lengthSq() > 0 ? 7 : 9)));
   const px = pos.x, pz = pos.z;

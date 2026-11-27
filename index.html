@@ -8,7 +8,7 @@
 <meta name="description" content="Apprends l'anglais ou le polonais en parlant aux habitants d'une petite ville en 3D.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=26">
+<link rel="stylesheet" href="style.css?v=27">
 <script>
 /* pas de zoom de la page entière (iPhone) : le pincement sert à zoomer dans la ville */
 document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
@@ -56,6 +56,7 @@ if (/[?&]debug\b/.test(location.search)) {
   <button type="button" class="pill" id="goalPill"><span class="goalRing" id="goalRing"><i></i></span><span id="goalTxt">0/15</span></button>
   <button type="button" class="pill" id="misBtn"><span class="txt" data-i="mission"></span> <b id="misN">0/4</b></button>
  </div>
+ <button type="button" class="pill helpPill" id="helpBtn" aria-label="Commandes">?</button>
  <button type="button" class="pill timePill" id="timeBtn" aria-label="Heure" aria-expanded="false"><svg><use href="#i-sun" id="timeIco"/></svg><span id="timeTxt">12:00</span></button>
  <button type="button" class="pill photoPill" id="photoBtn" aria-label="Photo"><svg><use href="#i-cam"/></svg><span class="txt" data-i="photo"></span></button>
  <button type="button" class="pill placePill" id="placeBtn"><span id="placeName"></span><svg><use href="#i-down"/></svg></button>
@@ -127,6 +128,12 @@ if (/[?&]debug\b/.test(location.search)) {
  <div class="mini" data-i="voiceNote"></div>
 </section>
 
+<div id="joy" class="hidden" aria-hidden="true"><i></i></div>
+<div id="ctrlHelp" class="hidden" role="dialog" aria-label="Commandes">
+ <b data-i="helpTitle"></b>
+ <ul><li data-i="helpTap"></li><li data-i="helpDrag"></li><li data-i="helpKeys"></li><li data-i="helpTalk"></li><li data-i="helpZoom"></li></ul>
+ <button class="btn sm" id="helpOk" type="button" data-i="helpOk"></button>
+</div>
 <div id="timePop" class="hidden" role="dialog" aria-label="Heure">
  <div class="phRow"><span data-i="hourLbl"></span> <b id="tpHour">12:00</b><button class="btn sm" id="tpReal" type="button" data-i="realTime"></button></div>
  <input type="range" id="tpSlider" min="0" max="24" step="0.25" value="12" aria-label="Heure">
@@ -269,10 +276,10 @@ if (/[?&]debug\b/.test(location.search)) {
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="config.js?v=10"></script>
-<script src="data.js?v=19"></script>
+<script src="data.js?v=20"></script>
 <script src="clay.js?v=18"></script>
 <script src="scene.js?v=22"></script>
-<script src="town.js?v=52"></script>
-<script src="app.js?v=24"></script>
+<script src="town.js?v=53"></script>
+<script src="app.js?v=25"></script>
 </body>
 </html>

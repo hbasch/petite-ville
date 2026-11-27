@@ -369,3 +369,12 @@ body.photo #timePop{display:none!important}
 #dlg .opts{grid-area:opts;width:auto;margin:0;justify-self:stretch}
 #dlg .tip{margin-top:8px}
 @media(max-width:640px){#dlg{grid-template-columns:minmax(0,1fr);grid-template-areas:"opts" "talk" "bubble"}#dlg .micBig{width:56px;height:56px}}
+
+/* joystick (glisser pour marcher) et aide aux commandes */
+#joy{position:fixed;z-index:6;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;background:rgba(255,248,230,.35);border:3px solid rgba(255,248,230,.85);pointer-events:none;display:grid;place-items:center}
+#joy i{width:46px;height:46px;border-radius:50%;background:#fff8e6;box-shadow:0 3px 0 #d9c8a0}
+.helpPill{order:4;width:44px;justify-content:center;font:800 18px var(--disp)}
+#ctrlHelp{position:fixed;z-index:12;top:calc(66px + var(--safeT));left:50%;transform:translateX(-50%);width:min(420px,calc(100% - 24px));background:#fff8e6;color:#4a3a2a;border-radius:24px;padding:16px 18px;box-shadow:0 12px 30px rgba(0,0,0,.3)}
+#ctrlHelp b{font:800 20px var(--disp)}
+#ctrlHelp ul{margin:8px 0 12px;padding-left:20px;font:700 15px/1.5 Nunito,sans-serif}
+body.photo #ctrlHelp,body.dlg-open #ctrlHelp{display:none!important}

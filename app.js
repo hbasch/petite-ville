@@ -341,7 +341,7 @@ function start() {
     const H = { palette: palette(), country: country(), label: id => L.found.includes(id) ? W[id][T] : '?',
       pick: (id, obj) => { if (tab !== 'town' || place !== 'town') return; if (id === 'npc:passerby') greetPasserby(obj); else if (id.startsWith('npc:')) openNpc(id.slice(4)); else { showWord(id); const cid = obj && obj.userData && obj.userData.collect; if (cid) setTimeout(() => collect(id, cid), 900); setTimeout(() => questProgress('find', id), cid ? 2200 : 1100); } },
       active: () => place === 'town' && !document.hidden };
-    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); refreshMarkers(); updTime(); if (L.firstWin || L.found.length) { L.firstWin = 1; setTimeout(announceQuest, 2500); } });
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); refreshMarkers(); updTime(); if (!store.get('pv_help')) setTimeout(() => helpShow(true), 1200); if (L.firstWin || L.found.length) { L.firstWin = 1; setTimeout(announceQuest, 2500); } });
   }
   started = true;
 }
@@ -393,6 +393,10 @@ $('photoBtn').onclick = () => {
 $('phSlider').oninput = () => { const h = +$('phSlider').value; $('phHour').textContent = fmtH(h); town.setHour(h); updTime(); };
 $('phReal').onclick = () => { town.setHour(null); const h = town.hour(); $('phSlider').value = h; $('phHour').textContent = fmtH(h); };
 $('phClose').onclick = () => { town.setPhoto(false); document.body.classList.remove('photo'); $('photoBar').classList.add('hidden'); updTime(); };
+/* aide aux commandes : s'affiche la première fois que la ville apparaît, puis avec le bouton « ? » */
+function helpShow(on) { $('ctrlHelp').classList.toggle('hidden', !on); if (!on) store.set('pv_help', '1'); }
+$('helpBtn').onclick = e => { e.stopPropagation(); helpShow($('ctrlHelp').classList.contains('hidden')); };
+$('helpOk').onclick = () => helpShow(false);
 /* heure de la ville sans passer par le mode photo : une pastille dans le haut de l'écran, un curseur, et « Heure réelle » pour revenir au temps vrai */
 function updTime() {
   if (!town || !town.hour) return; const h = town.hour(), man = !!(town.manual && town.manual());
