@@ -263,7 +263,7 @@ function reset(){pos.set(START.x,EYE,START.z);yaw=tYaw=START.yaw;pitch=tPitch=ST
  down=null;pinch=null;multi=false;touches.clear();for(const k in keys)keys[k]=false;hl(hov,false);hov=null;tip.classList.add('hidden');place()}
 reset();
 window.PVBakery={reset};
-if(/[?&]debug\b/.test(location.search))window.PVBAK={cam,go(x,z,yw,pt){pos.set(x,EYE,z);yaw=tYaw=yw||0;pitch=tPitch=pt||0;target=null;vel.set(0,0,0);place()}};
+if(/[?&]debug\b/.test(location.search))window.PVBAK={cam,R,scene,go(x,z,yw,pt){pos.set(x,EYE,z);yaw=tYaw=yw||0;pitch=tPitch=pt||0;target=null;vel.set(0,0,0);place()}};
 
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)});
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
