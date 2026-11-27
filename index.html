@@ -8,7 +8,7 @@
 <meta name="description" content="Apprends l'anglais ou le polonais en parlant aux habitants d'une petite ville en 3D.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=32">
+<link rel="stylesheet" href="style.css?v=34">
 <script>
 /* pas de zoom de la page entière (iPhone) : le pincement sert à zoomer dans la ville */
 document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
@@ -123,8 +123,9 @@ if (/[?&]debug\b/.test(location.search)) {
  <div class="talk">
   <button class="micBig" id="dMic" type="button" aria-label="Parler"><svg><use href="#i-mic"/></svg></button>
   <div class="heard" id="dHeard"></div>
-  <button class="pillBtn" id="dNoMic" type="button" data-i="noMic"></button>
+  <button class="pillBtn" id="dNoMic" type="button" data-i="noMicBtn"></button>
   <button class="pillBtn" id="dUseMic" type="button" data-i="useMic"></button>
+  <div class="micAsk" id="micAsk"><span data-i="micAskQ"></span><button class="pillBtn on" id="micNo" type="button" data-i="micNo"></button><button class="pillBtn" id="micYes" type="button" data-i="micYes"></button></div>
  </div>
  <div class="optsLbl" data-i="orTap"></div>
  <div class="opts" id="dOpts"></div>
@@ -279,10 +280,10 @@ if (/[?&]debug\b/.test(location.search)) {
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="config.js?v=10"></script>
-<script src="data.js?v=24"></script>
+<script src="data.js?v=26"></script>
 <script src="clay.js?v=18"></script>
 <script src="scene.js?v=22"></script>
-<script src="town.js?v=55"></script>
-<script src="app.js?v=30"></script>
+<script src="town.js?v=57"></script>
+<script src="app.js?v=32"></script>
 </body>
 </html>

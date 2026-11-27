@@ -484,7 +484,7 @@ if (COUNTRY === 'gb') {
   /* Grassmarket : immeubles de pierre plus hauts, pignons à redents écossais, fenêtres à guillotine,
      devantures peintes chacune de sa couleur (comme Victoria Street) */
   const SF = ['#a8322e', '#2f5f9a', '#2f6b4a', '#d89a24', '#6a3a7a', '#a8322e', '#2f5f9a', '#2f6b4a', '#1f3a2e'];
-  B.forEach((sp, i) => { sp.h += 1.3; if (!sp.flat) sp.gable = i % 3 === 2 ? 'tri' : 'step'; sp.shutters = null; sp.sash = true; sp.front = SF[i]; if (sp.awning) sp.awning = SF[i]; });
+  B.forEach((sp, i) => { sp.h += .5; if (!sp.flat) sp.gable = i % 3 === 2 ? 'tri' : 'step'; sp.shutters = null; sp.sash = true; sp.front = SF[i]; if (sp.awning) sp.awning = SF[i]; });
   Object.assign(B[8], { id: 'pub', shop: 'pint', awning: '#1f3a2e', front: '#1f3a2e', flowers: false });
   B[4].color = '#c9b896';
 } else if (COUNTRY === 'pl') {
@@ -494,6 +494,8 @@ if (COUNTRY === 'gb') {
   Object.assign(B[8], { id: 'milkbar', shop: 'pierogi', awning: '#f4e6c8', front: '#7a2a2e', flowers: false });
   B[4].color = '#dccaa8';
 }
+/* bâtiments plus bas, comme dans un jeu de village : les deux du bout (côté caméra) n'ont qu'un étage, pour ne pas boucher la vue */
+B[0].h = Math.min(B[0].h, B[0].shop ? 5.0 : 4.6); B[B.length - 1].h = Math.min(B[B.length - 1].h, B[B.length - 1].shop ? 5.0 : 4.6);
 const RAD = 11.6, span = 250 * Math.PI / 180, a0 = G + Math.PI - span / 2;
 const bld = {};
 B.forEach((sp, i) => { const ang = a0 + span * i / (B.length - 1); const g = building(sp, ang, RAD + (sp.id === 'townhall' ? .3 : 0)); if (sp.id === 'bakeryShop') bld.bakery = { g, ang }; if (sp.id === 'townhall') bld.hall = { g, sp }; });
@@ -716,7 +718,8 @@ function tree(x, z, s) {
   colliders.push({ x, z, r: .6 * s }); sblob(x, z, 1.25 * s);
 }
 [[11.2, 2.4], [11.6, -2.5], [13.2, 3.4], [13.0, -3.6], [12.2, 4.7], [12.4, -4.8], [14.0, 2.2], [14.1, -2.3]].forEach(([r, s]) => tree(Math.sin(G) * r + Math.cos(G) * s, Math.cos(G) * r - Math.sin(G) * s, rnd(.9, 1.2)));
-[G + 1.3, G - 1.3].forEach(a => tree(Math.sin(a) * 7.2, Math.cos(a) * 7.2, .85));
+/* plus d'arbres au milieu de la place, côté caméra : ils cachaient Rosa et les habitants en conversation ; des jardinières basses à la place */
+[G + 1.3, G - 1.3].forEach(a => planter(scene, Math.sin(a) * 7.4, Math.cos(a) * 7.4, true));
 for (let i = 0; i < 30; i++) { const a = G + rnd(.15, TAU - .15), r = rnd(13.6, 14.6); mk(lump(sph(rnd(.35, .6), 12), .04, 2), C(shade(PAL.leaf, rnd(-.1, .04))), Math.sin(a) * r, .22, Math.cos(a) * r); }
 
 /* ---------- ce qui fait chaque ville ---------- */
@@ -944,14 +947,14 @@ function rigGlb(mesh, cfg) {
   const mouth = new THREE.Group(); head.add(mouth);
   const hw = (cfg.mouthW || .034) * H, dep = .012 * H, lift = .004 * H, pts = [];
   for (let k = 0; k <= 8; k++) { const u = k / 4 - 1, x = cx + u * hw, y = mouthY + dep * u * u, h = F.hit(x, y); if (h) pts.push(h.p.clone().addScaledVector(h.n, lift).sub(head.position)); }
-  const lipM = C(cfg.lip || '#7a2e2e', { bumpScale: 0, roughness: .35 });
+  const lipM = C(cfg.lip || '#7a2e2e', { bumpScale: 0, roughness: .35 }); lipM.userData.noCut = true;
   const smile = pts.length > 3 ? new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, .008 * H, 8, false), lipM) : new THREE.Group();
   mouth.add(smile);
   [pts[0], pts[pts.length - 1]].forEach(q => { if (q) { const cap = new THREE.Mesh(G_('lipCap', () => sph(1, 8)), lipM); cap.scale.setScalar(.008 * H); cap.position.copy(q); mouth.add(cap); } });
   const c0 = F.hit(cx, mouthY + .004 * H), open = new THREE.Group();
   if (c0) { open.position.copy(c0.p).addScaledVector(c0.n, lift * 1.4).sub(head.position); open.lookAt(open.position.clone().add(c0.n)); }
-  const hole = new THREE.Mesh(G_('mHole', () => sph(1, 16)), C('#4a1620', { bumpScale: 0, roughness: .4 })); hole.scale.set(.026 * H, .022 * H, .006 * H); open.add(hole);
-  const tongue = new THREE.Mesh(G_('mTongue', () => sph(1, 12)), C('#e0707a', { bumpScale: 0, roughness: .4 })); tongue.scale.set(.016 * H, .009 * H, .005 * H); tongue.position.set(0, -.01 * H, .003 * H); open.add(tongue);
+  const hole = new THREE.Mesh(G_('mHole', () => sph(1, 16)), (() => { const m = C('#4a1620', { bumpScale: 0, roughness: .4 }); m.userData.noCut = true; return m; })()); hole.scale.set(.026 * H, .022 * H, .006 * H); open.add(hole);
+  const tongue = new THREE.Mesh(G_('mTongue', () => sph(1, 12)), (() => { const m = C('#e0707a', { bumpScale: 0, roughness: .4 }); m.userData.noCut = true; return m; })()); tongue.scale.set(.016 * H, .009 * H, .005 * H); tongue.position.set(0, -.01 * H, .003 * H); open.add(tongue);
   open.scale.set(1, .01, 1); mouth.add(open);
   return { sk, head, armL, armR, smile, open, arms: !!A };
 }
@@ -968,7 +971,7 @@ if (THREE.GLTFLoader && !/[?&]glb=0/.test(location.search)) {
       m.scale.setScalar(s); m.position.set(-(box.min.x + box.max.x) / 2 * s, -box.min.y * s, -(box.min.z + box.max.z) / 2 * s);
       m.traverse(c => { if (!c.isMesh) return; c.castShadow = !mobile; c.receiveShadow = true;
         const mt = c.material; mt.metalness = 0; mt.roughness = .58; mt.envMapIntensity = .6; if (mt.map) mt.map.anisotropy = 4;
-        PVClay.apply(mt, .035, [.35, .12, .06]); });
+        mt.userData.noCut = true; PVClay.apply(mt, .035, [.35, .12, .06]); });
       let rig = null; try { let mesh = null; m.traverse(c => { if (c.isMesh && !mesh) mesh = c; }); if (mesh) rig = rigGlb(mesh, cfg); } catch (e) { console.warn('rig', e); }
       /* le pivot sert aux mouvements : on bascule autour des pieds, comme une figurine qu'on déplace */
       const pivot = new THREE.Group(); pivot.add(m); o.grp.add(pivot);
@@ -1077,7 +1080,7 @@ function respawnLeaf(L) { const t = trees[(Math.random() * trees.length) | 0]; L
 for (let i = 0; i < LEAVES; i++) { const L = {}; respawnLeaf(L); L.y = rnd(0, 3); leaves.push(L); lc.set([shade(PAL.leaf, .05), '#e8893a', '#f2b33a', '#c9562e'][i % 4]); leafIM.setColorAt(i, lc); }
 if (leafIM.instanceColor) leafIM.instanceColor.needsUpdate = true;
 /* cheminée de la boulangerie et sa fumée */
-const chimney = new THREE.Group(); bld.bakery.g.add(chimney); chimney.position.set(1.4, 7.2, -.6);
+const chimney = new THREE.Group(); bld.bakery.g.add(chimney); chimney.position.set(1.4, B.find(b => b.id === 'bakeryShop').h - .1, -.6);
 mk(rbox(.55, 1.4, .55, .12, 3), C(PAL.roofs[0]), 0, 0, 0, chimney); mk(rbox(.7, .18, .7, .08, 2), C(TRIM), 0, .72, 0, chimney);
 const smokeM = [], puffs = [];
 for (let i = 0; i < 7; i++) { const m = C('#f4f1ec', { unique: true, transparent: true, opacity: .0, roughness: 1, bumpScale: .02, depthWrite: false }); smokeM.push(m); const p = mk(G_('puff', () => lump(sph(.22, 12), .03)), m, 0, 0, 0, chimney); puffs.push({ p, t: i / 7 }); }
@@ -1188,8 +1191,9 @@ let down = null, hov = null;
 function pick(e) {
   const r = canvas.getBoundingClientRect(); ptr.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ptr, cam);
   const hs = ray.intersectObjects(hits, true); if (!hs.length) return null;
-  let o = hs[0].object; while (o && !o.userData.id) o = o.parent;
-  return o ? { id: o.userData.id, point: hs[0].point, dist: hs[0].distance, obj: o } : null;
+  /* les objets ne se touchent plus (ça gênait la marche) : on passe à travers jusqu'au sol ou à un habitant */
+  for (const h of hs) { let o = h.object; while (o && !o.userData.id) o = o.parent; if (!o) continue; const id = o.userData.id; if (id === 'square' || id.startsWith('npc:')) return { id, point: h.point, dist: h.distance, obj: o }; }
+  return null;
 }
 /* doigts et souris : un doigt = regarder (glisser) ou marcher / toucher (tap) ; deux doigts = zoom (pincer) ;
    molette = zoom. Pendant un geste à deux doigts, ni rotation ni clic parasite. */
@@ -1214,7 +1218,6 @@ canvas.addEventListener('pointermove', e => {
   const p = pick(e), id = p && p.id !== 'square' ? p.id : null;
   if (id !== hov) hov = id;
   canvas.style.cursor = id ? PVClay.cursor.hover : PVClay.cursor.hand;
-  if (id) { tip.textContent = H.label(id); tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px'; tip.classList.remove('hidden'); } else tip.classList.add('hidden');
 });
 function lift(e) { joyEnd(); touches.delete(e.pointerId); if (touches.size < 2) pinch = null; if (multi) { if (!touches.size) multi = false; down = null; return true; } return false; }
 canvas.addEventListener('pointercancel', e => { lift(e); down = null; });
@@ -1230,26 +1233,49 @@ canvas.addEventListener('pointerup', e => {
   if (photo || !down || down.id !== e.pointerId) { down = null; return; }
   const moved = down.moved; down = null; if (moved > 8) return;
   let p = pick(e);
-  /* aide au toucher : si le doigt tombe à côté, on prend l'habitant ou l'objet le plus proche à l'écran */
+  /* aide au toucher : si le doigt tombe à côté d'un habitant, on le prend quand même */
   if (ACCAM && (!p || p.id === 'square')) { const q = nearPick(e, (mobile ? 52 : 28)); if (q) p = q; }
   if (ACCAM && (!p || p.id === 'square')) { const g = groundPick(e); if (g) { target = new THREE.Vector3(g.x, 1.45, g.z); return; } }
   if (!p) return;
   if (p.id === 'square') { target = new THREE.Vector3(p.point.x, 1.45, p.point.z); return; }
   H.pick(p.id, p.obj);
 });
+/* mots des objets : quand ton personnage passe tout près d'un objet, une étiquette apparaît au-dessus ; on la touche pour voir le mot */
+const wordTag = document.createElement('button'); wordTag.type = 'button'; wordTag.id = 'wordTag'; wordTag.className = 'hidden'; document.body.appendChild(wordTag);
+let tagFor = null, tagT = 0, tagLab = ''; const _tq = new THREE.Vector3(), _tp = new THREE.Vector3();
+wordTag.addEventListener('pointerdown', e => e.stopPropagation());
+wordTag.addEventListener('click', e => { e.stopPropagation(); if (tagFor) H.pick(tagFor.userData.id, tagFor); });
+function hideTag() { if (tagFor) { tagFor = null; wordTag.classList.add('hidden'); } }
+function updWordTag(t) {
+  if (t - tagT > .2) {
+    tagT = t; let best = null, bd = 1.7;
+    if (!talking) hits.forEach(o => {
+      const id = o.userData.id; if (!id || id === 'square' || id.startsWith('npc:') || !o.visible) return;
+      if (!o.userData.box) { o.updateWorldMatrix(true, true); o.userData.box = new THREE.Box3().setFromObject(o); }
+      const b = o.userData.box; if (b.isEmpty()) return;
+      _tq.set(pos.x, (b.min.y + b.max.y) / 2, pos.z); const d = b.distanceToPoint(_tq); if (d < bd) { bd = d; best = o; }
+    });
+    const lab = best ? H.label(best.userData.id) : '';
+    if (best !== tagFor || lab !== tagLab) { tagFor = best; tagLab = lab; wordTag.textContent = lab; wordTag.classList.toggle('unknown', lab === '?'); wordTag.classList.toggle('hidden', !best); }
+  }
+  if (!tagFor) return;
+  const b = tagFor.userData.box; _tp.set((b.min.x + b.max.x) / 2, Math.min(b.max.y, 2.4) + .3, (b.min.z + b.max.z) / 2); _tp.y -= bendDrop(_tp.x, _tp.z); _tp.project(cam);
+  if (_tp.z > 1) { wordTag.style.visibility = 'hidden'; return; }
+  const r = canvas.getBoundingClientRect(); wordTag.style.visibility = '';
+  wordTag.style.left = ((_tp.x + 1) / 2 * r.width + r.left) + 'px'; wordTag.style.top = ((1 - _tp.y) / 2 * r.height + r.top) + 'px';
+}
 /* l'horizon arrondi abaisse ce qui est loin : pour viser juste, on applique la même descente aux calculs du toucher */
 function bendDrop(x, z) { if (!ACCAM || photo) return 0; const bd = (x - pos.x) * -Math.sin(camYaw) + (z - pos.z) * -Math.cos(camYaw); return BENDK * bd * bd; }
 const _np = new THREE.Vector3(), _nb = new THREE.Box3();
 function nearPick(e, radius) {
   const r = canvas.getBoundingClientRect(); let best = null, bd = radius;
   hits.forEach(o => {
-    const id = o.userData.id; if (!id || id === 'square' || !o.visible) return;
-    if (id.startsWith('npc:')) o.getWorldPosition(_np).add(new THREE.Vector3(0, .9, 0));
-    else { _nb.setFromObject(o); if (_nb.isEmpty()) return; _nb.getCenter(_np); }
+    const id = o.userData.id; if (!id || !id.startsWith('npc:') || !o.visible) return;
+    o.getWorldPosition(_np).add(new THREE.Vector3(0, .9, 0));
     _np.y -= bendDrop(_np.x, _np.z); _np.project(cam); if (_np.z > 1 || _np.z < -1) return;
     const sx = (_np.x + 1) / 2 * r.width + r.left, sy = (1 - _np.y) / 2 * r.height + r.top;
     /* les habitants se « captent » de loin, les objets seulement tout près (sinon un tap pour marcher ouvrirait un mot) */
-    const d = Math.hypot(sx - e.clientX, sy - e.clientY) * (id.startsWith('npc:') ? 1 : 2.4);
+    const d = Math.hypot(sx - e.clientX, sy - e.clientY);
     if (d < bd) { bd = d; best = { id, obj: o, point: _np.clone() }; }
   });
   return best;
@@ -1475,13 +1501,14 @@ function updatePeople(dt, t) {
 }
 function talkTo(id) {
   const o = people.find(p => p.id === id); if (!o) return; talking = o; o.pause = 999;
+  if (ACCAM) { try { o.plan = talkPlan(o); } catch (e) { o.plan = null; } if (o.plan) { target = new THREE.Vector3(o.plan.sx, 1.45, o.plan.sz); return; } }
   if (o.mode === 'sit') { const f = o.grp.rotation.y; target = new THREE.Vector3(o.grp.position.x + Math.sin(f) * 2.3, 1.45, o.grp.position.z + Math.cos(f) * 2.3); return; }
   const dx = pos.x - o.grp.position.x, dz = pos.z - o.grp.position.z, d = Math.hypot(dx, dz);
   if (ACCAM) { /* face à l'habitant, côté place (vers le centre), comme dans un jeu de village */
     const n = o.grp.position, L = Math.hypot(n.x, n.z) || 1; target = new THREE.Vector3(n.x - n.x / L * 1.4, 1.45, n.z - n.z / L * 1.4); return; }
   if (Math.abs(d - 2.5) > .6) target = new THREE.Vector3(o.grp.position.x + dx / d * 2.5, 1.45, o.grp.position.z + dz / d * 2.5);
 }
-function endTalk() { if (talking) { talking.talkA = null; talking.pause = rnd(2, 3); talking.waved = true; talking.happy = 1.5; } talking = null; }
+function endTalk() { if (talking) { talking.talkA = null; talking.plan = null; talking.pause = rnd(2, 3); talking.waved = true; talking.happy = 1.5; } talking = null; }
 function greet(hitObj) { const o = people.find(p => p.grp === hitObj) || people.find(p => p.id === 'passerby'); if (o) { o.wave = 1.6; o.pause = 2.5; } }
 
 /* ---------- effets ---------- */
@@ -1535,6 +1562,26 @@ const mark = new THREE.Mesh(new THREE.RingGeometry(.22, .34, 32), new THREE.Mesh
 mark.rotation.x = -Math.PI / 2; mark.renderOrder = 3; mark.visible = false; scene.add(mark); PVClay.bendify(mark.material);
 let talkWho = null;
 /* premier angle (autour de la direction de ton personnage) d'où l'on voit l'habitant sans obstacle */
+function talkBack() { const port = innerWidth / innerHeight < 1, fov = port ? 44 : 30; return (port ? 3.7 : 3.1) / (2 * Math.tan(fov * Math.PI / 360)); }
+function talkPlan(o) {
+  const n = o.grp.position, sit = o.mode === 'sit';
+  const base = sit ? o.grp.rotation.y : Math.atan2(-n.x, -n.z);
+  const obst = hits.filter(h => { const id = String(h.userData.id); return !id.startsWith('npc:') && id !== 'square'; });
+  const head = new THREE.Vector3(n.x, sit ? .9 : 1.15, n.z), rc = new THREE.Raycaster(), back = talkBack(); rc.camera = cam;
+  let best = null;
+  for (const da of [0, .35, -.35, .7, -.7, 1.0, -1.0]) {
+    const a = base + da, sx = n.x + Math.sin(a) * (sit ? 2.3 : 1.5), sz = n.z + Math.cos(a) * (sit ? 2.3 : 1.5);
+    if (Math.hypot(sx, sz) > 9 || colliders.some(c => Math.hypot(c.x - n.x, c.z - n.z) > .1 && Math.hypot(c.x - sx, c.z - sz) < c.r + .5)) continue;
+    for (const ca of [.3, -.3, .55, -.55, 0]) {
+      const v = a + ca, cp = new THREE.Vector3(n.x + Math.sin(v) * back, 1 + back * .34, n.z + Math.cos(v) * back);
+      rc.set(cp, head.clone().sub(cp).normalize()); rc.far = cp.distanceTo(head) - .3;
+      const occ = rc.intersectObjects(obst, true).length;
+      const sc = occ * 3 + Math.abs(da) * .6 + Math.abs(ca) * .4 + (Math.hypot(cp.x, cp.z) > 8.6 ? 5 : 0);
+      if (!best || sc < best.s) best = { s: sc, sx, sz, v };
+    }
+  }
+  return best;
+}
 function clearAngle(n, ux, uz, back) {
   let best = .35, bestN = 1e9;
   for (const a of [.35, -.35, .7, -.7, 1.05, -1.05, 1.4, -1.4, 1.8, -1.8, 0]) {
@@ -1557,10 +1604,14 @@ function updateTPS(dt, t, spd) {
     const hy = talking.mode === 'sit' ? .8 : 1.0;
     fov = port ? 44 : 30;
     const Hv = port ? 3.7 : 3.1, back = Hv / (2 * Math.tan(fov * Math.PI / 360));
-    if (talking.talkA == null || talkWho !== talking) { talkWho = talking; talking.talkA = clearAngle(n, ux, uz, back); }
-    const ca = Math.cos(talking.talkA), sa = Math.sin(talking.talkA), vx = ux * ca + uz * sa, vz = -ux * sa + uz * ca;
+    let vx, vz;
+    if (talking.plan) { vx = Math.sin(talking.plan.v); vz = Math.cos(talking.plan.v); }
+    else {
+      if (talking.talkA == null || talkWho !== talking) { talkWho = talking; talking.talkA = clearAngle(n, ux, uz, back); }
+      const ca = Math.cos(talking.talkA), sa = Math.sin(talking.talkA); vx = ux * ca + uz * sa; vz = -ux * sa + uz * ca;
+    }
     _cw.set(n.x + vx * back, 1.0 + back * .34, n.z + vz * back);
-    _cl.set(n.x, hy - (port ? .95 : .42), n.z);
+    _cl.set(n.x, hy - (port ? .95 : .8), n.z);
   } else {
     fov = port ? 44 : 30;
     const Wv = Math.min(13, Math.max(6.5, asp * 8)), Hv = Wv / asp, dist = Hv / (2 * Math.tan(fov * Math.PI / 360)) * zoomV;
@@ -1580,7 +1631,7 @@ function updateTPS(dt, t, spd) {
   if (Math.abs(cam.fov - fov) > .05) { cam.fov += (fov - cam.fov) * k; cam.updateProjectionMatrix(); }
   PVClay.U.cutA.value.copy(cam.position);
   /* ajourage : jusqu'à ton personnage ; en conversation, jusqu'à 1,9 m avant l'habitant (ni lui ni toi ne sont ajourés) */
-  if (talking) { const n = talking.grp.position, dx = cam.position.x - n.x, dz = cam.position.z - n.z, d = Math.hypot(dx, dz) || 1, e = Math.max(1.9, Math.hypot(pos.x - n.x, pos.z - n.z) + .7); PVClay.U.cutB.value.set(n.x + dx / d * e, 1.0, n.z + dz / d * e); }
+  if (talking) { const n = talking.grp.position, dx = cam.position.x - n.x, dz = cam.position.z - n.z, d = Math.hypot(dx, dz) || 1, e = .7; PVClay.U.cutB.value.set(n.x + dx / d * e, 1.0, n.z + dz / d * e); }
   else PVClay.U.cutB.value.set(pos.x, 1.0, pos.z);
   PVClay.U.cutOn.value = 1; PVClay.U.clipOn.value = 0;
   PVClay.U.bend.value.set(pos.x, pos.z, -Math.sin(camYaw), -Math.cos(camYaw)); PVClay.U.bendK.value = BENDK;
@@ -1596,7 +1647,7 @@ function updateTPS(dt, t, spd) {
 function loop() {
   requestAnimationFrame(loop);
   const dt = Math.min(clockT.getDelta(), .05), t = clockT.elapsedTime;
-  if (!H.active()) return;
+  if (!H.active()) { hideTag(); return; }
   if (t - lastHourCheck > 5) { lastHourCheck = t; if (hourOverride == null) applyHour(realHour()); }
   /* vie de la place */
   if (!reduce) {
@@ -1609,7 +1660,7 @@ function loop() {
   updateFx(dt, t);
   badges.forEach((b, i) => { b.spr.position.y = b.y + Math.sin(t * 1.8 + i * 1.3) * .06; });
   if (t - lastBadgeCheck > .7) { lastBadgeCheck = t; badges.forEach(b => { if (H.label(b.id) !== b.lab) drawBadge(b); }); }
-  if (photo) { PVClay.U.cutOn.value = 0; PVClay.U.bendK.value = 0; PVClay.U.clipOn.value = 0; ctl.update(); clayEnv(); if (composer) composer.render(); else R.render(scene, cam); sky.position.copy(cam.position); stars.position.copy(cam.position); return; }
+  if (photo) { hideTag(); PVClay.U.cutOn.value = 0; PVClay.U.bendK.value = 0; PVClay.U.clipOn.value = 0; ctl.update(); clayEnv(); if (composer) composer.render(); else R.render(scene, cam); sky.position.copy(cam.position); stars.position.copy(cam.position); return; }
   /* marche */
   if (ACCAM) yaw = camYaw; else { PVClay.U.cutOn.value = 0; PVClay.U.bendK.value = 0; PVClay.U.clipOn.value = 0; }
   fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw)); right.set(Math.cos(yaw), 0, -Math.sin(yaw));
@@ -1637,6 +1688,7 @@ function loop() {
   cam.rotation.set(pitch, yaw, 0, 'YXZ');
   zoomV += (zoomT - zoomV) * (1 - Math.exp(-dt * 12)); { const f = (mobile ? 70 : 62) * zoomV; if (Math.abs(cam.fov - f) > .01) { cam.fov = f; cam.updateProjectionMatrix(); } }
   }
+  if (ACCAM) updWordTag(t);
   sky.position.copy(cam.position); stars.position.copy(cam.position);
   if (!fp && !fpFailed) { try { fp = makeFP(); } catch (e) { fpFailed = true; console.warn(e); } }
   perfT += dt; perfN++;
@@ -1653,7 +1705,7 @@ loop();
 
 /* sortir de la boulangerie : devant sa porte, face à la place */
 /* outil de test : ?debug dans l'adresse donne window.PVDBG pour placer la caméra (captures de vérification) */
-if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges };
+if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges, tag: () => ({ on: tagFor && tagFor.userData.id, x: +pos.x.toFixed(2), z: +pos.z.toFixed(2), n: hits.length, t: tagT, near: hits.filter(o => o.userData.box).map(o => [o.userData.id, +o.userData.box.distanceToPoint(new THREE.Vector3(pos.x, (o.userData.box.min.y + o.userData.box.max.y) / 2, pos.z)).toFixed(2)]).sort((a, b) => a[1] - b[1]).slice(0, 4), talking: !!talking }) };
 function placeAtBakery() { const a = bld.bakery.ang; pos.set(Math.sin(a) * 8.0, 1.45, Math.cos(a) * 8.0); yaw = tYaw = a; pitch = tPitch = -.05; target = null; vel.set(0, 0, 0); camYaw = Math.atan2(-pos.x, -pos.z); camInit = false; if (me) me.yaw = a; }
 
 /* horizon arrondi aussi pour les matières qui ne sont pas en pâte */

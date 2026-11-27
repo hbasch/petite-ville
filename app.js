@@ -93,8 +93,10 @@ function micReady(go) {
 }
 /* jouer sans micro : on répond seulement en touchant, et le navigateur ne demande jamais l'autorisation */
 const noMic = () => !!store.get('pv_nomic');
-function setNoMic(on) { store.set('pv_nomic', on ? 1 : 0); document.body.classList.toggle('nomic', on); if (on) { try { if (micStream) micStream.getTracks().forEach(t => t.stop()); } catch (e) { /* */ } micStream = null; micAsked = false; } }
+function setNoMic(on) { store.set('pv_nomic', on ? 1 : 0); document.body.classList.remove('askmic'); document.body.classList.toggle('nomic', on); if (on) { try { if (micStream) micStream.getTracks().forEach(t => t.stop()); } catch (e) { /* */ } micStream = null; micAsked = false; } }
 document.body.classList.toggle('nomic', noMic());
+/* le micro est facultatif : à la première conversation, on demande comment tu veux répondre (rien n'est demandé au navigateur avant) */
+if (store.get('pv_nomic') === null) document.body.classList.add('askmic');
 /* écoute : on laisse le temps de finir sa phrase (les débutants hésitent), on s'arrête après un court silence,
    et on valide tout de suite dès que la réponse est sûre (early). iPhone : mode continu peu fiable, on garde le simple. */
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -133,7 +135,7 @@ function listen(onInterim, onFinal, onError, onEnd, early, o) {
   /* appui sur le micro pendant l'écoute : on termine (et si c'est figé, on coupe tout de suite) */
   me.stop = () => { if (!ready) { mlog('annulé'); me.cancel(); return; } if (!done) finish(); else { detachRec(cur); try { cur.abort(); } catch (e) { /* none */ } endUp(); } };
   /* une nouvelle écoute remplace celle-ci : plus aucun de ses événements ni minuteurs */
-  me.cancel = () => { done = true; clr(); detachRec(cur); try { if (cur) cur.abort(); } catch (e) { /* none */ } if (rec === cur) rec = null; if (!ended) { ended = true; if (onEnd) onEnd(); } };
+  me.cancel = () => { done = true; clr(); detachRec(cur); try { if (cur) cur.abort(); } catch (e) { /* none */ } if (rec === cur) rec = null; if (sess === me) sess = null; if (!ended) { ended = true; if (onEnd) onEnd(); } };
   const seg = () => {
     const r = new SR(); cur = r; rec = r;
     r.lang = S.voice; r.interimResults = true; r.maxAlternatives = 5; r.continuous = CONT;
@@ -169,7 +171,7 @@ function listen(onInterim, onFinal, onError, onEnd, early, o) {
       if (again && !done) { seg(); return; }
       /* phrase pas finie : on réécoute aussitôt (module neuf), ce qu'on a entendu reste */
       if (!done && alts.length && (segFinal || CONT) && o.good && !o.good(alts) && restarts < 2 && Date.now() - mT0 < 8500) {
-        restarts++; acc = alts[0]; mlog('relance (phrase pas finie)');
+        restarts++; acc = alts[0]; mlog('relance (phrase pas finie)'); clearTimeout(quiet); quiet = setTimeout(finish, 2600);
         setTimeout(() => { if (!done && sess === me) seg(); }, 40); return;
       }
       mlog('fin'); finish(); endUp();
@@ -208,9 +210,11 @@ function snd(w) {
     .replace(/x/g, 'ks').replace(/z/g, 's').replace(/dg/g, 'j').replace(/gh/g, '').replace(/h/g, '').replace(/(.)\1+/g, '$1');
   return s[0] + s.slice(1).replace(/[aeiouyw]+/g, '');
 }
+let strictPron = false;
 function same(a, b, loose) {
   const h = HOMO[T] || {};
   if (a === b || stem(a) === stem(b) || h[a] === b || h[b] === a || (h[a] && h[a] === h[b])) return true;
+  if (strictPron) { const L = Math.max(a.length, b.length); return L >= 6 && lev(a, b) <= 1; }
   const n = Math.min(a.length, b.length);
   if (n >= 5 && a.slice(0, 5) === b.slice(0, 5)) return true;
   if (n >= 4 && T === 'pl' && a.slice(0, 4) === b.slice(0, 4) && Math.abs(a.length - b.length) <= 3) return true;
@@ -221,7 +225,10 @@ function same(a, b, loose) {
   return false;
 }
 /* petits mots qui comptent peu : on peut les avaler sans rater sa réponse */
-const LIGHT = { en: new Set('a an the is am are to of and i you it please oh so well um uh'.split(' ')), pl: new Set('i w z na to jest sie a no prosze'.split(' ')) };
+const LIGHT = { en: new Set('a an the is am are to of and i you it please oh so well um uh can could have want would may do does did get got'.split(' ')), pl: new Set('i w z na to jest sie a no prosze'.split(' ')) };
+/* les prénoms des habitants (« hello Rosa ») ne sont jamais des mots « en trop » */
+if (typeof PV !== 'undefined' && PV.NPCS) Object.values(PV.NPCS).forEach(n => { const w = (n.name || '').toLowerCase(); if (w) { LIGHT.en.add(w); LIGHT.pl.add(w); } });
+['tom', 'rosa', 'leo', 'maya', 'sam'].forEach(w => LIGHT.en.add(w));
 /* un mot attendu est-il dans ce qui a été entendu ? (aussi coupé en deux : « bag it » pour « baguette ») */
 function findW(a, w, used, loose) {
   let i = a.findIndex((x, j) => !used.has(j) && same(x, w, loose));
@@ -236,7 +243,7 @@ function score(said, opt, loose, det) {
   b.forEach(w => { all += wt(w); if (findW(a, w, used, loose)) { got += wt(w); if (!lt(w)) mc++; } });
   const rest = a.filter((x, j) => !used.has(j)), extra = rest.reduce((s, w) => s + wt(w), 0);
   /* mots importants entendus en trop (« good MORNING » n'est pas « good night ») */
-  if (det) { det.mc = mc; det.ex = rest.filter(w => !lt(w)).length; }
+  if (det) { det.mc = mc; det.ex = rest.filter(w => !lt(w) && !b.some(x => same(w, x, loose))).length; det.nc = b.filter(w => !lt(w)).length; }
   return got / all * .8 + got / (got + extra || 1) * .2;
 }
 /* meilleure réponse parmi les variantes entendues.
@@ -255,23 +262,37 @@ function bestOpt(alts, opts) {
       const det = {}, base = score(a, o.t, true, det), u = uniq[i];
       const d = u.length ? u.filter(w => findW(a, w, new Set(), true)).length / u.length : base;
       const s = base * .55 + d * .45;
-      if (s > R[i].s) Object.assign(R[i], { s, base, d, heard: t, mc: det.mc, ex: det.ex });
+      if (s > R[i].s) Object.assign(R[i], { s, base, d, heard: t, mc: det.mc, ex: det.ex, nc: det.nc });
     });
   });
-  const rk = R.slice().sort((x, y) => y.s - x.s), b = rk[0] || { s: 0 }, sec = rk[1] || { s: 0, d: 0 };
+  const rk = R.slice().sort((x, y) => y.s - x.s);
+  let b = rk[0] || { s: 0 }, sec = rk[1] || { s: 0, d: 0 };
+  const out = (x, sure) => ({ best: x.o || null, bs: x.s, gap: x.s - ((rk.find(y => y !== x) || { s: 0 }).s), heard: x.heard || alts[0] || '', sure: !!(sure && x.o), ranked: rk });
+  /* une seule réponse possible (« Hello! ») : sûr dès que ses mots importants sont tous là, quels que soient les mots en plus */
+  if (opts.length === 1) return out(b, b.nc > 0 && b.mc >= b.nc);
+  /* réponse « piège » (avec conseil) : seulement si elle est dite presque exactement ; sinon on prend la meilleure réponse correcte
+     si ses mots importants sont là (« yes I like flowers » = « Yes, I love flowers! », pas le piège « Yes, I like. ») */
+  if (b.o && b.o.tip && !(b.ex === 0 && b.base >= .9)) {
+    const g = rk.find(x => x.o && !x.o.tip);
+    return out(g || b, !!g && g.mc >= 2 && g.d > 0 && g.mc >= g.ex);
+  }
   /* sûr : nettement devant, ou ses mots à elle entendus et aucun mot propre aux autres */
   const sure = !!b.o && b.mc > b.ex && ((b.s >= .5 && b.s - sec.s >= .12) || (b.d > 0 && sec.d === 0 && b.base >= .35 && b.s - sec.s >= .1));
-  return { best: b.o || null, bs: b.s, gap: b.s - sec.s, heard: b.heard || alts[0] || '', sure, ranked: rk };
+  return out(b, sure);
 }
 /* prononciation d'un mot ou d'une phrase seule */
 function pronScore(alts, target) {
+  strictPron = true; try { return pronScore0(alts, target); } finally { strictPron = false; }
+}
+function pronScore0(alts, target) {
   let best = 0, heard = alts[0] || '';
   const tw = target.split(' ');
   alts.forEach(a => {
     const nw = norm(a), n = nw.join(' ');
-    let s = n.includes(target) ? 1 : 1 - lev(n, target) / Math.max(n.length, target.length, 1);
+    let s = (' ' + n + ' ').includes(' ' + target + ' ') ? 1 : 1 - lev(n, target) / Math.max(n.length, target.length, 1);
+    /* un mot seul : juste s'il est entendu tel quel (ou presque, pour les mots longs) ; un mot voisin (« take » pour « cake ») reste « presque » */
+    if (tw.length === 1) s = Math.max(...nw.map(w => same(w, target) ? 1 : (1 - lev(w, target) / Math.max(w.length, target.length)) * .7), 0);
     /* le mot attendu dit au milieu d'autres mots (« a croissant please ») */
-    if (tw.length === 1 && nw.some(w => same(w, target))) s = Math.max(s, .95);
     s = Math.max(s, score(a, target));
     if (s > best) { best = s; heard = a; }
   });
@@ -655,6 +676,8 @@ function render(line, tr, key) {
 }
 function go(id, line, queue) { const n = DD().nodes[id]; const l = fill(line ? line[0] : n[0], CV()); render(l, line ? line[1] : n[1], n[2]); lastWho = whoNow(); say(l, { queue, pitch: voiceP(), who: lastWho }); }
 function choose(o, spoken) {
+  /* une réponse touchée pendant que le micro écoute : on arrête l'écoute (sinon elle répondrait à la question suivante) */
+  if (sess) sess.cancel();
   document.querySelectorAll('#dOpts .opt').forEach(b => b.classList.toggle('picked', b.firstChild && b.firstChild.textContent === o.t));
   $('dMe').textContent = U.you + ' : « ' + o.t + ' »';
   if (o.task) tasks[o.task] = true;
@@ -677,6 +700,8 @@ $('dTr').onclick = () => $('dlg').classList.toggle('tr');
 $('dMic').onclick = () => { if (sess) { stopListen(); return; } micReady(dMicGo); };
 $('dNoMic').onclick = () => { setNoMic(true); toast(U.noMicOn); };
 $('dUseMic').onclick = () => { setNoMic(false); toast(U.noMicOff); };
+$('micNo').onclick = () => { setNoMic(true); toast(U.noMicOn); };
+$('micYes').onclick = () => { setNoMic(false); micReady(dMicGo); };
 function dMicGo() {
   const mic = $('dMic'), out = $('dHeard');
   markMaybe([]); $('dTip').classList.add('hidden');
