@@ -381,3 +381,33 @@ body.photo #ctrlHelp,body.dlg-open #ctrlHelp{display:none!important}
 
 .helpBtns{display:flex;gap:8px;flex-wrap:wrap}
 #ctrlHelp .btn.ghost{color:#4a3a2a;border:2px solid #e6d3a8;background:#fff}
+
+/* jouer sans micro */
+.pillBtn{height:36px;padding:0 14px;border:0;border-radius:99px;background:rgba(255,248,230,.94);color:#5a4a3a;font:800 13px Nunito,sans-serif;cursor:pointer;box-shadow:0 2px 0 #e6d3a8}
+body.nomic #dMic,body.nomic #dHeard,body.nomic #dNoMic,body.nomic #wRepeat{display:none!important}
+body:not(.nomic) #dUseMic{display:none}
+#toast{max-width:min(92vw,520px)}
+/* téléphone : interface plus compacte (Safari sur iPhone) */
+@media(max-width:640px){
+ .pill{min-height:36px;padding:0 10px;font-size:13px;gap:6px}
+ .pill svg{width:16px;height:16px}
+ .goalRing{width:22px;height:22px}.goalRing i{width:15px;height:15px}
+ .ring,.me .ring{transform:scale(.85)}
+ #hud{gap:6px}
+ #dlg{row-gap:8px;padding-bottom:calc(8px + var(--safeB))}
+ #dlg .bubble{padding:22px 16px 16px;border-radius:30px 34px 28px 32px/34px 30px 36px 32px}
+ #dlg .line{font-size:17px;line-height:1.3}
+ #dlg .who .name{font-size:13px;padding:3px 12px;top:-14px;left:18px}
+ #dlg .who .btn{min-height:30px;padding:0 10px;font-size:12px}
+ #dlg .opts{padding:6px;border-radius:20px;gap:6px}
+ #dlg .opt{min-height:38px;font-size:14px;padding:6px 40px 6px 12px;border-radius:13px}
+ #dlg .micBig{width:48px;height:48px}#dlg .micBig svg{width:22px;height:22px}
+ #dlg .heard{font-size:12px;padding:4px 10px}
+ #dlg .dTop .ib{width:32px;height:32px;font-size:16px}
+ .pillBtn{height:30px;font-size:12px;padding:0 10px}
+ .sheet{padding:14px 16px}
+ .word{font-size:28px}
+ #ctrlHelp{padding:12px 14px}#ctrlHelp ul{font-size:13px}
+}
+.pillBtn{white-space:nowrap;flex:none}
+@media(max-width:640px){#dlg .talk{gap:8px}#dlg .heard{flex:1;min-width:0}}

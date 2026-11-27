@@ -73,9 +73,20 @@ let rec = null;
 /* iPhone : tant qu'un flux micro reste ouvert dans la page, Safari ne redemande plus l'autorisation */
 let recInst = null, micStream = null, micAsked = false;
 function holdMic() {
-  if (micAsked || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return; micAsked = true;
-  navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true } }).then(st => { micStream = st; }).catch(() => { /* refusé : on garde le fonctionnement normal */ });
+  if (micAsked || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.resolve(); micAsked = true;
+  return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true } }).then(st => { micStream = st; }).catch(() => { /* refusé : on garde le fonctionnement normal */ });
 }
+/* micro : demandé une seule fois, AVANT la reconnaissance vocale, puis gardé ouvert pour toute la visite.
+   Avant, Safari posait deux questions (micro puis reconnaissance) et les reposait. La première fois, une petite explication. */
+function micReady(go) {
+  if (micStream || micAsked) { go(); return; }
+  if (!store.get('pv_micInfo')) { store.set('pv_micInfo', 1); toast(IOS ? U.micInfoIOS : U.micInfo); }
+  holdMic().then(go);
+}
+/* jouer sans micro : on répond seulement en touchant, et le navigateur ne demande jamais l'autorisation */
+const noMic = () => !!store.get('pv_nomic');
+function setNoMic(on) { store.set('pv_nomic', on ? 1 : 0); document.body.classList.toggle('nomic', on); if (on) { try { if (micStream) micStream.getTracks().forEach(t => t.stop()); } catch (e) { /* */ } micStream = null; micAsked = false; } }
+document.body.classList.toggle('nomic', noMic());
 /* écoute : on laisse le temps de finir sa phrase (les débutants hésitent), on s'arrête après un court silence,
    et on valide tout de suite dès que la réponse est sûre (early). iPhone : mode continu peu fiable, on garde le simple. */
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -88,7 +99,7 @@ function listen(onInterim, onFinal, onError, onEnd, early) {
   /* un seul module d'écoute, réutilisé : sur iPhone, en recréer un redemande la permission à chaque fois */
   if (!recInst) recInst = new SR();
   rec = recInst; rec.lang = S.voice; rec.interimResults = true; rec.maxAlternatives = 5; rec.continuous = CONT;
-  rec.onstart = () => holdMic();
+  rec.onstart = () => {};
   let done = false, alts = [], quiet = 0, hard = 0;
   const r0 = rec;
   const finish = () => {
@@ -489,7 +500,8 @@ function updSave() { $('wSaveTxt').textContent = L.cards[curWord] ? U.saved : U.
 $('wEnter').onclick = () => { if (curWord === 'bakeryShop') enterBakery(); else toast(U.soon); }; /* pas de paiement pour l'instant : le café arrive bientôt, gratuit */
 $('wListen').onclick = () => { const w = W[curWord]; say(w[T], { who: 'word' }); say(w.ex[T], { queue: true, who: 'word' }); };
 $('wSave').onclick = () => { if (L.cards[curWord]) delete L.cards[curWord]; else L.cards[curWord] = { box: 1, due: dayNum() }; save(); updSave(); updHud(); };
-$('wRepeat').onclick = () => {
+$('wRepeat').onclick = () => micReady(wRepeatGo);
+function wRepeatGo() {
   const btn = $('wRepeat'), out = $('wPron'), target = norm(W[curWord][T]).join(' ');
   btn.classList.add('on'); out.className = 'pron'; out.textContent = U.listening;
   listen(t => { out.textContent = '« ' + t + ' »'; }, alts => {
@@ -498,7 +510,7 @@ $('wRepeat').onclick = () => {
     if (best >= .75) { out.append(icon('check'), document.createTextNode(U.pronGood)); praise(true, true); if (!L.pron[curWord]) { L.pron[curWord] = 1; addXP(10); } }
     else { out.className = 'pron bad'; out.textContent = fill(U.pronClose, { h: heard }); }
   }, err => { out.className = 'pron bad'; micError(err, out); }, () => btn.classList.remove('on'), alts => pronScore(alts, target).best >= .92);
-};
+}
 
 /* plan de la ville */
 function renderMap() {
@@ -562,9 +574,11 @@ function choose(o, spoken) {
 function openDlg() { curNpc = null; curDlg = null; dlgMode = null; $('dWho').textContent = S.baker; tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
 $('dReplay').onclick = () => say(lastLine, { pitch: voiceP(), who: lastWho });
 $('dTr').onclick = () => $('dlg').classList.toggle('tr');
-$('dMic').onclick = () => {
+$('dMic').onclick = () => { if (rec) { try { rec.stop(); } catch (e) { /* none */ } return; } micReady(dMicGo); };
+$('dNoMic').onclick = () => { setNoMic(true); toast(U.noMicOn); };
+$('dUseMic').onclick = () => { setNoMic(false); toast(U.noMicOff); };
+function dMicGo() {
   const mic = $('dMic'), out = $('dHeard');
-  if (rec) { try { rec.stop(); } catch (e) { /* none */ } return; }
   mic.classList.add('on'); out.textContent = U.listening;
   listen(t => { out.textContent = '« ' + t + ' »'; }, alts => {
     const { best, bs, gap, heard } = bestOpt(alts, curOpts);
@@ -572,7 +586,7 @@ $('dMic').onclick = () => {
     if (best && bs >= .5 && gap >= .08) choose(best, true);
     else { $('dTip').textContent = U.notUnderstood; $('dTip').classList.remove('hidden'); say(fill(DD().nodes.huh[0], CV()), { pitch: voiceP(), who: whoNow() }); }
   }, err => micError(err, out), () => mic.classList.remove('on'), alts => { const r = bestOpt(alts, curOpts); return r.bs >= .85 && r.gap >= .2; });
-};
+}
 
 function openNpc(id) {
   const n = PV.NPCS[id]; if (!n) return;
