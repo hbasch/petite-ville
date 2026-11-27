@@ -25,11 +25,13 @@ const PALS = {
 };
 /* ---------- pays : la ville dépend de la langue apprise (anglais → Édimbourg, polonais → Wrocław) ---------- */
 const COUNTRY = ['fr', 'gb', 'pl'].includes(H.country) ? H.country : 'fr';
+/* essai de direction artistique « village douillet » (?da=ac) : herbe vive, couleurs crème et pastel, lumière claire et douce */
+const DA_AC = /[?&]da=ac\b/.test(location.search);
 const CITY_PALS = {
   gb: { walls: ['#cdbfa6', '#b3a99a', '#e9dfcc', '#c98a64', '#a9b6bc'], roofs: ['#4a505c', '#5e5550'], ground: '#9d978e', leaf: '#5f8a4a', accent: '#2f4f8a' },
   pl: { walls: ['#f0b8a8', '#a8d4b8', '#f2d27c', '#9cc4e0', '#e8a8c8'], roofs: ['#b5452f', '#8a3a2a'], ground: '#c2b29c', leaf: '#6a9a4a', accent: '#a8323c' }
 };
-const PAL = CITY_PALS[COUNTRY] || ((window.PV && PV.PALS) || PALS)[H.palette] || PALS.a;
+const PAL = DA_AC ? { walls: ['#f7e7c4', '#f6cf6e', '#a9dcc2', '#f3ad8e', '#9fcbef'], roofs: ['#e2604e', '#4b8fd8'], ground: '#ecdcaa', leaf: '#62bf45', accent: '#22b2a0' } : CITY_PALS[COUNTRY] || ((window.PV && PV.PALS) || PALS)[H.palette] || PALS.a;
 const SCN = (window.PV && PV.SCENE) || {};
 const CITY = {
   fr: { signs: { bakeryShop: 'BOULANGERIE', cafe: 'CAFÉ ROSIE', pharmacy: 'PHARMACIE', post: 'POSTE', bookshop: 'LIBRAIRIE', florist: 'FLEURISTE', townhall: 'MAIRIE' }, sign: { fg: '#fff8ee', font: '"Baloo 2",Nunito,sans-serif' }, bunting: null, postbox: '#f2c200', tower: null },
@@ -129,7 +131,7 @@ mk(lump(cyl(11.5, 6, 3.2, 40, 6), .4), C(shade(EARTH, -.08)), 0, -4.8, 0);
 const tipM = mk(lump(new THREE.ConeGeometry(6, 5, 32, 6), .45), C(shade(EARTH, -.15)), 0, -8.9, 0); tipM.rotation.x = Math.PI;
 [[9, -3, 4], [-7, -4, 9], [3, -5.5, -10]].forEach(([x, y, z]) => mk(lump(sph(1.4, 16), .2), C(shade(EARTH, -.05)), x, y, z));
 const square = item('square');
-const base = mk(cyl(10.1, 10.1, .1, 72), C(shade('#' + new THREE.Color(PAL.ground).lerp(new THREE.Color(EARTH), .35).getHexString(), -.27)), 0, -.03, 0, square); base.receiveShadow = true; base.userData.keep = true; base.userData.noCast = true;
+const base = mk(cyl(10.1, 10.1, .1, 72), DA_AC ? C('#6cc248') : C(shade('#' + new THREE.Color(PAL.ground).lerp(new THREE.Color(EARTH), .35).getHexString(), -.27)), 0, -.03, 0, square); base.receiveShadow = true; base.userData.keep = true; base.userData.noCast = true;
 /* pavés posés un à un, en arcs autour de la fontaine : chaque pavé est un coussin de pâte bombé,
    aux coins arrondis, enfoncé dans un joint sombre (l'ombre de contact du shader creuse les joints) */
 {
@@ -145,6 +147,7 @@ const base = mk(cyl(10.1, 10.1, .1, 72), C(shade('#' + new THREE.Color(PAL.groun
   const cm = C('#ffffff', { roughness: .62 });
   const pts = [];
   for (let r = 2.12; r < 9.55; r += .29) { const n = Math.round(TAU * r / .33), off = rnd(0, TAU); for (let k = 0; k < n; k++) { const a = off + (k + rnd(-.08, .08)) / n * TAU, rr = r + rnd(-.02, .02); pts.push([Math.sin(a) * rr, Math.cos(a) * rr, a]); } }
+  if (DA_AC) { const keep = pts.filter(([x, z]) => { const r = Math.hypot(x, z), d = Math.atan2(x, z) - G; return r < 3.7 || (Math.cos(d) > 0 && Math.abs(Math.sin(d) * r) < 1.05); }); pts.length = 0; keep.forEach(p => pts.push(p)); }
   const im = new THREE.InstancedMesh(cg, cm, pts.length), o = new THREE.Object3D(), col = new THREE.Color();
   pts.forEach(([x, z, a], i) => { o.position.set(x, .012, z); o.rotation.set(rnd(-.04, .04), a + rnd(-.1, .1), rnd(-.04, .04)); o.scale.set(rnd(.145, .162), rnd(.034, .05), rnd(.118, .132)); o.updateMatrix(); im.setMatrixAt(i, o.matrix); col.set(shade(PAL.ground, rnd(-.13, .05))); col.offsetHSL(rnd(-.02, .02), rnd(-.05, .05), 0); im.setColorAt(i, col); });
   im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.receiveShadow = true; im.userData.noCast = true; square.add(im);
@@ -859,6 +862,7 @@ B.forEach((sp, i) => { if (sp.id !== 'florist') return; const a = a0 + span * i 
 person('maya', { skin: SK[3], hair: '#1a1a22', style: 'curly', lashes: true, eyes: '#3a2418', outfit: 'hoodie', shirt: PAL.walls[1], backpack: PAL.accent, pants: '#2f3a5a', shoes: '#f4efe6' }, 'walk', 0, 7.2, 0, { r: 7.2, a: 1.2, sp: .055, pause: 0 });
 { const a = G - .55, r = 5.6 - .95; person('sam', { skin: SK[2], hair: '#3a2418', style: 'cap', hat: PAL.roofs[0], mustache: true, eyes: '#3a2418', shirt: '#f3efe6', stripes: PAL.roofs[0], rolled: true, apron: '#c99a62' }, 'idle', Math.sin(a) * r, Math.cos(a) * r, a); }
 [[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1, tote: i === 0 ? '#efe3cf' : null, balloon: i === 2 ? '#e8423a' : null }, 'walk', 0, 0, 0, { r: i === 1 ? 6.6 : rnd(6.5, 8.2), a: rnd(0, TAU), sp: (i === 1 ? .05 : rnd(.05, .085)) * (i % 2 ? 1 : -1), pause: 0, dog: i === 1 }));
+if (DA_AC) person('avatar', { skin: SK[0], hair: '#5a3a2a', style: 'short', fringe: true, eyes: '#3a2418', outfit: 'hoodie', shirt: '#ffb547', pants: '#3f5f9a', shoes: '#f4efe6' }, 'idle', Math.sin(G) * 6.2, Math.cos(G) * 6.2, G + Math.PI);
 const walkers = [];
 
 /* ---------- habitants modelés : bouche en relief et « squelette » automatique ----------
@@ -1115,6 +1119,10 @@ function applyHour(h) {
   R.toneMappingExposure = .86 + lightsOn * .14;
   /* reflets de la pâte : ciel, horizon et sol chaud du moment */
   { const k = 1 - lightsOn * .6; envT.copy(skyU.top.value).multiplyScalar(k); envH.copy(skyU.hor.value).multiplyScalar(k); envG.set(shade(PAL.ground, -.15)).convertSRGBToLinear().multiplyScalar(k * .8); }
+  if (DA_AC) {
+    const dk = 1 - lightsOn; hemi.intensity *= 1.3; sun.intensity *= .95; GRADE.uniforms.sat.value = 1.2 - lightsOn * .1; GRADE.uniforms.con.value = 1.03; R.toneMappingExposure += .02;
+    skyU.top.value.lerp(new THREE.Color('#5fb4ee').convertSRGBToLinear(), .65 * dk); skyU.hor.value.lerp(new THREE.Color('#e6f6ff').convertSRGBToLinear(), .6 * dk);
+  }
   const hm = h % 12, mm = (h * 60) % 60;
   hands.forEach(([hh, mh]) => { hh.rotation.z = -(hm / 12) * TAU; mh.rotation.z = -(mm / 60) * TAU; });
 }
