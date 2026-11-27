@@ -476,7 +476,7 @@ float clayHeight(vec3 p, float fine) {
     if (lk.hold === 'flower') { const f = new THREE.Group(); f.position.set(0, -.39, .04); f.rotation.x = -1.15; P.arms[1].add(f); mk(G_('stem', () => tube([[0, -.16, 0], [.01, 0, .005], [0, .16, 0]], 8, 5, .011)), K(lk.leaf || '#6a9a4a'), 0, .12, 0, f); for (let i = 0; i < 5; i++) { const a = i / 5 * TAU; mk(G_('pet2', () => paint(lump(sph(.04, 8), .002), (x, y) => .8 + .2 * sstep(-.03, .03, y))), K('#e2374f'), Math.cos(a) * .04, .3, Math.sin(a) * .04, f); } mk(sph(.03, 8), K('#ffd35a'), 0, .31, 0, f); }
     const head = new THREE.Group(); head.position.y = .91; head.scale.setScalar(1.08); body.add(head); P.head = head;
     /* le cou suit la tête (même objet) : il tourne sur son axe, ça ne se voit pas */
-    mk(G_('neck2', () => paint(cyl(.065, .074, .16, 12), (x, y) => .78 + .22 * sstep(-.08, .06, y))), skinM, 0, -.29, 0, head);
+    mk(G_('neck3', () => paint(cyl(.074, .084, .16, 12), (x, y) => .78 + .22 * sstep(-.08, .06, y))), skinM, 0, -.29, 0, head);
     mk(headGeo(), skinM, 0, 0, 0, head);
     if (lk.style !== 'bob') [-1, 1].forEach(sg => { mk(G_('ear2', () => paint(sph(.06, 10), (x, y, z) => .9 + .1 * sstep(-.02, .03, z))), skinM, sg * .27, -.01, -.01, head).scale.set(.45, 1, .8); mk(G_('earIn', () => sph(.032, 8)), C(shade(lk.skin, -.1), skinO), sg * .29, -.012, .0, head).scale.set(.35, 1, .75); });
     /* yeux (fixes dans la tête : fusionnés avec elle) ; seules les paupières et les sourcils bougent */
