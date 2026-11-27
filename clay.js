@@ -51,8 +51,11 @@
     me.blinkT = (me.blinkT == null ? 2 : me.blinkT) - dt; const closed = me.blinkT < .12; if (me.blinkT < 0) me.blinkT = 2 + Math.random() * 3;
     if (P.lids) P.lids.forEach(l => { l.rotation.x += ((closed ? 1.45 : -1.25) - l.rotation.x) * .6; });
   }
-  const CUT_CODE = `  /* ajourage et coupe d'intérieur : en toute fin, après les dérivées (Direct3D sous Windows refuse un discard avant) */
+  const QS = location.search, NOCUT = /[?&]nocut\b/.test(QS), NOCLIP = /[?&]noclip\b/.test(QS), NOBEND = /[?&]nobend\b/.test(QS);
+  const CLIP_CODE = NOCLIP ? '' : `
   if (clayClipOn > 0.5 && (dot(vClayW, clayClip.xyz) > clayClip.w || dot(vClayW, clayClip2.xyz) > clayClip2.w)) discard;
+`;
+  const CUT_CODE = NOCUT ? '' : `
   if (clayCutOn > 0.5 && vClayW.y > 0.3) {
     vec3 cab = clayCutB - clayCutA; float ctt = dot(vClayW - clayCutA, cab) / dot(cab, cab);
     if (ctt > 0.02 && ctt < 0.97) {
@@ -137,7 +140,7 @@ float clayHeight(vec3 p, float fine) {
     clayWp = instanceMatrix * clayWp;
   #endif
   vClayW = (modelMatrix * clayWp).xyz;
-` + (SAFE ? '' : BEND_CODE));
+` + (SAFE || NOBEND ? '' : BEND_CODE));
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\n' + NOISE)
 
@@ -188,7 +191,7 @@ float clayHeight(vec3 p, float fine) {
     float clayRim = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 3.0);
     gl_FragColor.rgb += mix(diffuseColor.rgb, vec3(1.0, 0.93, 0.85), 0.4) * clayRim * (0.05 + 0.1 * max(0.0, clayWN.y)) * clayDay;
   }
-` + (SAFE ? '' : CUT_CODE) + `
+` + (SAFE ? '' : CLIP_CODE + CUT_CODE) + `
   #include <tonemapping_fragment>`);
   }
   /* lumière diffusée dans la pâte (rouge orangé), plus forte pour la peau */
@@ -202,7 +205,7 @@ float clayHeight(vec3 p, float fine) {
     if (sss) m.userData.claySSS = new THREE.Vector3().fromArray(sss);
     m.extensions = Object.assign(m.extensions || {}, { derivatives: true });
     m.onBeforeCompile = patch;
-    m.customProgramCacheKey = () => SAFE ? 'clay6s' : 'clay6';
+    m.customProgramCacheKey = () => 'clay7' + (SAFE ? 's' : '') + (NOCUT ? 'c' : '') + (NOCLIP ? 'l' : '') + (NOBEND ? 'b' : '');
     return m;
   }
 
