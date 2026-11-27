@@ -360,7 +360,7 @@ body.photo #timePop{display:none!important}
 #ct,#c{cursor:pointer}
 
 /* dialogue : une seule colonne centrée — à gauche le micro, à droite les réponses à toucher, la bulle en dessous, la croix dans son coin */
-#dlg{left:50%;right:auto;bottom:0;transform:translateX(-50%);width:min(840px,calc(100% - 20px));display:grid;grid-template-columns:minmax(0,1fr) minmax(0,360px);grid-template-areas:"talk opts" "bubble bubble";column-gap:14px;row-gap:12px;align-items:end;padding:0 0 calc(14px + var(--safeB))}
+#dlg{left:50%;right:auto;bottom:0;transform:translateX(-50%);width:min(840px,calc(100% - 20px));display:grid;grid-template-columns:minmax(0,1fr) minmax(0,360px);grid-template-areas:"bubble bubble" "talk opts";column-gap:14px;row-gap:12px;align-items:end;padding:26px 0 calc(14px + var(--safeB))}
 #dlg>*{width:auto}
 #dlg .dTop{grid-area:bubble;justify-self:end;align-self:start;z-index:3;transform:translate(-18px,-50%)}
 #dlg .dTop .ib{width:40px;height:40px;border-radius:50%;border:0;background:#f6cf6e;color:#6e4512;font:800 20px Nunito,sans-serif;box-shadow:0 3px 0 #d9a93e;cursor:pointer}
@@ -368,7 +368,7 @@ body.photo #timePop{display:none!important}
 #dlg .talk{grid-area:talk;justify-self:start;align-self:end;flex-direction:row;align-items:center;padding:0}
 #dlg .opts{grid-area:opts;width:auto;margin:0;justify-self:stretch}
 #dlg .tip{margin-top:8px}
-@media(max-width:640px){#dlg{grid-template-columns:minmax(0,1fr);grid-template-areas:"opts" "talk" "bubble"}#dlg .micBig{width:56px;height:56px}}
+@media(max-width:640px){#dlg{grid-template-columns:minmax(0,1fr);grid-template-areas:"bubble" "opts" "talk"}#dlg .micBig{width:56px;height:56px}}
 
 /* joystick (glisser pour marcher) et aide aux commandes */
 #joy{position:fixed;z-index:6;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;background:rgba(255,248,230,.35);border:3px solid rgba(255,248,230,.85);pointer-events:none;display:grid;place-items:center}
@@ -394,7 +394,7 @@ body:not(.nomic) #dUseMic{display:none}
  .goalRing{width:22px;height:22px}.goalRing i{width:15px;height:15px}
  .ring,.me .ring{transform:scale(.85)}
  #hud{gap:6px}
- #dlg{row-gap:8px;padding-bottom:calc(8px + var(--safeB))}
+ #dlg{row-gap:8px;padding-top:20px;padding-bottom:calc(8px + var(--safeB))}
  #dlg .bubble{padding:22px 16px 16px;border-radius:30px 34px 28px 32px/34px 30px 36px 32px}
  #dlg .line{font-size:17px;line-height:1.3}
  #dlg .who .name{font-size:13px;padding:3px 12px;top:-14px;left:18px}
@@ -411,3 +411,7 @@ body:not(.nomic) #dUseMic{display:none}
 }
 .pillBtn{white-space:nowrap;flex:none}
 @media(max-width:640px){#dlg .talk{gap:8px}#dlg .heard{flex:1;min-width:0}}
+/* micro : « une seconde… » tant que le navigateur n'écoute pas, puis l'anneau qui pulse = parle */
+#dlg .micBig.wait,.micBig.wait{opacity:.55;transform:scale(.94);animation:none;transition:opacity .2s,transform .2s}
+/* réponses entre lesquelles le micro a hésité */
+#dlg .opt.maybe{border-color:#f2b53a;background:#fff3cf;box-shadow:0 0 0 3px rgba(242,181,58,.45)}

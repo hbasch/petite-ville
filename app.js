@@ -72,10 +72,18 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
 /* iPhone : tant qu'un flux micro reste ouvert dans la page, Safari ne redemande plus l'autorisation */
 let recInst = null, micStream = null, micAsked = false;
+/* sans écho ni réduction de bruit : sur iPhone (iOS 26–27), un micro « avec annulation d'écho » ouvert fait grésiller le son
+   des voix, et ce traitement abîme aussi ce que la reconnaissance entend */
 function holdMic() {
   if (micAsked || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.resolve(); micAsked = true;
-  return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true } }).then(st => { micStream = st; }).catch(() => { /* refusé : on garde le fonctionnement normal */ });
+  return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(st => { micStream = st; mlog0('micro ouvert'); }).catch(e => { mlog0('micro refusé ' + (e && e.name)); });
 }
+/* page cachée (autre appli, écran éteint) : on rend le micro, on le reprendra au prochain appui */
+document.addEventListener('visibilitychange', () => { if (document.hidden && micStream) { try { micStream.getTracks().forEach(t => t.stop()); } catch (e) { /* */ } micStream = null; micAsked = false; } });
+/* journal des dernières écoutes, joint au rapport de bug (ce que le navigateur a fait, ce qu'il a entendu, ce qu'on a compris) */
+const MICLOG = []; window.PVMIC = MICLOG;
+function mlog0(m) { MICLOG.push(new Date().toTimeString().slice(0, 8) + ' ' + m); if (MICLOG.length > 60) MICLOG.splice(0, MICLOG.length - 60); }
+let mT0 = 0; const mlog = m => mlog0('+' + ((Date.now() - mT0) / 1000).toFixed(1) + 's ' + m);
 /* micro : demandé une seule fois, AVANT la reconnaissance vocale, puis gardé ouvert pour toute la visite.
    Avant, Safari posait deux questions (micro puis reconnaissance) et les reposait. La première fois, une petite explication. */
 function micReady(go) {
@@ -92,36 +100,67 @@ document.body.classList.toggle('nomic', noMic());
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 /* Android : le mode continu y répète les morceaux déjà entendus, on garde aussi le mode simple */
 const CONT = !IOS && !/Android/i.test(navigator.userAgent);
-function listen(onInterim, onFinal, onError, onEnd, early) {
+/* o.ready : appelé quand le micro écoute vraiment (avant, les premiers mots se perdaient : on parlait trop tôt)
+   o.phrases : réponses attendues, pour aider la reconnaissance (Chrome récent)
+   o.good : la réponse est-elle déjà claire ? Sinon, quand le navigateur s'arrête au premier silence (iPhone, Android),
+   on relance l'écoute pour laisser finir la phrase (les débutants hésitent : « Can I… have… »). */
+let noPhr = false;
+function listen(onInterim, onFinal, onError, onEnd, early, o) {
+  o = o || {};
   if (!SR) { onError('unsupported'); if (onEnd) onEnd(); return; }
   shush();
   if (rec) try { rec.abort(); } catch (e) { /* none */ }
   /* un seul module d'écoute, réutilisé : sur iPhone, en recréer un redemande la permission à chaque fois */
   if (!recInst) recInst = new SR();
   rec = recInst; rec.lang = S.voice; rec.interimResults = true; rec.maxAlternatives = 5; rec.continuous = CONT;
-  rec.onstart = () => {};
-  let done = false, alts = [], quiet = 0, hard = 0;
+  const usePhr = !noPhr && o.phrases && o.phrases.length && 'phrases' in rec && typeof window.SpeechRecognitionPhrase === 'function';
+  try { if ('phrases' in rec) rec.phrases = usePhr ? o.phrases.map(p => new window.SpeechRecognitionPhrase(p, 3)) : []; } catch (e) { /* none */ }
+  mT0 = Date.now(); mlog0('écoute ' + rec.lang + (CONT ? ' continu' : ' simple') + (usePhr ? ' +phrases' : '') + (micStream ? ' · micro ' + ((micStream.getAudioTracks()[0] || {}).readyState || '?') + ((micStream.getAudioTracks()[0] || {}).muted ? ' muet' : '') : ' · sans flux'));
+  let done = false, alts = [], acc = '', segEnd = false, restarts = 0, retry = false, ready = false, quiet = 0, hard = 0, rdyT = 0;
   const r0 = rec;
+  const isReady = why => { if (ready) return; ready = true; clearTimeout(rdyT); mlog(why); if (o.ready) o.ready(); };
   const finish = () => {
-    if (done) return; done = true; clearTimeout(quiet); clearTimeout(hard);
+    if (done) return; done = true; clearTimeout(quiet); clearTimeout(hard); clearTimeout(rdyT);
     try { r0.stop(); } catch (e) { /* none */ }
+    mlog(alts.length ? 'fini « ' + alts.slice(0, 3).join(' | ') + ' »' : 'fini, rien entendu');
     if (alts.length) onFinal(alts); else onError('no-speech');
   };
+  rec.onstart = () => { rdyT = setTimeout(() => isReady('prêt (start)'), 700); };
+  rec.onaudiostart = () => isReady('prêt (audio)');
+  rec.onspeechstart = () => { isReady('voix'); };
   rec.onresult = e => {
-    /* phrase entière = tous les morceaux déjà entendus + chaque variante du dernier morceau */
+    isReady('résultat');
+    /* phrase entière = ce qu'on avait avant une relance + tous les morceaux déjà entendus + chaque variante du dernier morceau */
     const res = e.results, last = res[res.length - 1];
     let pre = ''; for (let i = 0; i < res.length - 1; i++) { const t = res[i][0].transcript.trim(), nx = res[i + 1][0].transcript.trim().toLowerCase(); if (!nx.startsWith(t.toLowerCase())) pre += t + ' '; }
-    const a = []; for (let k = 0; k < last.length; k++) { const t = (pre + last[k].transcript).replace(/\s+/g, ' ').trim(); if (t && !a.includes(t)) a.push(t); }
+    const a = []; for (let k = 0; k < last.length; k++) { const t = ((acc ? acc + ' ' : '') + pre + last[k].transcript).replace(/\s+/g, ' ').trim(); if (t && !a.includes(t)) a.push(t); }
     if (!a.length) return;
     alts = a; onInterim(a[0]);
-    if (early && early(a)) { finish(); return; }
-    clearTimeout(quiet); quiet = setTimeout(finish, last.isFinal ? 1000 : 1700);
-    if (!CONT && last.isFinal) finish();
+    if (early && early(a)) { mlog('sûr tout de suite'); finish(); return; }
+    clearTimeout(quiet); quiet = setTimeout(finish, last.isFinal ? 1300 : 1900);
+    if (!CONT && last.isFinal) { segEnd = true; if (!o.good || o.good(a) || restarts >= 2) { finish(); return; } acc = a[0]; }
   };
-  rec.onerror = e => { if (done) return; if (e.error === 'aborted') { done = true; clearTimeout(quiet); clearTimeout(hard); return; } if (e.error === 'no-speech') { finish(); return; } done = true; clearTimeout(quiet); clearTimeout(hard); onError(e.error); };
-  rec.onend = () => { finish(); if (onEnd) onEnd(); if (rec === r0) rec = null; };
-  hard = setTimeout(finish, 9000);
-  try { rec.start(); lastAct = Date.now(); } catch (e) { setTimeout(() => { try { r0.start(); lastAct = Date.now(); } catch (e2) { done = true; onError('busy'); if (onEnd) onEnd(); } }, 300); }
+  rec.onerror = e => {
+    mlog('erreur ' + e.error);
+    if (done) return;
+    if (e.error === 'phrases-not-supported' && usePhr) { noPhr = true; retry = true; done = true; clearTimeout(quiet); clearTimeout(hard); clearTimeout(rdyT); return; }
+    if (e.error === 'aborted') { done = true; clearTimeout(quiet); clearTimeout(hard); clearTimeout(rdyT); return; }
+    if (e.error === 'no-speech') { finish(); return; }
+    done = true; clearTimeout(quiet); clearTimeout(hard); clearTimeout(rdyT); onError(e.error);
+  };
+  rec.onend = () => {
+    if (retry) { retry = false; setTimeout(() => listen(onInterim, onFinal, onError, onEnd, early, o), 80); return; }
+    /* phrase pas finie : on réécoute aussitôt, ce qu'on a entendu reste */
+    if (!done && alts.length && (segEnd || CONT) && o.good && !o.good(alts) && restarts < 2 && Date.now() - mT0 < 8500) {
+      restarts++; segEnd = false; acc = alts[0];
+      setTimeout(() => { if (done) return; try { r0.start(); mlog('relance (phrase pas finie)'); } catch (er) { finish(); if (onEnd) onEnd(); if (rec === r0) rec = null; } }, 40);
+      return;
+    }
+    mlog('fin');
+    finish(); if (onEnd) onEnd(); if (rec === r0) rec = null;
+  };
+  hard = setTimeout(finish, 10000);
+  try { rec.start(); lastAct = Date.now(); } catch (e) { setTimeout(() => { try { r0.start(); lastAct = Date.now(); } catch (e2) { done = true; mlog('impossible de démarrer'); onError('busy'); if (onEnd) onEnd(); } }, 300); }
 }
 const NUM = {
   en: { 0: 'zero', 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven', 8: 'eight', 9: 'nine', 10: 'ten', 11: 'eleven', 12: 'twelve', 15: 'fifteen', 20: 'twenty', 30: 'thirty', 40: 'forty', 50: 'fifty', 100: 'hundred' },
@@ -137,37 +176,69 @@ function lev(a, b) { const d = Array.from({ length: a.length + 1 }, (_, i) => [i
 /* deux mots « pareils » : identiques, même début (pluriels, déclinaisons polonaises), ou une à deux lettres de différence (accent, mauvaise reconnaissance) */
 const stem = w => T === 'en' ? w.replace(/(es|s)$/, '') : w;
 /* homophones fréquents de la reconnaissance (« to croissants ») */
-const HOMO = { en: { to: 'two', too: 'two', for: 'four', won: 'one', ate: 'eight', there: 'their', theyre: 'their', no: 'know', right: 'write' }, pl: {} };
-function same(a, b) {
+const HOMO = { en: { to: 'two', too: 'two', for: 'four', fore: 'four', won: 'one', ate: 'eight', there: 'their', theyre: 'their', no: 'know', right: 'write', by: 'bye', buy: 'bye', hear: 'here', pair: 'pear', pare: 'pear', flour: 'flower', whether: 'weather', sea: 'see', meat: 'meet', sun: 'son', wood: 'would', ya: 'you', yeah: 'yes', yep: 'yes', nope: 'no' }, pl: {} };
+/* son approximatif d'un mot anglais : rattrape l'accent et les erreurs de reconnaissance (« for »/« four », « sink »/« think »).
+   On garde la première lettre, on enlève les voyelles et les h, on rapproche les consonnes qui sonnent pareil. */
+function snd(w) {
+  if (T !== 'en' || w.length < 3) return w;
+  const s = w.replace(/^kn/, 'n').replace(/^wr/, 'r').replace(/ph/g, 'f').replace(/th/g, 't').replace(/ck/g, 'k').replace(/c(?=[eiy])/g, 's').replace(/[cq]/g, 'k')
+    .replace(/x/g, 'ks').replace(/z/g, 's').replace(/dg/g, 'j').replace(/gh/g, '').replace(/h/g, '').replace(/(.)\1+/g, '$1');
+  return s[0] + s.slice(1).replace(/[aeiouyw]+/g, '');
+}
+function same(a, b, loose) {
   const h = HOMO[T] || {};
-  if (a === b || stem(a) === stem(b) || h[a] === b || h[b] === a) return true;
+  if (a === b || stem(a) === stem(b) || h[a] === b || h[b] === a || (h[a] && h[a] === h[b])) return true;
   const n = Math.min(a.length, b.length);
   if (n >= 5 && a.slice(0, 5) === b.slice(0, 5)) return true;
   if (n >= 4 && T === 'pl' && a.slice(0, 4) === b.slice(0, 4) && Math.abs(a.length - b.length) <= 3) return true;
   const L = Math.max(a.length, b.length);
-  return L >= 4 && lev(a, b) <= (L >= 8 ? 2 : 1);
+  if (L >= 4 && lev(a, b) <= (L >= 8 ? 2 : 1)) return true;
+  /* en conversation, on est plus indulgent : même son à peu près */
+  if (loose && T === 'en' && n >= 3) { const x = snd(stem(a)), y = snd(stem(b)); if (x.length >= 2 && (x === y || (x.length >= 3 && lev(x, y) <= 1 && x[0] === y[0]))) return true; }
+  return false;
 }
 /* petits mots qui comptent peu : on peut les avaler sans rater sa réponse */
 const LIGHT = { en: new Set('a an the is am are to of and i you it please oh so well um uh'.split(' ')), pl: new Set('i w z na to jest sie a no prosze'.split(' ')) };
-function score(said, opt) {
-  const a = norm(said), b = norm(opt); if (!a.length || !b.length) return 0;
-  const wt = w => LIGHT[T] && LIGHT[T].has(w) ? .35 : 1;
-  let got = 0, all = 0; const used = new Set();
-  b.forEach(w => {
-    all += wt(w);
-    let i = a.findIndex((x, j) => !used.has(j) && same(x, w));
-    /* mot coupé en deux par la reconnaissance (« bag it » pour « baguette ») */
-    if (i < 0 && w.length >= 5) i = a.findIndex((x, j) => j + 1 < a.length && !used.has(j) && !used.has(j + 1) && same(x + a[j + 1], w) && (used.add(j + 1), true));
-    if (i >= 0) { used.add(i); got += wt(w); }
-  });
-  const extra = a.filter((x, j) => !used.has(j)).reduce((s, w) => s + wt(w), 0);
+/* un mot attendu est-il dans ce qui a été entendu ? (aussi coupé en deux : « bag it » pour « baguette ») */
+function findW(a, w, used, loose) {
+  let i = a.findIndex((x, j) => !used.has(j) && same(x, w, loose));
+  if (i < 0 && w.length >= 5) { i = a.findIndex((x, j) => j + 1 < a.length && !used.has(j) && !used.has(j + 1) && same(x + a[j + 1], w, loose)); if (i >= 0) used.add(i + 1); }
+  if (i >= 0) used.add(i);
+  return i >= 0;
+}
+function score(said, opt, loose, det) {
+  const a = Array.isArray(said) ? said : norm(said), b = norm(opt); if (!a.length || !b.length) return 0;
+  const lt = w => LIGHT[T] && LIGHT[T].has(w), wt = w => lt(w) ? .35 : 1;
+  let got = 0, all = 0, mc = 0; const used = new Set();
+  b.forEach(w => { all += wt(w); if (findW(a, w, used, loose)) { got += wt(w); if (!lt(w)) mc++; } });
+  const rest = a.filter((x, j) => !used.has(j)), extra = rest.reduce((s, w) => s + wt(w), 0);
+  /* mots importants entendus en trop (« good MORNING » n'est pas « good night ») */
+  if (det) { det.mc = mc; det.ex = rest.filter(w => !lt(w)).length; }
   return got / all * .8 + got / (got + extra || 1) * .2;
 }
-/* meilleure réponse parmi les variantes entendues : renvoie l'option, son score et l'écart avec la suivante */
+/* meilleure réponse parmi les variantes entendues.
+   Les mots propres à chaque réponse (« five » contre « four », « yes » contre « not ») comptent presque autant que la phrase entière :
+   un débutant qui avale la moitié de la phrase mais dit le bon mot est compris. */
 function bestOpt(alts, opts) {
-  let best = null, bs = 0, second = 0, heard = alts[0] || '';
-  alts.forEach(a => opts.forEach(o => { const s = score(a, o.t); if (s > bs) { if (best !== o) second = bs; bs = s; best = o; heard = a; } else if (o !== best && s > second) second = s; }));
-  return { best, bs, gap: bs - second, heard };
+  const content = o => [...new Set(norm(o.t).filter(w => !(LIGHT[T] && LIGHT[T].has(w))))];
+  const W = opts.map(content);
+  const uniq = W.map((ws, i) => ws.filter(w => !W.some((o, j) => j !== i && o.some(x => same(x, w)))));
+  const R = opts.map(o => ({ o, s: 0, base: 0, d: 0, heard: '' }));
+  /* mots collés par la reconnaissance (« goodnight » pour « good night ») : on les recoupe */
+  const pairs = {}; opts.forEach(o => { const b = norm(o.t); for (let k = 0; k + 1 < b.length; k++) pairs[b[k] + b[k + 1]] = [b[k], b[k + 1]]; });
+  alts.forEach(t => {
+    const a = norm(t).flatMap(w => pairs[w] || [w]); if (!a.length) return;
+    opts.forEach((o, i) => {
+      const det = {}, base = score(a, o.t, true, det), u = uniq[i];
+      const d = u.length ? u.filter(w => findW(a, w, new Set(), true)).length / u.length : base;
+      const s = base * .55 + d * .45;
+      if (s > R[i].s) Object.assign(R[i], { s, base, d, heard: t, mc: det.mc, ex: det.ex });
+    });
+  });
+  const rk = R.slice().sort((x, y) => y.s - x.s), b = rk[0] || { s: 0 }, sec = rk[1] || { s: 0, d: 0 };
+  /* sûr : nettement devant, ou ses mots à elle entendus et aucun mot propre aux autres */
+  const sure = !!b.o && b.mc > b.ex && ((b.s >= .5 && b.s - sec.s >= .12) || (b.d > 0 && sec.d === 0 && b.base >= .35 && b.s - sec.s >= .1));
+  return { best: b.o || null, bs: b.s, gap: b.s - sec.s, heard: b.heard || alts[0] || '', sure, ranked: rk };
 }
 /* prononciation d'un mot ou d'une phrase seule */
 function pronScore(alts, target) {
@@ -184,7 +255,8 @@ function pronScore(alts, target) {
   return { best, heard };
 }
 function micError(err, out) {
-  out.textContent = err === 'unsupported' ? U.noMic : (err === 'not-allowed' || err === 'service-not-allowed') ? fill(U.micDenied, { b: S.baker }) : U.notUnderstood;
+  out.textContent = err === 'unsupported' ? U.noMic : (err === 'service-not-allowed' && IOS) ? U.micSiri : (err === 'not-allowed' || err === 'service-not-allowed') ? fill(U.micDenied, { b: S.baker })
+    : err === 'audio-capture' ? U.micBusy : err === 'network' ? U.micNet : U.notUnderstood;
 }
 
 /* ---------- progression ---------- */
@@ -411,7 +483,7 @@ $('helpOk').onclick = () => helpShow(false);
 /* rapport de bug : appareil, écran, carte graphique, dernières erreurs ; copié pour être collé dans la conversation */
 $('bugBtn').onclick = () => {
   let gpu = '?'; try { const g = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl'); const x = g && g.getExtension('WEBGL_debug_renderer_info'); gpu = x ? g.getParameter(x.UNMASKED_RENDERER_WEBGL) : '?'; } catch (e) { /* */ }
-  const lines = ['Rapport Chatterville ' + new Date().toISOString(), location.href, navigator.userAgent, 'écran ' + innerWidth + 'x' + innerHeight + ' @' + devicePixelRatio, 'GPU ' + gpu, 'lieu ' + place + ' · mode compatible ' + (window.PVClay && PVClay.SAFE ? 'oui' : 'non'), 'erreurs :'].concat((window.PVLOG || []).slice(-15));
+  const lines = ['Rapport Chatterville ' + new Date().toISOString(), location.href, navigator.userAgent, 'écran ' + innerWidth + 'x' + innerHeight + ' @' + devicePixelRatio, 'GPU ' + gpu, 'lieu ' + place + ' · mode compatible ' + (window.PVClay && PVClay.SAFE ? 'oui' : 'non'), 'reconnaissance vocale ' + (SR ? (window.SpeechRecognition ? 'oui' : 'webkit') : 'non') + (noMic() ? ' · mode sans micro' : ''), 'erreurs :'].concat((window.PVLOG || []).slice(-15), ['micro :'], MICLOG.slice(-40));
   const txt = lines.join('\n');
   const done = () => toast(U.bugCopied);
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => { prompt('Copie ce texte :', txt); });
@@ -503,13 +575,14 @@ $('wSave').onclick = () => { if (L.cards[curWord]) delete L.cards[curWord]; else
 $('wRepeat').onclick = () => micReady(wRepeatGo);
 function wRepeatGo() {
   const btn = $('wRepeat'), out = $('wPron'), target = norm(W[curWord][T]).join(' ');
-  btn.classList.add('on'); out.className = 'pron'; out.textContent = U.listening;
+  btn.classList.add('on'); out.className = 'pron'; out.textContent = U.micWait;
   listen(t => { out.textContent = '« ' + t + ' »'; }, alts => {
     const { best, heard } = pronScore(alts, target);
     out.textContent = '';
     if (best >= .75) { out.append(icon('check'), document.createTextNode(U.pronGood)); praise(true, true); if (!L.pron[curWord]) { L.pron[curWord] = 1; addXP(10); } }
     else { out.className = 'pron bad'; out.textContent = fill(U.pronClose, { h: heard }); }
-  }, err => { out.className = 'pron bad'; micError(err, out); }, () => btn.classList.remove('on'), alts => pronScore(alts, target).best >= .92);
+  }, err => { out.className = 'pron bad'; micError(err, out); }, () => btn.classList.remove('on'), alts => pronScore(alts, target).best >= .92,
+  { ready: () => { out.textContent = U.listening; }, good: alts => pronScore(alts, target).best >= .75 });
 }
 
 /* plan de la ville */
@@ -538,6 +611,9 @@ let curDlg = null, dlgMode = null;
 const CV = () => ({ c: PV.CITY_NAME[country()] || 'Petite Ville', cl: PV.CITY_LOC[country()] || 'w Petite Ville' });
 const DD = () => curDlg || (curNpc ? PV.NPCS[curNpc].dlg[T] : D);
 const voiceP = () => curNpc ? PV.NPCS[curNpc].pitch : .95;
+/* réponses « peut-être » : le micro a hésité entre elles ; les toucher compte comme une réponse parlée */
+let maybe = new Set();
+function markMaybe(list) { maybe = new Set(list); document.querySelectorAll('#dOpts .opt').forEach((b, i) => b.classList.toggle('maybe', maybe.has(curOpts[i]))); }
 function render(line, tr, key) {
   line = fill(line, CV()); lastLine = line; $('dLine').textContent = line; $('dTrTxt').textContent = fill((tr || {})[ui] || '', CV());
   curOpts = key ? DD().opts[key] : [];
@@ -548,8 +624,9 @@ function render(line, tr, key) {
     const sp = el('span', 'optSpk'); sp.setAttribute('role', 'button'); sp.setAttribute('aria-label', U.listen); sp.appendChild(icon('spk'));
     sp.onclick = e => { e.stopPropagation(); say(o.t, { who: 'you', rate: 1 }); };
     b.append(el('span', null, o.t), el('div', 'fr', o.tr[ui] || ''), sp);
-    b.onclick = () => choose(o, false); box.appendChild(b);
+    b.onclick = () => choose(o, maybe.has(o)); box.appendChild(b);
   });
+  maybe = new Set();
   $('dMic').disabled = !SR || !curOpts.length;
   $('dHeard').textContent = curOpts.length ? (SR ? U.speakNow : U.noMic) : '';
 }
@@ -579,13 +656,20 @@ $('dNoMic').onclick = () => { setNoMic(true); toast(U.noMicOn); };
 $('dUseMic').onclick = () => { setNoMic(false); toast(U.noMicOff); };
 function dMicGo() {
   const mic = $('dMic'), out = $('dHeard');
-  mic.classList.add('on'); out.textContent = U.listening;
+  markMaybe([]); $('dTip').classList.add('hidden');
+  /* « une seconde… » tant que le navigateur n'écoute pas encore, puis « à toi » : sinon les premiers mots se perdent */
+  mic.classList.add('wait'); out.textContent = U.micWait;
   listen(t => { out.textContent = '« ' + t + ' »'; }, alts => {
-    const { best, bs, gap, heard } = bestOpt(alts, curOpts);
-    out.textContent = '« ' + heard + ' »'; out.appendChild(el('small', null, U.heard));
-    if (best && bs >= .5 && gap >= .08) choose(best, true);
+    const r = bestOpt(alts, curOpts);
+    mlog('compris : ' + (r.sure ? '« ' + r.best.t + ' »' : 'pas sûr') + ' (' + r.ranked.slice(0, 3).map(x => x.s.toFixed(2)).join(' / ') + ')');
+    out.textContent = '« ' + r.heard + ' »'; out.appendChild(el('small', null, U.heard));
+    if (r.sure) { choose(r.best, true); return; }
+    /* pas sûr : on montre les réponses possibles au lieu d'un simple « pas compris » */
+    const cand = r.ranked.filter(x => x.s >= .3 && x.s >= r.bs - .15).slice(0, 2);
+    if (cand.length) { markMaybe(cand.map(x => x.o)); $('dTip').textContent = fill(U.maybe, { h: r.heard }); $('dTip').classList.remove('hidden'); }
     else { $('dTip').textContent = U.notUnderstood; $('dTip').classList.remove('hidden'); say(fill(DD().nodes.huh[0], CV()), { pitch: voiceP(), who: whoNow() }); }
-  }, err => micError(err, out), () => mic.classList.remove('on'), alts => { const r = bestOpt(alts, curOpts); return r.bs >= .85 && r.gap >= .2; });
+  }, err => micError(err, out), () => mic.classList.remove('on', 'wait'), alts => { const r = bestOpt(alts, curOpts); return r.sure && r.bs >= .85 && r.gap >= .25; },
+  { ready: () => { mic.classList.remove('wait'); mic.classList.add('on'); out.textContent = U.listening; }, phrases: curOpts.map(o => o.t), good: alts => bestOpt(alts, curOpts).sure });
 }
 
 function openNpc(id) {
@@ -929,4 +1013,6 @@ async function loadBoard() {
 }
 
 boot().catch(err => { console.error(err); renderOnb(); $('onb').classList.remove('hidden'); });
+/* tests automatiques seulement (?test) */
+if (/[?&]test\b/.test(location.search)) window.PVT = { openNpc, opts: () => curOpts, markMaybe };
 }
