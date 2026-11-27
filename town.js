@@ -1576,8 +1576,9 @@ loop();
 if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges };
 function placeAtBakery() { const a = bld.bakery.ang; pos.set(Math.sin(a) * 8.0, 1.45, Math.cos(a) * 8.0); yaw = tYaw = a; pitch = tPitch = -.05; target = null; vel.set(0, 0, 0); camYaw = Math.atan2(-pos.x, -pos.z); camInit = false; if (me) me.yaw = a; }
 
-/* horizon arrondi aussi pour les vitres, lueurs, panneaux et étiquettes (pas pour le ciel ni les étoiles) */
-if (ACCAM) scene.traverse(o => { if (o === stars || o === sky) return; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => PVClay.bendify(m)); });
+/* horizon arrondi aussi pour les matières qui ne sont pas en pâte */
+/* (seulement les habitants : yeux, bouches… ; plier toutes les matières faisait disparaître la ville sous Direct3D) */
+if (ACCAM) { const roots = people.map(p => p.grp).concat(me ? [me.g] : []); roots.forEach(r => r.traverse(o => { (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => PVClay.bendify(m)); })); }
 return {
   setPhoto, snapshot, placeAtBakery, talkTo, endTalk, greet,
   cheer: id => { const o = people.find(p => p.id === id); if (o) o.happy = 1.5; },
