@@ -333,3 +333,26 @@ body.dlg-open .exitBtn{display:none}
 #tpSlider{width:100%;accent-color:var(--honey);height:32px}
 .tpScale{display:flex;justify-content:space-between;font:700 11px Nunito,sans-serif;opacity:.6;margin-top:-4px}
 body.photo #timePop{display:none!important}
+
+/* ---------- dialogue façon jeu de village : la scène reste visible, grande bulle crème en bas,
+   prénom dans une étiquette penchée, choix de réponses dans un encadré à droite ---------- */
+#dlg{background:none;gap:10px;padding-top:0}
+#dlg .dTop{order:0}
+#dlg .talk{order:2;flex-direction:row;justify-content:flex-start;gap:12px}
+#dlg .opts{order:3;justify-self:end;margin-left:auto;width:min(340px,100%);background:#fff8e6;border-radius:26px;padding:10px;box-shadow:0 8px 22px rgba(74,58,42,.25)}
+#dlg .optsLbl,#dlg .mini{display:none}
+#dlg .bubble{order:5;background:#fff8e6;color:#5a4a3a;border-radius:46px 52px 44px 50px/54px 48px 56px 50px;padding:30px 26px 26px;box-shadow:0 10px 28px rgba(74,58,42,.28);margin-top:14px}
+#dlg .bubble::after{left:50%;top:auto;bottom:10px;margin-left:-9px;border:9px solid transparent;border-bottom:0;border-top-color:#f2b53a;animation:nudge 1s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateY(4px)}}
+#dlg .who{position:static}
+#dlg .who .name{position:absolute;top:-17px;left:26px;background:#f6cf6e;color:#6e4512;font:800 16px var(--disp);padding:4px 18px;border-radius:99px;transform:rotate(-4deg);box-shadow:0 3px 0 #d9a93e}
+#dlg .who .btn{margin-left:auto}
+#dlg .line{font:800 23px/1.3 Nunito,sans-serif;color:#5a4a3a;margin:2px 0}
+#dlg .lineTr{color:#8a7560}
+#dlg .micBig{width:66px;height:66px;background:#22b2a0;color:#fff;box-shadow:0 5px 0 #16806f}
+#dlg .micBig svg{width:30px;height:30px}
+#dlg .heard{background:rgba(255,248,230,.94);color:#5a4a3a;border-radius:16px;padding:6px 12px;font-weight:800}
+#dlg .heard:empty{display:none}
+#dlg .opt{background:#ffffff;border:2px solid #eadbb4;color:#5a4a3a;font:800 16px Nunito,sans-serif}
+#dlg .opt:hover{border-color:#22b2a0;background:#f2fbf8}
+#dlg .opt .fr{color:#8a7560}

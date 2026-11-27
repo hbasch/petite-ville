@@ -26,7 +26,9 @@ const PALS = {
 /* ---------- pays : la ville dépend de la langue apprise (anglais → Édimbourg, polonais → Wrocław) ---------- */
 const COUNTRY = ['fr', 'gb', 'pl'].includes(H.country) ? H.country : 'fr';
 /* essai de direction artistique « village douillet » (?da=ac) : herbe vive, couleurs crème et pastel, lumière claire et douce */
-const DA_AC = /[?&]da=ac\b/.test(location.search);
+const DA_AC = !/[?&]da=old\b/.test(location.search);
+/* caméra à la troisième personne, vue de trois quarts au-dessus de ton personnage (?cam=fp : ancienne vue à la première personne) */
+const ACCAM = !/[?&]cam=fp\b/.test(location.search);
 const CITY_PALS = {
   gb: { walls: ['#cdbfa6', '#b3a99a', '#e9dfcc', '#c98a64', '#a9b6bc'], roofs: ['#4a505c', '#5e5550'], ground: '#9d978e', leaf: '#5f8a4a', accent: '#2f4f8a' },
   pl: { walls: ['#f0b8a8', '#a8d4b8', '#f2d27c', '#9cc4e0', '#e8a8c8'], roofs: ['#b5452f', '#8a3a2a'], ground: '#c2b29c', leaf: '#6a9a4a', accent: '#a8323c' }
@@ -862,7 +864,9 @@ B.forEach((sp, i) => { if (sp.id !== 'florist') return; const a = a0 + span * i 
 person('maya', { skin: SK[3], hair: '#1a1a22', style: 'curly', lashes: true, eyes: '#3a2418', outfit: 'hoodie', shirt: PAL.walls[1], backpack: PAL.accent, pants: '#2f3a5a', shoes: '#f4efe6' }, 'walk', 0, 7.2, 0, { r: 7.2, a: 1.2, sp: .055, pause: 0 });
 { const a = G - .55, r = 5.6 - .95; person('sam', { skin: SK[2], hair: '#3a2418', style: 'cap', hat: PAL.roofs[0], mustache: true, eyes: '#3a2418', shirt: '#f3efe6', stripes: PAL.roofs[0], rolled: true, apron: '#c99a62' }, 'idle', Math.sin(a) * r, Math.cos(a) * r, a); }
 [[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1, tote: i === 0 ? '#efe3cf' : null, balloon: i === 2 ? '#e8423a' : null }, 'walk', 0, 0, 0, { r: i === 1 ? 6.6 : rnd(6.5, 8.2), a: rnd(0, TAU), sp: (i === 1 ? .05 : rnd(.05, .085)) * (i % 2 ? 1 : -1), pause: 0, dog: i === 1 }));
-if (DA_AC) person('avatar', { skin: SK[0], hair: '#5a3a2a', style: 'short', fringe: true, eyes: '#3a2418', outfit: 'hoodie', shirt: '#ffb547', pants: '#3f5f9a', shoes: '#f4efe6' }, 'idle', Math.sin(G) * 6.2, Math.cos(G) * 6.2, G + Math.PI);
+/* ---------- ton personnage ---------- */
+const me = ACCAM ? makeChar({ skin: SK[0], hair: '#5a3a2a', style: 'short', fringe: true, eyes: '#3a2418', outfit: 'hoodie', shirt: '#ffb547', pants: '#3f5f9a', shoes: '#f4efe6' }) : null;
+if (me) { me.g.userData.id = 'me'; scene.add(me.g); me.g.traverse(c => { if (c.isMesh && c !== me.P.shadow) c.castShadow = true; }); me.yaw = G + Math.PI; me.ph = 0; me.blinkT = 2; me.g.position.set(Math.sin(G) * 9.2, .03, Math.cos(G) * 9.2); }
 const walkers = [];
 
 /* ---------- habitants modelés : bouche en relief et « squelette » automatique ----------
@@ -1133,6 +1137,7 @@ applyHour(realHour());
 /* ---------- déplacement à la première personne ---------- */
 const pos = new THREE.Vector3(Math.sin(G) * 9.2, 1.45, Math.cos(G) * 9.2);
 let yaw = G, pitch = -.06, tYaw = G, tPitch = -.06, target = null, bob = 0;
+let camYaw = G, camPitch = .74, camInit = false; const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), _cw = new THREE.Vector3(), _cl = new THREE.Vector3();
 const vel = new THREE.Vector3(), wish = new THREE.Vector3();
 let stuckT = 0;
 const keys = {}, fwd = new THREE.Vector3(), right = new THREE.Vector3();
@@ -1171,7 +1176,7 @@ canvas.addEventListener('pointermove', e => {
   if (pinch && touches.size >= 2) { setZoom(pinch.z * pinch.d / spread()); return; }
   if (down && down.id === e.pointerId) {
     const dx = e.clientX - down.lx, dy = e.clientY - down.ly; down.lx = e.clientX; down.ly = e.clientY; down.moved += Math.abs(dx) + Math.abs(dy);
-    if (down.moved > 6) { const k = .0042 * zoomV; tYaw -= dx * k; tPitch = Math.max(-1.1, Math.min(1.0, tPitch - dy * k)); }
+    if (down.moved > 6) { if (ACCAM) { camYaw -= dx * .006; camPitch = Math.max(.45, Math.min(1.05, camPitch + dy * .003)); } else { const k = .0042 * zoomV; tYaw -= dx * k; tPitch = Math.max(-1.1, Math.min(1.0, tPitch - dy * k)); } }
     return;
   }
   if (e.pointerType !== 'mouse') return;
@@ -1217,7 +1222,7 @@ function setPhoto(on) {
     if (!composer) composer = makeComposer();
   } else {
     if (ctl) ctl.enabled = false;
-    pos.copy(saved.pos); yaw = tYaw = saved.yaw; pitch = tPitch = saved.pitch; vel.set(0, 0, 0); target = null; cam.fov = saved.fov; cam.near = .2; cam.far = 420; cam.updateProjectionMatrix();
+    pos.copy(saved.pos); yaw = tYaw = saved.yaw; pitch = tPitch = saved.pitch; camInit = false; vel.set(0, 0, 0); target = null; cam.fov = saved.fov; cam.near = .2; cam.far = 420; cam.updateProjectionMatrix();
     hourOverride = null; applyHour(realHour());
   }
 }
@@ -1400,7 +1405,7 @@ function updatePeople(dt, t) {
     if (o.dog) updateDog(o, dt, t);
   });
   catObj.userData.breath.scale.y = 1 + Math.sin(t * 1.6) * .05; catObj.userData.head.rotation.x = Math.sin(t * .3) > .97 ? .15 : 0;
-  if (talking) { const want = Math.atan2(-(talking.grp.position.x - pos.x), -(talking.grp.position.z - pos.z)); let d = want - tYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); tYaw += d * .08; tPitch += (-.3 - tPitch) * .08; }
+  if (talking && !ACCAM) { const want = Math.atan2(-(talking.grp.position.x - pos.x), -(talking.grp.position.z - pos.z)); let d = want - tYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); tYaw += d * .08; tPitch += (-.3 - tPitch) * .08; }
 }
 function talkTo(id) {
   const o = people.find(p => p.id === id); if (!o) return; talking = o; o.pause = 999;
@@ -1441,6 +1446,53 @@ function dbgFrame() {
   dbgS.t = 0; dbgS.n = 0; R.info.reset();
 }
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* ---------- caméra de trois quarts, façon jeu de village ----------
+   Elle regarde ton personnage d'en haut (environ 42°), sans tourner toute seule ; un glissé du doigt la fait pivoter,
+   pincer ou la molette rapproche. En conversation, elle vient cadrer l'habitant de face, par-dessus ton épaule.
+   Ce qui se trouve entre la caméra et ton personnage (façade, arbre) s'ajoure en pointillé pour qu'on ne le perde jamais. */
+function updateTPS(dt, t, spd) {
+  zoomV += (zoomT - zoomV) * (1 - Math.exp(-dt * 12));
+  const asp = innerWidth / innerHeight, port = asp < 1;
+  let fov;
+  if (talking) {
+    const n = talking.grp.position, dx = pos.x - n.x, dz = pos.z - n.z, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d, sx = uz, sz = -ux;
+    /* l'habitant cadré dans le haut de l'écran, la bulle prend le bas, comme dans les jeux de village */
+    const hy = talking.mode === 'sit' ? .8 : 1.0, back = port ? 4.4 : 3.4;
+    fov = port ? 44 : 30;
+    _cw.set(n.x + ux * back + sx * .9, port ? 1.9 : 1.6, n.z + uz * back + sz * .9);
+    _cl.set(n.x - sx * .1, hy - (port ? .95 : .45), n.z - sz * .1);
+  } else {
+    fov = port ? 44 : 30;
+    const Wv = Math.min(15, Math.max(7, asp * 9)), Hv = Wv / asp, dist = Hv / (2 * Math.tan(fov * Math.PI / 360)) * zoomV;
+    const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
+    _cl.set(pos.x + fx * (port ? 1.6 : 1.0), .8, pos.z + fz * (port ? 1.6 : 1.0));
+    _cw.set(_cl.x - fx * dist * Math.cos(camPitch), .8 + dist * Math.sin(camPitch), _cl.z - fz * dist * Math.cos(camPitch));
+  }
+  const k = camInit ? 1 - Math.exp(-dt * (talking ? 4.5 : 8)) : 1; camInit = true;
+  camPos.lerp(_cw, k); camLook.lerp(_cl, k);
+  cam.position.copy(camPos); cam.lookAt(camLook);
+  if (Math.abs(cam.fov - fov) > .05) { cam.fov += (fov - cam.fov) * k; cam.updateProjectionMatrix(); }
+  PVClay.U.cutA.value.copy(cam.position);
+  /* le pointillé s'arrête avant le personnage regardé (l'habitant en conversation n'est jamais ajouré) */
+  if (talking) { const n = talking.grp.position, dx = cam.position.x - n.x, dz = cam.position.z - n.z, d = Math.hypot(dx, dz) || 1; PVClay.U.cutB.value.set(n.x + dx / d * 1.1, 1.0, n.z + dz / d * 1.1); }
+  else PVClay.U.cutB.value.set(pos.x, 1.0, pos.z);
+  PVClay.U.cutOn.value = 1;
+  if (!me) return;
+  /* ton personnage : se tourne vers où il va, marche, respire, cligne des yeux */
+  const P = me.P; me.g.position.set(pos.x, .03, pos.z);
+  let want = me.yaw;
+  if (talking) want = Math.atan2(talking.grp.position.x - pos.x, talking.grp.position.z - pos.z);
+  else if (spd > .2) want = Math.atan2(vel.x, vel.z);
+  let dy = want - me.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); me.yaw += dy * (1 - Math.exp(-dt * 12)); me.g.rotation.y = me.yaw;
+  const w = Math.min(1, spd / 2.2); me.ph += dt * spd * 3.6;
+  const s = Math.sin(me.ph);
+  P.legs[0].rotation.x = s * .62 * w; P.legs[1].rotation.x = -s * .62 * w;
+  P.arms[0].rotation.x = -s * .5 * w; P.arms[1].rotation.x = s * .5 * w;
+  P.body.position.y = .42 + Math.abs(Math.cos(me.ph)) * .04 * w + (1 - w) * Math.sin(t * 2) * .006;
+  P.body.rotation.z = Math.sin(me.ph) * .04 * w;
+  me.blinkT -= dt; const closed = me.blinkT < .12; if (me.blinkT < 0) me.blinkT = 2 + Math.random() * 3;
+  if (P.lids) P.lids.forEach(l => { l.rotation.x += ((closed ? 1.45 : -1.25) - l.rotation.x) * .6; });
+}
 function loop() {
   requestAnimationFrame(loop);
   const dt = Math.min(clockT.getDelta(), .05), t = clockT.elapsedTime;
@@ -1457,16 +1509,17 @@ function loop() {
   updateFx(dt, t);
   badges.forEach((b, i) => { b.spr.position.y = b.y + Math.sin(t * 1.8 + i * 1.3) * .06; });
   if (t - lastBadgeCheck > .7) { lastBadgeCheck = t; badges.forEach(b => { if (H.label(b.id) !== b.lab) drawBadge(b); }); }
-  if (photo) { ctl.update(); clayEnv(); if (composer) composer.render(); else R.render(scene, cam); sky.position.copy(cam.position); stars.position.copy(cam.position); return; }
+  if (photo) { PVClay.U.cutOn.value = 0; ctl.update(); clayEnv(); if (composer) composer.render(); else R.render(scene, cam); sky.position.copy(cam.position); stars.position.copy(cam.position); return; }
   /* marche */
+  if (ACCAM) yaw = camYaw;
   fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw)); right.set(Math.cos(yaw), 0, -Math.sin(yaw));
   wish.set(0, 0, 0);
   if (keys.w || keys.z || keys.arrowup) wish.add(fwd);
   if (keys.s || keys.arrowdown) wish.sub(fwd);
   if (keys.a || keys.q) wish.sub(right);
   if (keys.d) wish.add(right);
-  if (keys.arrowleft) tYaw += 1.6 * dt;
-  if (keys.arrowright) tYaw -= 1.6 * dt;
+  if (keys.arrowleft) { if (ACCAM) camYaw += 1.6 * dt; else tYaw += 1.6 * dt; }
+  if (keys.arrowright) { if (ACCAM) camYaw -= 1.6 * dt; else tYaw -= 1.6 * dt; }
   const SPEED = 2.6;
   if (wish.lengthSq() > 0) { target = null; wish.normalize().multiplyScalar(SPEED); }
   else if (target) { const ddx = target.x - pos.x, ddz = target.z - pos.z, L = Math.hypot(ddx, ddz); if (L < .08) target = null; else { const sp = Math.min(SPEED, L * 2.2); wish.set(ddx / L * sp, 0, ddz / L * sp); } }
@@ -1476,11 +1529,13 @@ function loop() {
   if (dt > 0) { vel.x = (pos.x - px) / dt; vel.z = (pos.z - pz) / dt; }
   const spd = Math.hypot(vel.x, vel.z);
   if (target && wish.lengthSq() > .25 && spd < .2) { if ((stuckT += dt) > .7) { target = null; stuckT = 0; } } else stuckT = 0;
+  if (ACCAM) updateTPS(dt, t, spd); else {
   yaw += (tYaw - yaw) * (1 - Math.exp(-dt * 16)); pitch += (tPitch - pitch) * (1 - Math.exp(-dt * 16));
   bob += dt * spd * 3.4;
   cam.position.set(pos.x, pos.y + Math.sin(bob) * .018 * Math.min(1, spd / SPEED), pos.z);
   cam.rotation.set(pitch, yaw, 0, 'YXZ');
   zoomV += (zoomT - zoomV) * (1 - Math.exp(-dt * 12)); { const f = (mobile ? 70 : 62) * zoomV; if (Math.abs(cam.fov - f) > .01) { cam.fov = f; cam.updateProjectionMatrix(); } }
+  }
   sky.position.copy(cam.position); stars.position.copy(cam.position);
   if (!fp && !fpFailed) { try { fp = makeFP(); } catch (e) { fpFailed = true; console.warn(e); } }
   perfT += dt; perfN++;
@@ -1497,7 +1552,7 @@ loop();
 /* sortir de la boulangerie : devant sa porte, face à la place */
 /* outil de test : ?debug dans l'adresse donne window.PVDBG pour placer la caméra (captures de vérification) */
 if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges };
-function placeAtBakery() { const a = bld.bakery.ang; pos.set(Math.sin(a) * 8.0, 1.45, Math.cos(a) * 8.0); yaw = tYaw = a; pitch = tPitch = -.05; target = null; vel.set(0, 0, 0); }
+function placeAtBakery() { const a = bld.bakery.ang; pos.set(Math.sin(a) * 8.0, 1.45, Math.cos(a) * 8.0); yaw = tYaw = a; pitch = tPitch = -.05; target = null; vel.set(0, 0, 0); camYaw = Math.atan2(-pos.x, -pos.z); camInit = false; if (me) me.yaw = a; }
 
 return {
   setPhoto, snapshot, placeAtBakery, talkTo, endTalk, greet,

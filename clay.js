@@ -6,11 +6,17 @@
    et un reflet doux sur les arêtes (atténués la nuit). */
 (function () {
   const U = { day: { value: 1 }, ground: { value: 1 },
+    /* ajourage : ce qui est entre la caméra (cutA) et ton personnage (cutB) s'efface en pointillé */
+    cutA: { value: new THREE.Vector3() }, cutB: { value: new THREE.Vector3() }, cutOn: { value: 0 },
     /* reflets : couleurs du ciel en haut, à l'horizon et du sol (linéaires), données par la scène */
     envT: { value: new THREE.Color(.45, .62, .85) }, envH: { value: new THREE.Color(.75, .8, .85) }, envG: { value: new THREE.Color(.3, .22, .16) } };
   const NOISE = `
 varying vec3 vClayP;
 varying float vClayY;
+varying vec3 vClayW;
+uniform vec3 clayCutA;
+uniform vec3 clayCutB;
+uniform float clayCutOn;
 uniform float clayAmt;
 uniform float clayDay;
 uniform float clayGround;
@@ -52,12 +58,13 @@ float clayHeight(vec3 p, float fine) {
     sh.uniforms.clayAmt = { value: this.userData.clayAmt };
     sh.uniforms.clayDay = U.day;
     sh.uniforms.clayGround = U.ground;
+    sh.uniforms.clayCutA = U.cutA; sh.uniforms.clayCutB = U.cutB; sh.uniforms.clayCutOn = U.cutOn;
     sh.uniforms.claySSS = { value: this.userData.claySSS || SSS0 };
     sh.uniforms.clayEnvK = { value: this.envMapIntensity };
     sh.uniforms.clayStone = { value: this.userData.clayStone || 0 };
     sh.uniforms.clayEnvT = U.envT; sh.uniforms.clayEnvH = U.envH; sh.uniforms.clayEnvG = U.envG;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vClayP;\nvarying float vClayY;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vClayP;\nvarying float vClayY;\nvarying vec3 vClayW;')
       .replace('#include <project_vertex>', `#include <project_vertex>
   vec4 clayC = vec4(transformed, 1.0);
   #ifdef USE_SKINNING
@@ -67,9 +74,24 @@ float clayHeight(vec3 p, float fine) {
     clayC = instanceMatrix * clayC;
   #endif
   vClayP = clayC.xyz * vec3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz));
-  vClayY = (modelMatrix * clayC).y;`);
+  vClayY = (modelMatrix * clayC).y;
+  vec4 clayWp = vec4(transformed, 1.0);
+  #ifdef USE_INSTANCING
+    clayWp = instanceMatrix * clayWp;
+  #endif
+  vClayW = (modelMatrix * clayWp).xyz;`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\n' + NOISE)
+      .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+  if (clayCutOn > 0.5 && vClayW.y > 0.3) {
+    vec3 cab = clayCutB - clayCutA; float ctt = dot(vClayW - clayCutA, cab) / dot(cab, cab);
+    if (ctt > 0.02 && ctt < 0.97) {
+      float cdl = length(vClayW - (clayCutA + cab * ctt));
+      float ca = (1.0 - smoothstep(1.2, 2.0, cdl)) * (1.0 - smoothstep(0.86, 0.96, ctt));
+      float cth = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+      if (ca > cth) discard;
+    }
+  }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
   float clayN = cNoise(vClayP * 1.7 + 7.0);
   diffuseColor.rgb *= 0.95 + 0.1 * clayN;
@@ -130,7 +152,7 @@ float clayHeight(vec3 p, float fine) {
     if (sss) m.userData.claySSS = new THREE.Vector3().fromArray(sss);
     m.extensions = Object.assign(m.extensions || {}, { derivatives: true });
     m.onBeforeCompile = patch;
-    m.customProgramCacheKey = () => 'clay3';
+    m.customProgramCacheKey = () => 'clay4';
     return m;
   }
 
