@@ -1,0 +1,10 @@
+# vues standard : A = depuis l'entrée vers la place, B = devant la fleuriste, C = boulangerie de près
+# FIX : passants figés à des places fixes (mesures comparables)
+FIX='PVDBG.people.forEach((p,i)=>{if(p.mode==="walk"){p.a=[2.2,3.4,4.6,5.8][i%4];p.pause=1e9;}});'
+CLOSE='document.querySelector("[data-close=dlg]").click();'
+VA="$CLOSE $FIX PVDBG.go(5.93,7.04,0.7,-0.03);"
+VB="$CLOSE $FIX (()=>{const o=PVDBG.people.find(p=>p.id==\"rosa\");o.pause=1e9;const g=o.grp,r=o.base+.6;PVDBG.go(g.position.x+Math.sin(r)*1.7,g.position.z+Math.cos(r)*1.7,r,-0.16,1.35);})();"
+VC="$CLOSE $FIX (()=>{const a=3.296,cx=Math.sin(a-.3)*6.0,cz=Math.cos(a-.3)*6.0,tx=Math.sin(a)*11.6,tz=Math.cos(a)*11.6;PVDBG.go(cx,cz,Math.atan2(-(tx-cx),-(tz-cz)),0.14);})();"
+CNT='setTimeout(()=>{const S=PVDBG.scene,C=PVDBG.cam;C.updateMatrixWorld();const F=new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(C.projectionMatrix,C.matrixWorldInverse));const by={};let tot=0;S.traverseVisible(o=>{if(!(o.isMesh||o.isPoints||o.isSprite||o.isLine))return;if(o.frustumCulled&&o.geometry&&!o.isSprite){if(!o.geometry.boundingSphere)o.geometry.computeBoundingSphere();const sph=o.geometry.boundingSphere.clone().applyMatrix4(o.matrixWorld);if(!F.intersectsSphere(sph))return;}let k="?";for(let q=o;q;q=q.parent){if(q.userData&&q.userData.id){k=q.userData.id;break;}}if(o.isSprite)k="sprite";by[k]=(by[k]||0)+(Array.isArray(o.material)?o.material.length:1);tot++;});console.log("PERF "+tot+" "+JSON.stringify(Object.entries(by).sort((a,b)=>b[1]-a[1])));},1500);'
+VD="$CLOSE $FIX PVDBG.go(-Math.sin(0.7)*3.0,-Math.cos(0.7)*3.0,0.7+Math.PI,0.02);"
+BENCH='setTimeout(()=>{const R=PVDBG.R,S=PVDBG.scene,C=PVDBG.cam,gl=R.getContext(),px=new Uint8Array(4);R.info.autoReset=true;R.setRenderTarget(null);R.render(S,C);gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,px);const t0=performance.now();for(let i=0;i<4;i++){R.render(S,C);gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,px);}const ms=(performance.now()-t0)/4;console.log("PERF bench "+ms.toFixed(1)+" ms calls "+R.info.render.calls+" tris "+R.info.render.triangles);R.info.autoReset=false;},1200);'
