@@ -76,40 +76,102 @@ function holdMic() {
   if (micAsked || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return; micAsked = true;
   navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true } }).then(st => { micStream = st; }).catch(() => { /* refusé : on garde le fonctionnement normal */ });
 }
-function listen(onInterim, onFinal, onError, onEnd) {
+/* écoute : on laisse le temps de finir sa phrase (les débutants hésitent), on s'arrête après un court silence,
+   et on valide tout de suite dès que la réponse est sûre (early). iPhone : mode continu peu fiable, on garde le simple. */
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+/* Android : le mode continu y répète les morceaux déjà entendus, on garde aussi le mode simple */
+const CONT = !IOS && !/Android/i.test(navigator.userAgent);
+function listen(onInterim, onFinal, onError, onEnd, early) {
   if (!SR) { onError('unsupported'); if (onEnd) onEnd(); return; }
   shush();
   if (rec) try { rec.abort(); } catch (e) { /* none */ }
   /* un seul module d'écoute, réutilisé : sur iPhone, en recréer un redemande la permission à chaque fois */
   if (!recInst) recInst = new SR();
-  rec = recInst; rec.lang = S.voice; rec.interimResults = true; rec.maxAlternatives = 4; rec.continuous = false;
+  rec = recInst; rec.lang = S.voice; rec.interimResults = true; rec.maxAlternatives = 5; rec.continuous = CONT;
   rec.onstart = () => holdMic();
-  let done = false;
-  rec.onresult = e => {
-    const r = e.results[e.results.length - 1];
-    if (r.isFinal) { done = true; const alts = []; for (let i = 0; i < r.length; i++) alts.push(r[i].transcript); onFinal(alts); }
-    else onInterim(r[0].transcript);
+  let done = false, alts = [], quiet = 0, hard = 0;
+  const r0 = rec;
+  const finish = () => {
+    if (done) return; done = true; clearTimeout(quiet); clearTimeout(hard);
+    try { r0.stop(); } catch (e) { /* none */ }
+    if (alts.length) onFinal(alts); else onError('no-speech');
   };
-  rec.onerror = e => { done = true; onError(e.error); };
-  rec.onend = () => { if (!done) onError('no-speech'); if (onEnd) onEnd(); rec = null; };
-  try { rec.start(); lastAct = Date.now(); } catch (e) { const r2 = rec; setTimeout(() => { try { r2.start(); lastAct = Date.now(); } catch (e2) { onError('busy'); if (onEnd) onEnd(); } }, 300); }
+  rec.onresult = e => {
+    /* phrase entière = tous les morceaux déjà entendus + chaque variante du dernier morceau */
+    const res = e.results, last = res[res.length - 1];
+    let pre = ''; for (let i = 0; i < res.length - 1; i++) { const t = res[i][0].transcript.trim(), nx = res[i + 1][0].transcript.trim().toLowerCase(); if (!nx.startsWith(t.toLowerCase())) pre += t + ' '; }
+    const a = []; for (let k = 0; k < last.length; k++) { const t = (pre + last[k].transcript).replace(/\s+/g, ' ').trim(); if (t && !a.includes(t)) a.push(t); }
+    if (!a.length) return;
+    alts = a; onInterim(a[0]);
+    if (early && early(a)) { finish(); return; }
+    clearTimeout(quiet); quiet = setTimeout(finish, last.isFinal ? 1000 : 1700);
+    if (!CONT && last.isFinal) finish();
+  };
+  rec.onerror = e => { if (done) return; if (e.error === 'aborted') { done = true; clearTimeout(quiet); clearTimeout(hard); return; } if (e.error === 'no-speech') { finish(); return; } done = true; clearTimeout(quiet); clearTimeout(hard); onError(e.error); };
+  rec.onend = () => { finish(); if (onEnd) onEnd(); if (rec === r0) rec = null; };
+  hard = setTimeout(finish, 9000);
+  try { rec.start(); lastAct = Date.now(); } catch (e) { setTimeout(() => { try { r0.start(); lastAct = Date.now(); } catch (e2) { done = true; onError('busy'); if (onEnd) onEnd(); } }, 300); }
 }
-const NUM = { en: { 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six', 10: 'ten', 20: 'twenty', 50: 'fifty' }, pl: { 2: 'dwa', 3: 'trzy', 4: 'cztery', 5: 'piec', 6: 'szesc', 10: 'dziesiec', 15: 'pietnascie', 20: 'dwadziescia', 50: 'piecdziesiat' } };
-const EXP = { heres: 'here is', thats: 'that is', its: 'it is', whats: 'what is', id: 'i would', ill: 'i will', im: 'i am' };
+const NUM = {
+  en: { 0: 'zero', 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven', 8: 'eight', 9: 'nine', 10: 'ten', 11: 'eleven', 12: 'twelve', 15: 'fifteen', 20: 'twenty', 30: 'thirty', 40: 'forty', 50: 'fifty', 100: 'hundred' },
+  pl: { 1: 'jeden', 2: 'dwa', 3: 'trzy', 4: 'cztery', 5: 'piec', 6: 'szesc', 7: 'siedem', 8: 'osiem', 9: 'dziewiec', 10: 'dziesiec', 15: 'pietnascie', 20: 'dwadziescia', 30: 'trzydziesci', 50: 'piecdziesiat', 100: 'sto' } };
+const EXP = { heres: 'here is', thats: 'that is', its: 'it is', whats: 'what is', id: 'i would', ill: 'i will', im: 'i am', wanna: 'want to', gonna: 'going to', thanx: 'thanks', ok: 'okay', o: 'oh' };
 function norm(s) {
   return s.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[’']s\b/g, ' is').replace(/[’']ll\b/g, ' will').replace(/[’']d\b/g, ' would').replace(/[’']m\b/g, ' am').replace(/n[’']t\b/g, ' not')
     .replace(/£\s?(\d+)(?:[.,](\d+))?/g, (m, a, b) => ' ' + a + ' pounds ' + (b || '')).replace(/£/g, ' ').replace(/(\d+)[.,](\d+)/g, '$1 $2').replace(/'/g, '').replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/).filter(Boolean).flatMap(w => (EXP[w] || w).split(' ')).map(w => NUM[T][w] || (w === 'zl' ? 'zlotych' : w));
 }
-const same = (a, b) => a === b || (a.length >= 5 && b.length >= 5 && a.slice(0, 5) === b.slice(0, 5));
+function lev(a, b) { const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; }
+/* deux mots « pareils » : identiques, même début (pluriels, déclinaisons polonaises), ou une à deux lettres de différence (accent, mauvaise reconnaissance) */
+const stem = w => T === 'en' ? w.replace(/(es|s)$/, '') : w;
+/* homophones fréquents de la reconnaissance (« to croissants ») */
+const HOMO = { en: { to: 'two', too: 'two', for: 'four', won: 'one', ate: 'eight', there: 'their', theyre: 'their', no: 'know', right: 'write' }, pl: {} };
+function same(a, b) {
+  const h = HOMO[T] || {};
+  if (a === b || stem(a) === stem(b) || h[a] === b || h[b] === a) return true;
+  const n = Math.min(a.length, b.length);
+  if (n >= 5 && a.slice(0, 5) === b.slice(0, 5)) return true;
+  if (n >= 4 && T === 'pl' && a.slice(0, 4) === b.slice(0, 4) && Math.abs(a.length - b.length) <= 3) return true;
+  const L = Math.max(a.length, b.length);
+  return L >= 4 && lev(a, b) <= (L >= 8 ? 2 : 1);
+}
+/* petits mots qui comptent peu : on peut les avaler sans rater sa réponse */
+const LIGHT = { en: new Set('a an the is am are to of and i you it please oh so well um uh'.split(' ')), pl: new Set('i w z na to jest sie a no prosze'.split(' ')) };
 function score(said, opt) {
   const a = norm(said), b = norm(opt); if (!a.length || !b.length) return 0;
-  let m = 0; const used = new Set();
-  b.forEach(w => { const i = a.findIndex((x, j) => !used.has(j) && same(x, w)); if (i >= 0) { used.add(i); m++; } });
-  return m / b.length * .75 + m / a.length * .25;
+  const wt = w => LIGHT[T] && LIGHT[T].has(w) ? .35 : 1;
+  let got = 0, all = 0; const used = new Set();
+  b.forEach(w => {
+    all += wt(w);
+    let i = a.findIndex((x, j) => !used.has(j) && same(x, w));
+    /* mot coupé en deux par la reconnaissance (« bag it » pour « baguette ») */
+    if (i < 0 && w.length >= 5) i = a.findIndex((x, j) => j + 1 < a.length && !used.has(j) && !used.has(j + 1) && same(x + a[j + 1], w) && (used.add(j + 1), true));
+    if (i >= 0) { used.add(i); got += wt(w); }
+  });
+  const extra = a.filter((x, j) => !used.has(j)).reduce((s, w) => s + wt(w), 0);
+  return got / all * .8 + got / (got + extra || 1) * .2;
 }
-function lev(a, b) { const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; }
+/* meilleure réponse parmi les variantes entendues : renvoie l'option, son score et l'écart avec la suivante */
+function bestOpt(alts, opts) {
+  let best = null, bs = 0, second = 0, heard = alts[0] || '';
+  alts.forEach(a => opts.forEach(o => { const s = score(a, o.t); if (s > bs) { if (best !== o) second = bs; bs = s; best = o; heard = a; } else if (o !== best && s > second) second = s; }));
+  return { best, bs, gap: bs - second, heard };
+}
+/* prononciation d'un mot ou d'une phrase seule */
+function pronScore(alts, target) {
+  let best = 0, heard = alts[0] || '';
+  const tw = target.split(' ');
+  alts.forEach(a => {
+    const nw = norm(a), n = nw.join(' ');
+    let s = n.includes(target) ? 1 : 1 - lev(n, target) / Math.max(n.length, target.length, 1);
+    /* le mot attendu dit au milieu d'autres mots (« a croissant please ») */
+    if (tw.length === 1 && nw.some(w => same(w, target))) s = Math.max(s, .95);
+    s = Math.max(s, score(a, target));
+    if (s > best) { best = s; heard = a; }
+  });
+  return { best, heard };
+}
 function micError(err, out) {
   out.textContent = err === 'unsupported' ? U.noMic : (err === 'not-allowed' || err === 'service-not-allowed') ? fill(U.micDenied, { b: S.baker }) : U.notUnderstood;
 }
@@ -401,12 +463,11 @@ $('wRepeat').onclick = () => {
   const btn = $('wRepeat'), out = $('wPron'), target = norm(W[curWord][T]).join(' ');
   btn.classList.add('on'); out.className = 'pron'; out.textContent = U.listening;
   listen(t => { out.textContent = '« ' + t + ' »'; }, alts => {
-    let best = 0, heard = alts[0] || '';
-    alts.forEach(a => { const n = norm(a).join(' '); const s = n.includes(target) ? 1 : 1 - lev(n, target) / Math.max(n.length, target.length, 1); if (s > best) { best = s; heard = a; } });
+    const { best, heard } = pronScore(alts, target);
     out.textContent = '';
     if (best >= .75) { out.append(icon('check'), document.createTextNode(U.pronGood)); praise(true, true); if (!L.pron[curWord]) { L.pron[curWord] = 1; addXP(10); } }
     else { out.className = 'pron bad'; out.textContent = fill(U.pronClose, { h: heard }); }
-  }, err => { out.className = 'pron bad'; micError(err, out); }, () => btn.classList.remove('on'));
+  }, err => { out.className = 'pron bad'; micError(err, out); }, () => btn.classList.remove('on'), alts => pronScore(alts, target).best >= .92);
 };
 
 /* plan de la ville */
@@ -476,12 +537,11 @@ $('dMic').onclick = () => {
   if (rec) { try { rec.stop(); } catch (e) { /* none */ } return; }
   mic.classList.add('on'); out.textContent = U.listening;
   listen(t => { out.textContent = '« ' + t + ' »'; }, alts => {
-    let best = null, bs = 0, second = 0, heard = alts[0] || '';
-    alts.forEach(a => curOpts.forEach(o => { const s = score(a, o.t); if (s > bs) { if (best !== o) second = bs; bs = s; best = o; heard = a; } else if (o !== best && s > second) second = s; }));
+    const { best, bs, gap, heard } = bestOpt(alts, curOpts);
     out.textContent = '« ' + heard + ' »'; out.appendChild(el('small', null, U.heard));
-    if (best && bs >= .5 && bs - second >= .08) choose(best, true);
+    if (best && bs >= .5 && gap >= .08) choose(best, true);
     else { $('dTip').textContent = U.notUnderstood; $('dTip').classList.remove('hidden'); say(fill(DD().nodes.huh[0], CV()), { pitch: voiceP(), who: whoNow() }); }
-  }, err => micError(err, out), () => mic.classList.remove('on'));
+  }, err => micError(err, out), () => mic.classList.remove('on'), alts => { const r = bestOpt(alts, curOpts); return r.bs >= .85 && r.gap >= .2; });
 };
 
 function openNpc(id) {
