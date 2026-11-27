@@ -865,7 +865,7 @@ person('maya', { skin: SK[3], hair: '#1a1a22', style: 'curly', lashes: true, eye
 { const a = G - .55, r = 5.6 - .95; person('sam', { skin: SK[2], hair: '#3a2418', style: 'cap', hat: PAL.roofs[0], mustache: true, eyes: '#3a2418', shirt: '#f3efe6', stripes: PAL.roofs[0], rolled: true, apron: '#c99a62' }, 'idle', Math.sin(a) * r, Math.cos(a) * r, a); }
 [[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1, tote: i === 0 ? '#efe3cf' : null, balloon: i === 2 ? '#e8423a' : null }, 'walk', 0, 0, 0, { r: i === 1 ? 6.6 : rnd(6.5, 8.2), a: rnd(0, TAU), sp: (i === 1 ? .05 : rnd(.05, .085)) * (i % 2 ? 1 : -1), pause: 0, dog: i === 1 }));
 /* ---------- ton personnage ---------- */
-const me = ACCAM ? makeChar({ skin: SK[0], hair: '#5a3a2a', style: 'short', fringe: true, eyes: '#3a2418', outfit: 'hoodie', shirt: '#ffb547', pants: '#3f5f9a', shoes: '#f4efe6' }) : null;
+const me = ACCAM ? makeChar(PVClay.playerLook) : null;
 if (me) { me.g.userData.id = 'me'; scene.add(me.g); me.g.traverse(c => { if (c.isMesh && c !== me.P.shadow) c.castShadow = true; }); me.yaw = G + Math.PI; me.ph = 0; me.blinkT = 2; me.g.position.set(Math.sin(G) * 9.2, .03, Math.cos(G) * 9.2); }
 const walkers = [];
 
@@ -1411,9 +1411,9 @@ function talkTo(id) {
   const o = people.find(p => p.id === id); if (!o) return; talking = o; o.pause = 999;
   if (o.mode === 'sit') { const f = o.grp.rotation.y; target = new THREE.Vector3(o.grp.position.x + Math.sin(f) * 2.3, 1.45, o.grp.position.z + Math.cos(f) * 2.3); return; }
   const dx = pos.x - o.grp.position.x, dz = pos.z - o.grp.position.z, d = Math.hypot(dx, dz);
-  if (d > 3.2 || d < 1.8) target = new THREE.Vector3(o.grp.position.x + dx / d * 2.5, 1.45, o.grp.position.z + dz / d * 2.5);
+  const td = ACCAM ? 1.4 : 2.5; if (Math.abs(d - td) > .6) target = new THREE.Vector3(o.grp.position.x + dx / d * td, 1.45, o.grp.position.z + dz / d * td);
 }
-function endTalk() { if (talking) { talking.pause = rnd(2, 3); talking.waved = true; talking.happy = 1.5; } talking = null; }
+function endTalk() { if (talking) { talking.talkA = null; talking.pause = rnd(2, 3); talking.waved = true; talking.happy = 1.5; } talking = null; }
 function greet(hitObj) { const o = people.find(p => p.grp === hitObj) || people.find(p => p.id === 'passerby'); if (o) { o.wave = 1.6; o.pause = 2.5; } }
 
 /* ---------- effets ---------- */
@@ -1450,17 +1450,34 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
    Elle regarde ton personnage d'en haut (environ 42°), sans tourner toute seule ; un glissé du doigt la fait pivoter,
    pincer ou la molette rapproche. En conversation, elle vient cadrer l'habitant de face, par-dessus ton épaule.
    Ce qui se trouve entre la caméra et ton personnage (façade, arbre) s'ajoure en pointillé pour qu'on ne le perde jamais. */
+const BENDK = /[?&]plat\b/.test(location.search) ? 0 : .0085;
+let talkWho = null;
+/* premier angle (autour de la direction de ton personnage) d'où l'on voit l'habitant sans obstacle */
+function clearAngle(n, ux, uz, back) {
+  let best = .35, bestN = 1e9;
+  for (const a of [.35, -.35, .7, -.7, 1.05, -1.05, 0]) {
+    const ca = Math.cos(a), sa = Math.sin(a), vx = ux * ca + uz * sa, vz = -ux * sa + uz * ca; let hitsN = 0;
+    colliders.forEach(c => { const qx = c.x - n.x, qz = c.z - n.z, along = qx * vx + qz * vz; if (along < .6 || along > back) return; const perp = Math.abs(qx * vz - qz * vx); if (perp < c.r + .35) hitsN++; });
+    if (Math.hypot(n.x + vx * back, n.z + vz * back) > 12.5) hitsN += 2;
+    if (hitsN < bestN) { bestN = hitsN; best = a; if (!hitsN) break; }
+  }
+  return best;
+}
 function updateTPS(dt, t, spd) {
   zoomV += (zoomT - zoomV) * (1 - Math.exp(-dt * 12));
   const asp = innerWidth / innerHeight, port = asp < 1;
   let fov;
   if (talking) {
     const n = talking.grp.position, dx = pos.x - n.x, dz = pos.z - n.z, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d, sx = uz, sz = -ux;
-    /* l'habitant cadré dans le haut de l'écran, la bulle prend le bas, comme dans les jeux de village */
-    const hy = talking.mode === 'sit' ? .8 : 1.0, back = port ? 4.4 : 3.4;
+    /* l'habitant cadré de face dans le haut de l'écran, par-dessus ton épaule, la bulle prend le bas ;
+       l'angle est choisi une fois au début, du côté où aucun arbre, lampadaire ou banc ne bouche la vue */
+    const hy = talking.mode === 'sit' ? .8 : 1.0;
     fov = port ? 44 : 30;
-    _cw.set(n.x + ux * back + sx * .9, port ? 1.9 : 1.6, n.z + uz * back + sz * .9);
-    _cl.set(n.x - sx * .1, hy - (port ? .95 : .45), n.z - sz * .1);
+    const Hv = port ? 3.7 : 3.1, back = Hv / (2 * Math.tan(fov * Math.PI / 360));
+    if (talking.talkA == null || talkWho !== talking) { talkWho = talking; talking.talkA = clearAngle(n, ux, uz, back); }
+    const ca = Math.cos(talking.talkA), sa = Math.sin(talking.talkA), vx = ux * ca + uz * sa, vz = -ux * sa + uz * ca;
+    _cw.set(n.x + vx * back, 1.0 + back * .34, n.z + vz * back);
+    _cl.set(n.x, hy - (port ? .95 : .42), n.z);
   } else {
     fov = port ? 44 : 30;
     const Wv = Math.min(15, Math.max(7, asp * 9)), Hv = Wv / asp, dist = Hv / (2 * Math.tan(fov * Math.PI / 360)) * zoomV;
@@ -1468,30 +1485,23 @@ function updateTPS(dt, t, spd) {
     _cl.set(pos.x + fx * (port ? 1.6 : 1.0), .8, pos.z + fz * (port ? 1.6 : 1.0));
     _cw.set(_cl.x - fx * dist * Math.cos(camPitch), .8 + dist * Math.sin(camPitch), _cl.z - fz * dist * Math.cos(camPitch));
   }
-  const k = camInit ? 1 - Math.exp(-dt * (talking ? 4.5 : 8)) : 1; camInit = true;
+  const k = camInit ? 1 - Math.exp(-dt * (talking ? 4 : 8)) : 1; camInit = true;
   camPos.lerp(_cw, k); camLook.lerp(_cl, k);
   cam.position.copy(camPos); cam.lookAt(camLook);
   if (Math.abs(cam.fov - fov) > .05) { cam.fov += (fov - cam.fov) * k; cam.updateProjectionMatrix(); }
   PVClay.U.cutA.value.copy(cam.position);
-  /* le pointillé s'arrête avant le personnage regardé (l'habitant en conversation n'est jamais ajouré) */
-  if (talking) { const n = talking.grp.position, dx = cam.position.x - n.x, dz = cam.position.z - n.z, d = Math.hypot(dx, dz) || 1; PVClay.U.cutB.value.set(n.x + dx / d * 1.1, 1.0, n.z + dz / d * 1.1); }
+  /* ajourage : jusqu'à ton personnage ; en conversation, jusqu'à 1,9 m avant l'habitant (ni lui ni toi ne sont ajourés) */
+  if (talking) { const n = talking.grp.position, dx = cam.position.x - n.x, dz = cam.position.z - n.z, d = Math.hypot(dx, dz) || 1; PVClay.U.cutB.value.set(n.x + dx / d * 1.9, 1.0, n.z + dz / d * 1.9); }
   else PVClay.U.cutB.value.set(pos.x, 1.0, pos.z);
-  PVClay.U.cutOn.value = 1;
+  PVClay.U.cutOn.value = 1; PVClay.U.clipOn.value = 0;
+  PVClay.U.bend.value.set(pos.x, pos.z, -Math.sin(camYaw), -Math.cos(camYaw)); PVClay.U.bendK.value = BENDK;
   if (!me) return;
-  /* ton personnage : se tourne vers où il va, marche, respire, cligne des yeux */
-  const P = me.P; me.g.position.set(pos.x, .03, pos.z);
+  /* ton personnage : se tourne vers où il va (ou vers l'habitant qui lui parle), marche, respire, cligne des yeux */
+  me.g.position.set(pos.x, .03, pos.z);
   let want = me.yaw;
   if (talking) want = Math.atan2(talking.grp.position.x - pos.x, talking.grp.position.z - pos.z);
   else if (spd > .2) want = Math.atan2(vel.x, vel.z);
-  let dy = want - me.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); me.yaw += dy * (1 - Math.exp(-dt * 12)); me.g.rotation.y = me.yaw;
-  const w = Math.min(1, spd / 2.2); me.ph += dt * spd * 3.6;
-  const s = Math.sin(me.ph);
-  P.legs[0].rotation.x = s * .62 * w; P.legs[1].rotation.x = -s * .62 * w;
-  P.arms[0].rotation.x = -s * .5 * w; P.arms[1].rotation.x = s * .5 * w;
-  P.body.position.y = .42 + Math.abs(Math.cos(me.ph)) * .04 * w + (1 - w) * Math.sin(t * 2) * .006;
-  P.body.rotation.z = Math.sin(me.ph) * .04 * w;
-  me.blinkT -= dt; const closed = me.blinkT < .12; if (me.blinkT < 0) me.blinkT = 2 + Math.random() * 3;
-  if (P.lids) P.lids.forEach(l => { l.rotation.x += ((closed ? 1.45 : -1.25) - l.rotation.x) * .6; });
+  PVClay.walk(me, dt, t, spd, want);
 }
 function loop() {
   requestAnimationFrame(loop);
@@ -1509,9 +1519,9 @@ function loop() {
   updateFx(dt, t);
   badges.forEach((b, i) => { b.spr.position.y = b.y + Math.sin(t * 1.8 + i * 1.3) * .06; });
   if (t - lastBadgeCheck > .7) { lastBadgeCheck = t; badges.forEach(b => { if (H.label(b.id) !== b.lab) drawBadge(b); }); }
-  if (photo) { PVClay.U.cutOn.value = 0; ctl.update(); clayEnv(); if (composer) composer.render(); else R.render(scene, cam); sky.position.copy(cam.position); stars.position.copy(cam.position); return; }
+  if (photo) { PVClay.U.cutOn.value = 0; PVClay.U.bendK.value = 0; PVClay.U.clipOn.value = 0; ctl.update(); clayEnv(); if (composer) composer.render(); else R.render(scene, cam); sky.position.copy(cam.position); stars.position.copy(cam.position); return; }
   /* marche */
-  if (ACCAM) yaw = camYaw;
+  if (ACCAM) yaw = camYaw; else { PVClay.U.cutOn.value = 0; PVClay.U.bendK.value = 0; PVClay.U.clipOn.value = 0; }
   fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw)); right.set(Math.cos(yaw), 0, -Math.sin(yaw));
   wish.set(0, 0, 0);
   if (keys.w || keys.z || keys.arrowup) wish.add(fwd);
@@ -1554,6 +1564,8 @@ loop();
 if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges };
 function placeAtBakery() { const a = bld.bakery.ang; pos.set(Math.sin(a) * 8.0, 1.45, Math.cos(a) * 8.0); yaw = tYaw = a; pitch = tPitch = -.05; target = null; vel.set(0, 0, 0); camYaw = Math.atan2(-pos.x, -pos.z); camInit = false; if (me) me.yaw = a; }
 
+/* horizon arrondi aussi pour les vitres, lueurs, panneaux et étiquettes (pas pour le ciel ni les étoiles) */
+if (ACCAM) scene.traverse(o => { if (o === stars || o === sky) return; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => PVClay.bendify(m)); });
 return {
   setPhoto, snapshot, placeAtBakery, talkTo, endTalk, greet,
   cheer: id => { const o = people.find(p => p.id === id); if (o) o.happy = 1.5; },

@@ -10,6 +10,8 @@ R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();scene.background=new THREE.Color('#1d2142');scene.fog=new THREE.Fog('#1d2142',14,34);
 /* pièce fermée : murs x = ±RX, fond z = RZ0, façade (porte d'entrée) z = FZ ; DX = milieu de la porte */
 const RX=5,RZ0=-4,FZ=5.5,DX=1.5;
+/* vue d'intérieur façon jeu de village : caméra haute et fixe, plafond et façade effacés (?cam=fp : ancienne vue) */
+const ACI=!/[?&]cam=fp\b/.test(location.search);
 /* champ de vision comme sur la place (plus large sur téléphone) ; le zoom le multiplie */
 const FOV=mobile?70:62;
 const cam=new THREE.PerspectiveCamera(FOV,innerWidth/innerHeight,.05,60);
@@ -301,13 +303,14 @@ PVClay.bake(scene,mobile?null:n=>{for(let q=n;q;q=q.parent)if(q.userData.id)retu
 scene.traverse(o=>{if(o.isMesh&&!o.userData.noShadow&&!o.userData.glow&&!o.userData.keep){o.castShadow=true;o.receiveShadow=true}});
 /* les murs et le plafond projettent leur ombre : le soleil n'entre que par la fenêtre */
 wallsM.castShadow=ceil.castShadow=true;ceil.receiveShadow=true;
+if(ACI){ceil.material=ceil.material.clone();ceil.material.colorWrite=false;ceil.material.depthWrite=false;scene.fog.near=22;scene.fog.far=52}
 /* tout est immobile (sauf la tête du boulanger) : la carte d'ombre n'est calculée qu'une fois */
 R.shadowMap.autoUpdate=false;R.shadowMap.needsUpdate=true;
 
 /* ---------- marche à la première personne (mêmes gestes que sur la place) ---------- */
 const EYE=1.5,PR=.25,SPEED=2.2,START={x:DX-.3,z:FZ-1.05,yaw:.13,pitch:-.04};
 const pos=new THREE.Vector3(),vel=new THREE.Vector3(),wish=new THREE.Vector3(),fwd=new THREE.Vector3(),right=new THREE.Vector3();
-let yaw=0,pitch=0,tYaw=0,tPitch=0,target=null,bob=0,stuckT=0,gone=false,off=false;
+let yaw=0,pitch=0,tYaw=0,tPitch=0,target=null,bob=0,stuckT=0,gone=false,off=false,camInit=false;
 const keys={};
 addEventListener('keydown',e=>{if((H.active&&!H.active())||/INPUT|SELECT|TEXTAREA/.test((e.target||{}).tagName||''))return;keys[e.key.toLowerCase()]=true});
 addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
@@ -324,7 +327,7 @@ function place(){cam.position.set(pos.x,pos.y+Math.sin(bob)*.018*Math.min(1,Math
 /* picking : objets (mots), sol et murs (marcher) */
 const ray=new THREE.Raycaster(),ptr=new THREE.Vector2(),pickables=hits.concat(floor,walls);let hov=null,down=null;const tip=$('hover');
 function pick(e){const r=canvas.getBoundingClientRect();ptr.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ptr,cam);
- const hs=ray.intersectObjects(pickables,true).filter(h=>!h.object.userData.glass);if(!hs.length)return null;
+ const hs=ray.intersectObjects(pickables,true).filter(h=>!h.object.userData.glass&&!(ACI&&h.point.z>FZ-.15));if(!hs.length)return null;
  let o=hs[0].object;if(o.userData.keep)return{walk:true,point:hs[0].point};while(o&&!o.userData.id)o=o.parent;return o?{obj:o}:null}
 function hl(g,on){if(!g)return;g.traverse(o=>{if(o.isMesh&&o.material.emissive&&!o.userData.glow&&!o.userData.baked){if(on){if(o.userData.e===undefined)o.userData.e=o.material.emissive.getHex();o.material.emissive.setHex(0x3a2410)}else if(o.userData.e!==undefined)o.material.emissive.setHex(o.userData.e)}})}
 const exitLab=()=>{const b=$('exitBtn');return '← '+(b?b.textContent.trim():'')};
@@ -337,7 +340,7 @@ canvas.addEventListener('pointerdown',e=>{touches.set(e.pointerId,{x:e.clientX,y
 canvas.addEventListener('pointermove',e=>{if(touches.has(e.pointerId))touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
  if(pinch&&touches.size>=2){setZoom(pinch.z*pinch.d/spread());return}
  if(down&&down.id===e.pointerId){const dx=e.clientX-down.lx,dy=e.clientY-down.ly;down.lx=e.clientX;down.ly=e.clientY;down.moved+=Math.abs(dx)+Math.abs(dy);
-  if(down.moved>6){const k=.0042*zoomV;tYaw-=dx*k;tPitch=Math.max(-1.1,Math.min(1,tPitch-dy*k))}return}
+  if(down.moved>6&&!ACI){const k=.0042*zoomV;tYaw-=dx*k;tPitch=Math.max(-1.1,Math.min(1,tPitch-dy*k))}return}
  if(e.pointerType!=='mouse')return;
  /* survol à la souris : l'objet s'éclaire et son nom s'affiche */
  const p=pick(e),g=p&&p.obj||null;if(g!==hov){hl(hov,false);hov=g;hl(hov,true)}
@@ -357,7 +360,7 @@ canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoomT*(1+Math.max
 canvas.addEventListener('pointerleave',()=>{hl(hov,false);hov=null;tip.classList.add('hidden')});
 
 /* retour au départ : juste à l'intérieur, près de la porte, face au comptoir et au boulanger */
-function reset(){pos.set(START.x,EYE,START.z);yaw=tYaw=START.yaw;pitch=tPitch=START.pitch;vel.set(0,0,0);target=null;stuckT=0;bob=0;zoomT=zoomV=1;gone=false;
+function reset(){camInit=false;pos.set(START.x,EYE,START.z);yaw=tYaw=START.yaw;pitch=tPitch=START.pitch;vel.set(0,0,0);target=null;stuckT=0;bob=0;zoomT=zoomV=1;gone=false;
  down=null;pinch=null;multi=false;touches.clear();for(const k in keys)keys[k]=false;hl(hov,false);hov=null;tip.classList.add('hidden');place()}
 reset();
 window.PVBakery={reset};
@@ -366,6 +369,17 @@ if(/[?&]debug\b/.test(location.search))window.PVBAK={cam,R,scene,go(x,z,yw,pt){p
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)});
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clock=new THREE.Clock();const tmp=new THREE.Vector3();let bkBlink=2;
+/* ton personnage, et la caméra d'intérieur : haute (environ 50°), elle montre toute la pièce et suit doucement tes pas ;
+   pendant une conversation, elle se rapproche du boulanger, cadré dans le haut de l'écran */
+const me=ACI?PVClay.char(PVClay.playerLook,{}):null;
+if(me){scene.add(me.g);me.yaw=Math.PI;const sh=new THREE.Mesh(new THREE.CircleGeometry(.36,24),new THREE.MeshBasicMaterial({color:'#3a2418',transparent:true,opacity:.22,depthWrite:false}));sh.rotation.x=-Math.PI/2;sh.position.y=.012;me.g.add(sh)}
+const camP=new THREE.Vector3(),camL=new THREE.Vector3(),_cw=new THREE.Vector3(),_cl=new THREE.Vector3(),_bk=new THREE.Vector3();
+function placeAC(dt){const asp=innerWidth/innerHeight,port=asp<1,dlg=document.body.classList.contains('dlg-open');let fov;
+ if(dlg){fov=port?44:32;baker.getWorldPosition(_bk);const Hv=port?3.6:2.9,back=Hv/(2*Math.tan(fov*Math.PI/360));_cw.set(_bk.x+.6,1.0+back*.36,_bk.z+back);_cl.set(_bk.x,port?.2:.62,_bk.z)}
+ else{fov=port?50:34;const tx=port?pos.x*.8:pos.x*.3,tz=port?pos.z-1.5:pos.z*.35;_cl.set(tx,.3,tz);const dist=(port?11.5:12.8)*zoomV,el=.88;_cw.set(_cl.x,_cl.y+dist*Math.sin(el),_cl.z+dist*Math.cos(el))}
+ const k=camInit?1-Math.exp(-dt*(dlg?4:6)):1;camInit=true;camP.lerp(_cw,k);camL.lerp(_cl,k);cam.position.copy(camP);cam.lookAt(camL);
+ if(Math.abs(cam.fov-fov)>.05){cam.fov+=(fov-cam.fov)*k;cam.updateProjectionMatrix()}
+ const E=PVClay.U;E.clipOn.value=1;E.clip.value.set(0,0,1,FZ-.15);E.clip2.value.set(0,1,0,HT-.45);E.cutOn.value=0;E.bendK.value=0}
 /* reflets de la pâte : intérieur chaud (crème au plafond, bois au sol) au lieu du ciel de la place */
 const envT=new THREE.Color('#f6ead4').convertSRGBToLinear().multiplyScalar(.8),envH=new THREE.Color('#efe0c8').convertSRGBToLinear().multiplyScalar(.75),envG=new THREE.Color('#8a5a3a').convertSRGBToLinear().multiplyScalar(.6);
 function clayEnv(){const E=PVClay.U;E.envT.value.copy(envT);E.envH.value.copy(envH);E.envG.value.copy(envG)}
@@ -384,6 +398,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  BP.brows[0].position.y+=(BP.browY+(talking?.015+.015*Math.sin(t*5):0)-BP.brows[0].position.y)*.2;
  if(!reduce)BP.body.scale.y=1+Math.sin(t*2.2)*.012;
  /* marche : clavier (ZQSD / WASD / flèches) ou point visé par un tap, avec élan et freinage */
+ if(ACI)yaw=0;else PVClay.U.clipOn.value=0;
  fwd.set(-Math.sin(yaw),0,-Math.cos(yaw));right.set(Math.cos(yaw),0,-Math.sin(yaw));wish.set(0,0,0);
  if(keys.w||keys.z||keys.arrowup)wish.add(fwd);if(keys.s||keys.arrowdown)wish.sub(fwd);if(keys.a||keys.q)wish.sub(right);if(keys.d)wish.add(right);
  if(keys.arrowleft)tYaw+=1.6*dt;if(keys.arrowright)tYaw-=1.6*dt;
@@ -396,8 +411,9 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  if(target&&wish.lengthSq()>.25&&spd<.2){if((stuckT+=dt)>.7){target=null;stuckT=0}}else stuckT=0;
  /* sur le paillasson en avançant vers la porte : on sort */
  if(!gone&&Math.abs(pos.x-DX)<.5&&pos.z>FZ-.5&&wish.z>.1){leave();return}
- yaw+=(tYaw-yaw)*(1-Math.exp(-dt*16));pitch+=(tPitch-pitch)*(1-Math.exp(-dt*16));bob+=dt*spd*3.4;place();
- zoomV+=(zoomT-zoomV)*(1-Math.exp(-dt*12));{const f=FOV*zoomV;if(Math.abs(cam.fov-f)>.01){cam.fov=f;cam.updateProjectionMatrix()}}
+ yaw+=(tYaw-yaw)*(1-Math.exp(-dt*16));pitch+=(tPitch-pitch)*(1-Math.exp(-dt*16));bob+=dt*spd*3.4;zoomV+=(zoomT-zoomV)*(1-Math.exp(-dt*12));
+ if(ACI){placeAC(dt);if(me){me.g.position.set(pos.x,0,pos.z);const dlg=document.body.classList.contains('dlg-open');let want=me.yaw;if(dlg){baker.getWorldPosition(_bk);want=Math.atan2(_bk.x-pos.x,_bk.z-pos.z)}else if(spd>.2)want=Math.atan2(vel.x,vel.z);PVClay.walk(me,dt,t,spd,want)}}
+ else{place();{const f=FOV*zoomV;if(Math.abs(cam.fov-f)>.01){cam.fov=f;cam.updateProjectionMatrix()}}}
  /* le boulanger tourne la tête vers nous */
  cam.getWorldPosition(tmp);const dx=tmp.x-baker.position.x,dz=tmp.z-baker.position.z;head.rotation.y+=(Math.max(-.6,Math.min(.6,Math.atan2(dx,dz)))-head.rotation.y)*.08;
  clayEnv();R.render(scene,cam)}

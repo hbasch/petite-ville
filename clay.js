@@ -8,8 +8,46 @@
   const U = { day: { value: 1 }, ground: { value: 1 },
     /* ajourage : ce qui est entre la caméra (cutA) et ton personnage (cutB) s'efface en pointillé */
     cutA: { value: new THREE.Vector3() }, cutB: { value: new THREE.Vector3() }, cutOn: { value: 0 },
+    /* horizon arrondi : le sol plonge en s'éloignant de ton personnage (x, z) le long du regard de la caméra (dx, dz) */
+    bend: { value: new THREE.Vector4(0, 0, 0, -1) }, bendK: { value: 0 },
+    /* vue d'intérieur : tout ce qui est au-delà du plan (façade côté caméra) s'efface */
+    clip: { value: new THREE.Vector4(0, 0, 1, 1e9) }, clip2: { value: new THREE.Vector4(0, 1, 0, 1e9) }, clipOn: { value: 0 },
     /* reflets : couleurs du ciel en haut, à l'horizon et du sol (linéaires), données par la scène */
     envT: { value: new THREE.Color(.45, .62, .85) }, envH: { value: new THREE.Color(.75, .8, .85) }, envG: { value: new THREE.Color(.3, .22, .16) } };
+  const BEND_DECL = 'uniform vec4 clayBend;\nuniform float clayBendK;';
+  const BEND_CODE = `
+  if (clayBendK > 0.0) {
+    vec4 bw = vec4(transformed, 1.0);
+    #ifdef USE_INSTANCING
+      bw = instanceMatrix * bw;
+    #endif
+    bw = modelMatrix * bw;
+    float bd = dot(bw.xz - clayBend.xy, clayBend.zw);
+    bw.y -= clayBendK * bd * bd;
+    mvPosition = viewMatrix * bw; gl_Position = projectionMatrix * mvPosition;
+  }`;
+  /* le même arrondi pour les matières qui ne sont pas en pâte (vitres, lueurs, panneaux, points, sprites) */
+  function bendPatch(sh) {
+    sh.uniforms.clayBend = U.bend; sh.uniforms.clayBendK = U.bendK;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + BEND_DECL);
+    if (sh.vertexShader.includes('#include <project_vertex>')) sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>' + BEND_CODE);
+    else sh.vertexShader = sh.vertexShader.replace('vec4 mvPosition = modelViewMatrix * vec4( 0.0, 0.0, 0.0, 1.0 );', 'vec4 bwS = modelMatrix * vec4( 0.0, 0.0, 0.0, 1.0 ); float bdS = dot(bwS.xz - clayBend.xy, clayBend.zw); bwS.y -= clayBendK * bdS * bdS; vec4 mvPosition = viewMatrix * bwS;');
+  }
+  function bendify(m) {
+    if (!m || m.userData.clayAmt || m.userData.bent || m.isShaderMaterial) return;
+    if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) return;
+    if (!(m.isMeshBasicMaterial || m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial || m.isPointsMaterial || m.isSpriteMaterial)) return;
+    m.userData.bent = true; m.onBeforeCompile = bendPatch; m.customProgramCacheKey = () => 'bend1'; m.needsUpdate = true;
+  }
+  /* ton personnage : se tourne vers wantYaw, marche selon sa vitesse, respire, cligne des yeux */
+  function walk(me, dt, t, spd, wantYaw) {
+    let dy = wantYaw - me.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); me.yaw += dy * (1 - Math.exp(-dt * 12)); me.g.rotation.y = me.yaw;
+    const P = me.P, w = Math.min(1, spd / 2.2); me.ph = (me.ph || 0) + dt * spd * 3.6; const s = Math.sin(me.ph);
+    P.legs[0].rotation.x = s * .62 * w; P.legs[1].rotation.x = -s * .62 * w; P.arms[0].rotation.x = -s * .5 * w; P.arms[1].rotation.x = s * .5 * w;
+    P.body.position.y = .42 + Math.abs(Math.cos(me.ph)) * .04 * w + (1 - w) * Math.sin(t * 2) * .006; P.body.rotation.z = s * .04 * w;
+    me.blinkT = (me.blinkT == null ? 2 : me.blinkT) - dt; const closed = me.blinkT < .12; if (me.blinkT < 0) me.blinkT = 2 + Math.random() * 3;
+    if (P.lids) P.lids.forEach(l => { l.rotation.x += ((closed ? 1.45 : -1.25) - l.rotation.x) * .6; });
+  }
   const NOISE = `
 varying vec3 vClayP;
 varying float vClayY;
@@ -17,6 +55,9 @@ varying vec3 vClayW;
 uniform vec3 clayCutA;
 uniform vec3 clayCutB;
 uniform float clayCutOn;
+uniform vec4 clayClip;
+uniform vec4 clayClip2;
+uniform float clayClipOn;
 uniform float clayAmt;
 uniform float clayDay;
 uniform float clayGround;
@@ -59,12 +100,13 @@ float clayHeight(vec3 p, float fine) {
     sh.uniforms.clayDay = U.day;
     sh.uniforms.clayGround = U.ground;
     sh.uniforms.clayCutA = U.cutA; sh.uniforms.clayCutB = U.cutB; sh.uniforms.clayCutOn = U.cutOn;
+    sh.uniforms.clayBend = U.bend; sh.uniforms.clayBendK = U.bendK; sh.uniforms.clayClip = U.clip; sh.uniforms.clayClip2 = U.clip2; sh.uniforms.clayClipOn = U.clipOn;
     sh.uniforms.claySSS = { value: this.userData.claySSS || SSS0 };
     sh.uniforms.clayEnvK = { value: this.envMapIntensity };
     sh.uniforms.clayStone = { value: this.userData.clayStone || 0 };
     sh.uniforms.clayEnvT = U.envT; sh.uniforms.clayEnvH = U.envH; sh.uniforms.clayEnvG = U.envG;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vClayP;\nvarying float vClayY;\nvarying vec3 vClayW;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vClayP;\nvarying float vClayY;\nvarying vec3 vClayW;\n' + BEND_DECL)
       .replace('#include <project_vertex>', `#include <project_vertex>
   vec4 clayC = vec4(transformed, 1.0);
   #ifdef USE_SKINNING
@@ -79,10 +121,12 @@ float clayHeight(vec3 p, float fine) {
   #ifdef USE_INSTANCING
     clayWp = instanceMatrix * clayWp;
   #endif
-  vClayW = (modelMatrix * clayWp).xyz;`);
+  vClayW = (modelMatrix * clayWp).xyz;
+` + BEND_CODE);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\n' + NOISE)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+  if (clayClipOn > 0.5 && (dot(vClayW, clayClip.xyz) > clayClip.w || dot(vClayW, clayClip2.xyz) > clayClip2.w)) discard;
   if (clayCutOn > 0.5 && vClayW.y > 0.3) {
     vec3 cab = clayCutB - clayCutA; float ctt = dot(vClayW - clayCutA, cab) / dot(cab, cab);
     if (ctt > 0.02 && ctt < 0.97) {
@@ -152,7 +196,7 @@ float clayHeight(vec3 p, float fine) {
     if (sss) m.userData.claySSS = new THREE.Vector3().fromArray(sss);
     m.extensions = Object.assign(m.extensions || {}, { derivatives: true });
     m.onBeforeCompile = patch;
-    m.customProgramCacheKey = () => 'clay4';
+    m.customProgramCacheKey = () => 'clay5';
     return m;
   }
 
@@ -230,7 +274,7 @@ float clayHeight(vec3 p, float fine) {
     return saved;
   }
 
-  window.PVClay = { U, apply, bake };
+  window.PVClay = { U, apply, bake, bendify, walk, playerLook: { skin: '#eec2a2', hair: '#5a3a2a', style: 'short', fringe: true, eyes: '#3a2418', outfit: 'hoodie', shirt: '#ffb547', pants: '#3f5f9a', shoes: '#f4efe6' } };
 })();
 
 /* ---------- habitants en pâte : partagés par la place (town.js) et la boulangerie (scene.js) ----------
