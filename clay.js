@@ -125,17 +125,7 @@ float clayHeight(vec3 p, float fine) {
 ` + BEND_CODE);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', '#include <common>\n' + NOISE)
-      .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-  if (clayClipOn > 0.5 && (dot(vClayW, clayClip.xyz) > clayClip.w || dot(vClayW, clayClip2.xyz) > clayClip2.w)) discard;
-  if (clayCutOn > 0.5 && vClayW.y > 0.3) {
-    vec3 cab = clayCutB - clayCutA; float ctt = dot(vClayW - clayCutA, cab) / dot(cab, cab);
-    if (ctt > 0.02 && ctt < 0.97) {
-      float cdl = length(vClayW - (clayCutA + cab * ctt));
-      float ca = (1.0 - smoothstep(1.2, 2.0, cdl)) * (1.0 - smoothstep(0.86, 0.96, ctt));
-      float cth = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-      if (ca > cth) discard;
-    }
-  }`)
+
       .replace('#include <color_fragment>', `#include <color_fragment>
   float clayN = cNoise(vClayP * 1.7 + 7.0);
   diffuseColor.rgb *= 0.95 + 0.1 * clayN;
@@ -183,6 +173,17 @@ float clayHeight(vec3 p, float fine) {
     float clayRim = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 3.0);
     gl_FragColor.rgb += mix(diffuseColor.rgb, vec3(1.0, 0.93, 0.85), 0.4) * clayRim * (0.05 + 0.1 * max(0.0, clayWN.y)) * clayDay;
   }
+  /* ajourage et coupe d'intérieur : en toute fin, après les dérivées (Direct3D sous Windows refuse un discard avant) */
+  if (clayClipOn > 0.5 && (dot(vClayW, clayClip.xyz) > clayClip.w || dot(vClayW, clayClip2.xyz) > clayClip2.w)) discard;
+  if (clayCutOn > 0.5 && vClayW.y > 0.3) {
+    vec3 cab = clayCutB - clayCutA; float ctt = dot(vClayW - clayCutA, cab) / dot(cab, cab);
+    if (ctt > 0.02 && ctt < 0.97) {
+      float cdl = length(vClayW - (clayCutA + cab * ctt));
+      float ca = (1.0 - smoothstep(1.2, 2.0, cdl)) * (1.0 - smoothstep(0.86, 0.96, ctt));
+      float cth = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+      if (ca > cth) discard;
+    }
+  }
   #include <tonemapping_fragment>`);
   }
   /* lumière diffusée dans la pâte (rouge orangé), plus forte pour la peau */
@@ -196,7 +197,7 @@ float clayHeight(vec3 p, float fine) {
     if (sss) m.userData.claySSS = new THREE.Vector3().fromArray(sss);
     m.extensions = Object.assign(m.extensions || {}, { derivatives: true });
     m.onBeforeCompile = patch;
-    m.customProgramCacheKey = () => 'clay5';
+    m.customProgramCacheKey = () => 'clay6';
     return m;
   }
 
