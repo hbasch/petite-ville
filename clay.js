@@ -60,6 +60,9 @@ float clayHeight(vec3 p, float fine) {
       .replace('#include <common>', '#include <common>\nvarying vec3 vClayP;\nvarying float vClayY;')
       .replace('#include <project_vertex>', `#include <project_vertex>
   vec4 clayC = vec4(transformed, 1.0);
+  #ifdef USE_SKINNING
+    clayC = vec4(position, 1.0);
+  #endif
   #ifdef USE_INSTANCING
     clayC = instanceMatrix * clayC;
   #endif

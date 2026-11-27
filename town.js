@@ -861,7 +861,65 @@ person('maya', { skin: SK[3], hair: '#1a1a22', style: 'curly', lashes: true, eye
 [[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1, tote: i === 0 ? '#efe3cf' : null, balloon: i === 2 ? '#e8423a' : null }, 'walk', 0, 0, 0, { r: i === 1 ? 6.6 : rnd(6.5, 8.2), a: rnd(0, TAU), sp: (i === 1 ? .05 : rnd(.05, .085)) * (i % 2 ? 1 : -1), pause: 0, dog: i === 1 }));
 const walkers = [];
 
-/* ---------- habitants modelés (images Gemini puis Meshy) : remplacent la version en code quand le fichier est là ---------- */
+/* ---------- habitants modelés : bouche en relief et « squelette » automatique ----------
+   Les modèles Meshy arrivent sans bouche et sans articulations utilisables. On repère le visage par des rayons
+   tirés de face (bout du nez, dessous du menton), on y pose une bouche en pâte qui épouse la joue, et on fabrique
+   un petit squelette : tête (pivot au cou) et, si demandé, bras (pivot à l'épaule). La tête suit les mouvements des
+   habitants faits en code (regarder le joueur, hocher, pencher), la bouche s'ouvre quand le personnage parle. */
+function faceProbe(g) {
+  const tmp = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide })), rc = new THREE.Raycaster(), bb = g.boundingBox, H = bb.max.y - bb.min.y;
+  tmp.updateMatrixWorld(true);
+  const hit = (x, y) => { rc.set(new THREE.Vector3(x, y, bb.max.z + 1), new THREE.Vector3(0, 0, -1)); const h = rc.intersectObject(tmp)[0]; if (!h) return null; const n = h.face.normal.clone(); if (n.z < 0) n.negate(); return { p: h.point, n }; };
+  return { hit, bb, H };
+}
+function rigGlb(mesh, cfg) {
+  const g = mesh.geometry; g.computeBoundingBox();
+  const F = faceProbe(g), bb = F.bb, H = F.H, y0 = bb.min.y, cx = (bb.min.x + bb.max.x) / 2;
+  /* bout du nez = point le plus en avant du visage ; menton = première surface tournée vers le bas sous le nez */
+  let noseY = cfg.noseY != null ? y0 + cfg.noseY * H : null, chinY = cfg.chinY != null ? y0 + cfg.chinY * H : null;
+  if (noseY == null) { let best = -1e9; for (let f = .5; f < .95; f += .005) { const h = F.hit(cx, y0 + f * H); if (h && h.p.z > best) { best = h.p.z; noseY = h.p.y; } } }
+  if (chinY == null) { for (let y = noseY - .06 * H; y > noseY - .4 * H; y -= .004 * H) { const h = F.hit(cx, y); if (h && h.n.y < -.75) { chinY = y; break; } } if (chinY == null) chinY = noseY - .12 * H; }
+  const neckY = chinY - .02 * H, mouthY = noseY - (noseY - chinY) * (cfg.mouthK || .45);
+  /* poids : la tête au-dessus du cou (sans prendre les épaules), les bras au-delà de la largeur du buste */
+  const p = g.attributes.position, n = p.count, si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+  const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const A = cfg.arms, shX = A ? A.x * H : 0, shY = A ? y0 + A.y * H : 0;
+  for (let i = 0; i < n; i++) {
+    const x = p.getX(i) - cx, y = p.getY(i), ax = Math.abs(x);
+    let hd = ss(neckY - .015 * H, neckY + .03 * H, y); if (y < neckY + .06 * H) hd *= 1 - ss(.12 * H, .16 * H, ax);
+    let ar = 0; if (A) ar = ss(shX, shX + .06 * H, ax) * (1 - ss(shY, shY + .04 * H, y)) * (1 - hd);
+    const body = Math.max(0, 1 - hd - ar);
+    si.set([0, 1, x > 0 ? 2 : 3, 0], i * 4); sw.set([body, hd, ar, 0], i * 4);
+  }
+  /* lissage des poids d'un sommet à ses voisins : pas de triangle étiré en fil entre le bras et le buste */
+  if (A && g.index) { const ix = g.index.array; for (let it = 0; it < 4; it++) { const acc = new Float32Array(n * 2), cnt = new Uint16Array(n);
+    for (let k = 0; k < ix.length; k += 3) for (let e = 0; e < 3; e++) { const v = ix[k + e]; for (let f = 0; f < 3; f++) { const u = ix[k + f]; acc[v * 2] += sw[u * 4 + 1]; acc[v * 2 + 1] += sw[u * 4 + 2]; } cnt[v] += 3; }
+    for (let v = 0; v < n; v++) if (cnt[v]) { const ar = Math.min(acc[v * 2 + 1] / cnt[v], 1 - sw[v * 4 + 1]); sw[v * 4 + 2] = ar; sw[v * 4] = Math.max(0, 1 - sw[v * 4 + 1] - ar); } } }
+  g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+  const root = new THREE.Bone(), head = new THREE.Bone(), armL = new THREE.Bone(), armR = new THREE.Bone();
+  head.position.set(cx, neckY, 0); armL.position.set(cx + shX, shY, 0); armR.position.set(cx - shX, shY, 0); root.add(head, armL, armR);
+  mesh.material.skinning = true;
+  const sk = new THREE.SkinnedMesh(g, mesh.material); sk.position.copy(mesh.position); sk.quaternion.copy(mesh.quaternion); sk.scale.copy(mesh.scale);
+  sk.castShadow = mesh.castShadow; sk.receiveShadow = mesh.receiveShadow; sk.add(root); mesh.parent.add(sk); mesh.parent.remove(mesh);
+  sk.updateMatrixWorld(true); sk.bind(new THREE.Skeleton([root, head, armL, armR]));
+  /* bouche : un boudin en sourire qui suit la courbe de la joue, et une bouche ouverte (avec la langue) pour parler */
+  const mouth = new THREE.Group(); head.add(mouth);
+  const hw = (cfg.mouthW || .034) * H, dep = .012 * H, lift = .004 * H, pts = [];
+  for (let k = 0; k <= 8; k++) { const u = k / 4 - 1, x = cx + u * hw, y = mouthY + dep * u * u, h = F.hit(x, y); if (h) pts.push(h.p.clone().addScaledVector(h.n, lift).sub(head.position)); }
+  const lipM = C(cfg.lip || '#7a2e2e', { bumpScale: 0, roughness: .35 });
+  const smile = pts.length > 3 ? new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, .008 * H, 8, false), lipM) : new THREE.Group();
+  mouth.add(smile);
+  [pts[0], pts[pts.length - 1]].forEach(q => { if (q) { const cap = new THREE.Mesh(G_('lipCap', () => sph(1, 8)), lipM); cap.scale.setScalar(.008 * H); cap.position.copy(q); mouth.add(cap); } });
+  const c0 = F.hit(cx, mouthY + .004 * H), open = new THREE.Group();
+  if (c0) { open.position.copy(c0.p).addScaledVector(c0.n, lift * 1.4).sub(head.position); open.lookAt(open.position.clone().add(c0.n)); }
+  const hole = new THREE.Mesh(G_('mHole', () => sph(1, 16)), C('#4a1620', { bumpScale: 0, roughness: .4 })); hole.scale.set(.026 * H, .022 * H, .006 * H); open.add(hole);
+  const tongue = new THREE.Mesh(G_('mTongue', () => sph(1, 12)), C('#e0707a', { bumpScale: 0, roughness: .4 })); tongue.scale.set(.016 * H, .009 * H, .005 * H); tongue.position.set(0, -.01 * H, .003 * H); open.add(tongue);
+  open.scale.set(1, .01, 1); mouth.add(open);
+  return { sk, head, armL, armR, smile, open, arms: !!A };
+}
+
+/* ---------- habitants modelés (images Gemini puis Meshy) : remplacent la version en code quand le fichier est là ----------
+   noseY / chinY (fraction de la hauteur) seulement si la détection automatique se trompe ; arms : épaule en fraction de la hauteur */
 const GLB_CHARS = { rosa: { url: 'assets/rosa.glb?v=1', h: 1.42 } };
 if (THREE.GLTFLoader && !/[?&]glb=0/.test(location.search)) {
   const ld = new THREE.GLTFLoader();
@@ -873,10 +931,11 @@ if (THREE.GLTFLoader && !/[?&]glb=0/.test(location.search)) {
       m.traverse(c => { if (!c.isMesh) return; c.castShadow = !mobile; c.receiveShadow = true;
         const mt = c.material; mt.metalness = 0; mt.roughness = .58; mt.envMapIntensity = .6; if (mt.map) mt.map.anisotropy = 4;
         PVClay.apply(mt, .035, [.35, .12, .06]); });
+      let rig = null; try { let mesh = null; m.traverse(c => { if (c.isMesh && !mesh) mesh = c; }); if (mesh) rig = rigGlb(mesh, cfg); } catch (e) { console.warn('rig', e); }
       /* le pivot sert aux mouvements : on bascule autour des pieds, comme une figurine qu'on déplace */
       const pivot = new THREE.Group(); pivot.add(m); o.grp.add(pivot);
       o.c.g.traverse(c => { if (c.isMesh && c !== o.c.P.shadow) c.visible = false; });
-      o.glb = { pivot, acc: 0, px: o.grp.position.x, pz: o.grp.position.z, walk: 0, ph: 0 };
+      o.glb = { pivot, rig, acc: 0, px: o.grp.position.x, pz: o.grp.position.z, walk: 0, ph: 0 };
       if (R.shadowMap.autoUpdate === false) R.shadowMap.needsUpdate = true;
     }, undefined, () => { /* fichier absent ou illisible : on garde la version en code */ });
   });
@@ -895,6 +954,16 @@ function animGlb(o, dt, talk) {
   p.rotation.x = (talk ? Math.sin(t * 6.3) * .035 : 0) + w * .05;
   p.rotation.y = talk ? Math.sin(t * 2.3) * .06 : 0;
   p.scale.set(1 - breath * .5 - talkB * .3, 1 + breath + talkB, 1 - breath * .5 - talkB * .3);
+  /* tête, bras et bouche recopiés (en plus doux) sur l'habitant fait en code, qui reste invisible */
+  const rg = G.rig, P = o.c.P; if (!rg) return;
+  const cl = (v, m) => Math.max(-m, Math.min(m, v));
+  rg.head.rotation.set(cl(P.head.rotation.x * .9, .25), cl(P.head.rotation.y * .8, .42), cl(P.head.rotation.z, .18));
+  if (rg.arms) {
+    rg.armL.rotation.set(cl(P.arms[1].rotation.x * .4, .25), 0, cl((P.arms[1].rotation.z - .12) * .25, .28));
+    rg.armR.rotation.set(cl(P.arms[0].rotation.x * .4, .25), 0, cl((P.arms[0].rotation.z + .12) * .25, .28));
+  }
+  const op = P.open.scale.y; rg.open.scale.y = Math.max(.01, op); rg.open.visible = op > .08; rg.smile.visible = op < .3;
+  rg.smile.parent.children.forEach(c => { if (c !== rg.open && c !== rg.smile) c.visible = rg.smile.visible; });
 }
 
 /* ---------- un chien en laisse (avec un passant) et un chat qui dort sur un banc ---------- */
