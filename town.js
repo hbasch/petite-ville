@@ -838,7 +838,9 @@ for (let i = 0; i < (COUNTRY === 'pl' ? 11 : 6); i++) {
 /* blanc, iris et pupille partagent les mêmes réglages : fusionnés en un seul objet par œil */
 const EYE_W = C('#ffffff', { roughness: .2, bumpScale: 0 }), PUPIL = C('#120e18', { roughness: .2, bumpScale: 0 }), SHINE = new THREE.MeshBasicMaterial({ color: '#ffffff' });
 function hair(lk, head, m) {
-  const cap = mk(G_('hcap2', () => lump(new THREE.SphereGeometry(.305, 26, 16, 0, TAU, 0, Math.PI * .56), .006)), m, 0, .03, -.025, head); cap.rotation.x = -.3;
+  /* calotte, mèches et frange basculées ensemble vers l'arrière : le front se dégage (avant, un « bonnet » cachait les sourcils) */
+  const hg = new THREE.Group(); hg.rotation.x = -.26; head.add(hg);
+  const cap = mk(G_('hcap2', () => lump(new THREE.SphereGeometry(.305, 26, 16, 0, TAU, 0, Math.PI * .56), .006)), m, 0, .03, -.025, hg); cap.rotation.x = -.3;
   /* mèches en boudins à peine saillantes, du sommet du crâne vers la nuque (le devant reste lisse, avec la frange) */
   if (['bun', 'bob', 'short', 'curly'].includes(lk.style)) {
     /* chaque mèche : un arc de boudin à bouts arrondis, à peine en relief sur la calotte */
@@ -847,9 +849,9 @@ function hair(lk, head, m) {
       const out = mergeGeos(parts); out.rotateZ(t0); out.rotateY(-Math.PI / 2); return lump(out, .003); });
     /* serrées les unes contre les autres : une masse striée, comme peignée à l'ébauchoir */
     const n = lk.style === 'short' ? 7 : 9;
-    for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .056, k = Math.sqrt(.284 * .284 - x * x) / .284, st = mk(sg, m, x, .03, -.03, head); st.scale.set(1, k, k); st.rotation.set(-.03 + (i % 2) * .03, 0, -x * .35); }
+    for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * .056, k = Math.sqrt(.284 * .284 - x * x) / .284, st = mk(sg, m, x, .03, -.03, hg); st.scale.set(1, k, k); st.rotation.set(-.03 + (i % 2) * .03, 0, -x * .35); }
   }
-  if (lk.fringe) for (let i = 0; i < 5; i++) { const x = -.16 + i * .08, f = mk(G_('fr', () => lump(sph(.07, 10), .004)), m, x, .17 - Math.abs(x) * .3, .2 - Math.abs(x) * .25, head); f.scale.set(.9, .6, .7); f.rotation.z = -x * 1.5; }
+  if (lk.fringe) for (let i = 0; i < 5; i++) { const x = -.16 + i * .08, f = mk(G_('fr', () => lump(sph(.07, 10), .004)), m, x, .17 - Math.abs(x) * .3, .2 - Math.abs(x) * .25, hg); f.scale.set(.9, .6, .7); f.rotation.z = -x * 1.5; }
   if (lk.style === 'bun') { mk(G_('bun2', () => lump(sph(.13, 16), .008)), m, 0, .27, -.15, head); const coil = mk(G_('coil', () => new THREE.TorusGeometry(.1, .03, 8, 18)), m, 0, .22, -.12, head); coil.rotation.x = Math.PI / 2 - .5; }
   if (lk.style === 'curly') for (let i = 0; i < 16; i++) { const a = i / 16 * TAU, up = i % 2 ? .18 : .06; mk(G_('curl2', () => lump(sph(.105, 10), .006)), m, Math.cos(a) * .25, up + Math.sin(i * 1.3) * .03, Math.sin(a) * .23 - .05, head); }
   if (lk.style === 'bob') { [-1, 1].forEach(sg => mk(G_('bob2', () => lump(sph(.16, 14), .006)), m, sg * .22, -.06, -.05, head).scale.set(.7, 1.25, 1.05)); mk(G_('bobb', () => sph(.2, 14)), m, 0, -.02, -.16, head).scale.set(1.25, 1.1, .7); }
@@ -895,7 +897,7 @@ function makeChar(lk) {
     const lw = new THREE.Group(); lw.scale.z = .85; e.add(lw); const lid = new THREE.Group(); lw.add(lid); mk(G_('lid', () => new THREE.SphereGeometry(.074, 16, 8, 0, TAU, 0, Math.PI / 2)), skinM, 0, 0, 0, lid); lid.rotation.x = -1.25; P.lids.push(lid);
     if (lk.lashes) { const l = mk(G_('lash', () => new THREE.TorusGeometry(.066, .009, 4, 10, Math.PI * .8)), PUPIL, 0, .006, .02, e); l.rotation.z = Math.PI * .1 + (sg < 0 ? 0 : 0); }
     return e; });
-  P.brows = [-1, 1].map(sg => { const bg = new THREE.Group(); bg.position.set(sg * .1, .125, .235); head.add(bg); const bw = mk(G_('brow3', () => sph(.05, 10)), C(shade(lk.hair, -.12)), 0, 0, 0, bg); bw.scale.set(1, .3, .34); bw.rotation.z = -sg * .18; return bg; });
+  P.brows = [-1, 1].map(sg => { const bg = new THREE.Group(); bg.position.set(sg * .1, .112, .24); head.add(bg); const bw = mk(G_('brow3', () => sph(.05, 10)), C(shade(lk.hair, -.12)), 0, 0, 0, bg); bw.scale.set(1, .3, .34); bw.rotation.z = -sg * .18; return bg; });
   mk(G_('nose2', () => sph(.05, 12)), C(shade(lk.skin, -.05), { roughness: .46, emissive: lk.skin, emissiveIntensity: .035, sss: SSS_SKIN }), 0, -.035, .265, head).scale.set(1.05, .9, 1.1);
   [-1, 1].forEach(sg => mk(G_('cheek', () => sph(.052, 10)), C('#ff8f8f', { roughness: .5 }), sg * .16, -.07, .2, head).scale.set(1, .68, .4));
   const mouth = new THREE.Group(); mouth.position.set(0, -.115, .238); head.add(mouth); P.mouth = mouth;
@@ -1358,7 +1360,7 @@ function updatePeople(dt, t) {
     if (o.happy > 0) happyPose(o, P, dt);
     /* sourcils : se lèvent quand on parle ou qu'on est content */
     const brow = (o.happy > 0 ? 1 : 0) + (isTalk && speaking ? .5 + .5 * Math.sin(o.t * 5) : isTalk ? .3 : 0);
-    P.brows.forEach(b => { b.position.y += (.125 + Math.min(1, brow) * .03 - b.position.y) * .2; });
+    P.brows.forEach(b => { b.position.y += (.112 + Math.min(1, brow) * .03 - b.position.y) * .2; });
     /* ballon : suit la main, se balance */
     if (P.balloon) { P.hands[1].getWorldPosition(_hv); o.c.g.worldToLocal(_hv); P.balloon.position.copy(_hv); P.balloon.rotation.set(Math.sin(o.t * 1.3) * .12 - (o.mode === 'walk' && o.pause <= 0 ? .15 : 0), 0, Math.sin(o.t * 1.7) * .1); }
     if (o.dog) updateDog(o, dt, t);
