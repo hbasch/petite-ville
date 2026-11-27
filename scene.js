@@ -251,7 +251,9 @@ canvas.addEventListener('pointerup',e=>{if(lift(e))return;if(!down||down.id!==e.
  const p=pick(e);if(!p)return;
  /* tap au sol ou sur un mur : on marche jusque-là (tout près de la porte : on va jusqu'à elle, donc on sort) */
  if(p.walk){const x=p.point.x,z=p.point.z;target=Math.abs(x-DX)<.7&&z>FZ-1.1?new THREE.Vector3(DX,0,FZ):new THREE.Vector3(clampX(x),0,clampZ(z));return}
- const g=p.obj,id=g.userData.id;if(id==='door'){leave();return}
+ const g=p.obj,id=g.userData.id;
+ /* porte : la 1re fois on apprend le mot « door », ensuite elle fait sortir (le tapis et le bouton aussi) */
+ if(id==='door'){if(H.found&&!H.found('door')){H.pick('door');return}leave();return}
  H.pick(id);g.scale.setScalar(1.06);setTimeout(()=>g.scale.setScalar(1),140)});
 canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoomT*(1+Math.max(-.2,Math.min(.2,e.deltaY*.0012))))},{passive:false});
 canvas.addEventListener('pointerleave',()=>{hl(hov,false);hov=null;tip.classList.add('hidden')});

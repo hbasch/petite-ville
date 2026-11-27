@@ -35,7 +35,7 @@ if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = pickVoice;
 let VOX = {}, voxLang = null, voxQ = [], voxBusy = false, voxGen = 0;
 const vox = new Audio(); vox.preload = 'auto';
 const SILENT = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//NwwAAAAAAAAAAAAEluZm8AAAAPAAAABAAAAlgAenp6enp6enp6enp6enp6enp6enp6enp6pqampqampqampqampqampqampqampqamptPT09PT09PT09PT09PT09PT09PT09PT09P/////////////////////////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQCcQAAAAAAAAJY+/rsqgAAAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NCxKMAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
-function loadVox() { if (voxLang === T) return; const l = voxLang = T; VOX = {}; fetch('audio/' + l + '/index.json?v=2').then(r => r.ok ? r.json() : {}).then(j => { if (voxLang === l) VOX = j || {}; }).catch(() => { /* pas de voix enregistrées */ }); }
+function loadVox() { if (voxLang === T) return; const l = voxLang = T; VOX = {}; fetch('audio/' + l + '/index.json?v=3').then(r => r.ok ? r.json() : {}).then(j => { if (voxLang === l) VOX = j || {}; }).catch(() => { /* pas de voix enregistrées */ }); }
 /* iPhone : un lecteur audio « débloqué » par un premier toucher peut ensuite parler tout seul (habitants qui viennent te voir) */
 document.addEventListener('pointerdown', () => { try { vox.src = SILENT; const p = vox.play(); if (p) p.catch(() => { /* none */ }); } catch (e) { /* none */ } }, { once: true, capture: true });
 function tts(t, o, after) {
@@ -306,7 +306,7 @@ function enterBakery() {
   if (!bakeryBuilt && window.THREE) {
     bakeryBuilt = true;
     const H = { board: S.board, open: S.open, flour: S.flour, pal: (PV.PALS || {})[palette()],
-      label: id => L.found.includes(id) ? W[id][T] : '?',
+      label: id => L.found.includes(id) ? W[id][T] : '?', found: id => L.found.includes(id),
       pick: id => { if (tab !== 'town' || place !== 'bakery') return; if (id === 'baker') openDlg(); else showWord(id); },
       bubble: () => !tasks.pay, active: () => place === 'bakery' && !document.hidden, exit: () => { if (place === 'bakery') exitBakery(); } };
     window.buildScene(H);
@@ -461,12 +461,12 @@ function choose(o, spoken) {
   else if (!o.tip) praise(false);
   updMission();
   if (o.to === 'END') {
-    const e = o.reply || DD().nodes.end; render(e[0], e[1], null); lastWho = whoNow(); say(fill(e[0], CV()), { queue: true, pitch: voiceP(), who: lastWho });
+    const e = (o.self && o.self[curNpc]) || o.reply || DD().nodes.end; render(e[0], e[1], null); lastWho = whoNow(); say(fill(e[0], CV()), { queue: true, pitch: voiceP(), who: lastWho });
     if (dlgMode === 'first') celebrateFirst();
     if (curNpc) { const who = curNpc; setTimeout(() => { if (curNpc === who) { show(null); finishNpc(who); } }, 3200); return; }
     setTimeout(() => { if (tasks.order && tasks.pay) win(); else show(null); }, 2400); return;
   }
-  go(o.to, o.reply, true);
+  go(o.to, (o.self && o.self[curNpc]) || o.reply, true);
 }
 function openDlg() { curNpc = null; curDlg = null; dlgMode = null; $('dWho').textContent = S.baker; tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
 $('dReplay').onclick = () => say(lastLine, { pitch: voiceP(), who: lastWho });
