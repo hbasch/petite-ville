@@ -1,4 +1,4 @@
-# Chatterville : fiche de reprise (à jour au 28 novembre 2026, 11 h)
+# Chatterville : fiche de reprise (à jour au 28 novembre 2026, 15 h)
 
 À lire au début de chaque conversation, avec `CLAUDE.md` (règles de travail) et `CHANTIERS.md` (le chantier en cours).
 Claude est garant de cette fiche : il la met à jour à la fin de chaque séance, dans le dépôt **et** dans `Documents\Chatterville - reprise\FICHE-REPRISE.md`.
@@ -33,6 +33,9 @@ Nom de code dans l'appli : « Petite Ville ». Nom recommandé : **Chatterville*
 - Écarts entre le Doc et le chapitre 1 à trancher : la fin (maison vue de près, Marmalade), Pemberton au pub ou au café, la cassette d'Arthur absente.
 - Caméra façon Animal Crossing en ligne : angle et distance fixes, plus d'évitement des façades, suivi doux ; joueur immobile pendant les dialogues (`?camold` pour comparer). À valider.
 - Pousser sur GitHub fonctionne depuis la session (dépôt rattaché le 28/11) ; si c'est refusé, le redemander explicitement.
+
+- Après-midi du 28/11 : test de niveau A1/A2/B1 (niveau annoncé), choix toujours en anglais correct, « Sorry, could you say that again? », retrouver de mémoire, cabine guidée (voir `docs/recherche-apprentissage.md`) ; boulangerie : service à la 1re personne, enseigne sur la porte, lumière adoucie ; signes « ! » mission et « ? » mot ; Firefox prévenu avant son téléchargement de 140 Mo.
+- Penser à recharger la page (Ctrl+F5) après une mise en ligne : GitHub Pages garde l'ancienne version jusqu'à 10 minutes.
 
 ## Prochaines étapes
 
