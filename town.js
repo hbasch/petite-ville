@@ -134,7 +134,9 @@ tmark('ciel, lumières');
 /* ---------- l'île en argile ---------- */
 const G = 0.7; /* direction de l'entrée */
 /* herbe : marbrure fine, petites touffes « debout », fleurs clairsemées et bord sombre le long du chemin, tout dans le shader (clay.js, PVClay.grass) */
-const grassTop = DA_AC ? PVClay.grass(new THREE.MeshStandardMaterial({ color: '#45a028', roughness: 1, vertexColors: true })) : C(shade(PAL.leaf, .12)); grassTop.metalness = 0; grassTop.envMapIntensity = .25;
+/* l'utilisateur préfère l'herbe d'avant (28/11) : la version détaillée reste disponible avec ?herbe2 */
+const HERBE2 = /[?&]herbe2\b/.test(location.search);
+const grassTop = DA_AC ? (HERBE2 ? PVClay.grass(new THREE.MeshStandardMaterial({ color: '#45a028', roughness: 1, vertexColors: true })) : C('#45a028', { roughness: 1, bumpScale: 0, vertexColors: true })) : C(shade(PAL.leaf, .12)); grassTop.metalness = 0; grassTop.envMapIntensity = .25;
 /* le dessus de l'herbe est maillé en anneaux serrés (et non un seul éventail centre-bord) : l'horizon arrondi plie les sommets,
    un grand triangle restait plat et passait sous les maisons (on voyait le ciel entre le sol et les boutiques) */
 mk(new THREE.CylinderGeometry(44, 44, .7, 96, 1, true), C(EARTH), 0, -.35, 0);
@@ -1526,7 +1528,7 @@ let tagFor = null, tagT = 0, tagLab = ''; const _tq = new THREE.Vector3(), _tp =
 wordTag.addEventListener('pointerdown', e => e.stopPropagation());
 wordTag.addEventListener('click', e => { e.stopPropagation(); if (tagFor) H.pick(tagFor.userData.id, tagFor); });
 function hideTag() { if (tagFor) { tagFor = null; wordTag.classList.add('hidden'); } }
-const ALLTAGS = /[?&]tags\b/.test(location.search);
+const ALLTAGS = /[?&]tags\b/.test(location.search), OBJTAGS = /[?&]objets\b/.test(location.search), TAG_KEEP = new Set(['bakery', 'pharmacy', 'townhall', 'phonebox']);
 let stillT = 0;
 function updWordTag(t, spd, dt) {
   /* moins d'encombrement : l'étiquette d'un objet n'apparaît que si tu t'arrêtes tout près (?tags : toujours, comme avant) */
@@ -1535,6 +1537,7 @@ function updWordTag(t, spd, dt) {
     tagT = t; let best = null, bd = ALLTAGS ? 1.7 : 1.2;
     if (!talking && (ALLTAGS || stillT > .5)) hits.forEach(o => {
       const id = o.userData.id; if (!id || id === 'square' || id.startsWith('npc:') || !o.visible) return;
+      if (!OBJTAGS && !TAG_KEEP.has(id)) return; /* objets non touchables pour l'instant : seules les étiquettes des lieux restent */
       if (!o.userData.box) { o.updateWorldMatrix(true, true); o.userData.box = new THREE.Box3().setFromObject(o); }
       const b = o.userData.box; if (b.isEmpty()) return;
       _tq.set(pos.x, (b.min.y + b.max.y) / 2, pos.z); const d = b.distanceToPoint(_tq); if (d < bd) { bd = d; best = o; }

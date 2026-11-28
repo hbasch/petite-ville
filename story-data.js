@@ -69,6 +69,14 @@ PV.STORY1 = {
         q5: [{ t: "I'm going to find that thief.", tr: { fr: '' }, to: 'q6', pl: 1, lv: 3 }, { t: 'I found that thief yesterday.', tr: { fr: '' }, to: 'q6', pl: 0, lv: 3 }, { t: "I've already found that thief.", tr: { fr: '' }, to: 'q6', pl: 0, lv: 3 }, { t: "Sorry, I don't understand.", tr: { fr: 'Désolé, je ne comprends pas.' }, to: 'q6', pl: 0, dk: 1, lv: 3 }],
         q6: [{ t: "I hope so, but I'd rather look for him myself.", tr: { fr: '' }, to: 'END', pl: 1, lv: 3 }, { t: 'Yes, they were really helpful when I arrived yesterday.', tr: { fr: '' }, to: 'END', pl: 0, lv: 3 }, { t: "No, and I'd rather they didn't look for him at all.", tr: { fr: '' }, to: 'END', pl: 0, lv: 3 }, { t: "Sorry, I don't understand.", tr: { fr: 'Désolé, je ne comprends pas.' }, to: 'END', pl: 0, dk: 1, lv: 3 }]
       } },
+    /* Tom quand on revient à la boulangerie après le travail */
+    tomLater: { nodes: {
+      start: ['Hello again, {n}! Thanks for your help this morning.', { fr: 'Re-bonjour, {n} ! Merci pour ton aide ce matin.' }, 'a', "Hello again, {n}! Thanks ever so much for this morning.", { fr: 'Re-bonjour, {n} ! Merci beaucoup pour ce matin.' }],
+      end: ['See you later!', { fr: 'À plus tard !' }] },
+      opts: {
+        a: [{ t: 'Thank you, Tom! See you later.', tr: { fr: 'Merci, Tom ! À plus tard.' }, to: 'END' },
+            { t: 'Can I help in the shop again?', tr: { fr: 'Je peux encore aider au magasin ?' }, to: 'END', flag: 'rework', reply: ['Of course! Come behind the counter. Here comes a customer.', { fr: 'Bien sûr ! Passe derrière le comptoir. Voilà un client.' }] }]
+      } },
     tomHelp: { nodes: {
       start: ["Oh no! Are you OK? I'm Tom, the baker.", { fr: 'Oh non ! Ça va ? Je suis Tom, le boulanger.' }, 'a', "Oh dear, are you all right? I'm Tom — I run the bakery over there.", { fr: 'Oh là là, ça va ? Je suis Tom, je tiens la boulangerie, là-bas.' }],
       j2: ['You have nothing? You can sleep above my bakery.', { fr: 'Tu n’as plus rien ? Tu peux dormir au-dessus de ma boulangerie.' }, 'b', "You've got nothing at all? Right — you can stay in the little room above my bakery.", { fr: 'Tu n’as plus rien du tout ? Bon : tu peux loger dans la petite chambre au-dessus de ma boulangerie.' }],

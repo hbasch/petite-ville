@@ -472,7 +472,7 @@ function start() {
   updHud(); updMission(); renderDeck(); renderMap();
   if (!started && window.THREE && window.buildTown) {
     const H = { palette: palette(), country: country(), label: id => L.found.includes(id) ? W[id][T] : '?',
-      pick: (id, obj) => { if (tab !== 'town' || place !== 'town') return; if (id === 'npc:passerby') greetPasserby(obj); else if (id.startsWith('npc:')) openNpc(id.slice(4)); else if (window.PVStory && PVStory.obj(id, obj)) { /* l'histoire répond */ } else { showWord(id); const cid = obj && obj.userData && obj.userData.collect; if (cid) setTimeout(() => collect(id, cid), 900); setTimeout(() => questProgress('find', id), cid ? 2200 : 1100); } },
+      pick: (id, obj) => { if (tab !== 'town' || place !== 'town') return; if (id === 'npc:passerby') greetPasserby(obj); else if (id.startsWith('npc:')) openNpc(id.slice(4)); else if (window.PVStory && PVStory.obj(id, obj)) { /* l'histoire répond */ } else if (!OBJ_ON && !OBJ_KEEP.has(id)) { /* objets non touchables pour l'instant (28/11) */ } else { showWord(id); const cid = obj && obj.userData && obj.userData.collect; if (cid) setTimeout(() => collect(id, cid), 900); setTimeout(() => questProgress('find', id), cid ? 2200 : 1100); } },
       active: () => place === 'town' && !document.hidden };
     (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); refreshMarkers(); updTime(); setTimeout(maybeReview, 9000); if (!(window.PVStory && PVStory.boot()) && !L.found.some(id => TOWN.has(id))) showIntro('town'); if (!store.get('pv_help')) setTimeout(() => helpShow(true), 1200); if (L.firstWin || L.found.length) { L.firstWin = 1; setTimeout(announceQuest, 2500); } });
   }
@@ -503,7 +503,8 @@ function enterBakery() {
     bakeryBuilt = true;
     const H = { board: S.board, open: S.open, flour: S.flour, pal: (PV.PALS || {})[palette()],
       label: id => L.found.includes(id) ? W[id][T] : '?', found: id => L.found.includes(id),
-      pick: id => { if (tab !== 'town' || place !== 'bakery') return; if (id === 'baker') openDlg(); else showWord(id); },
+      pick: id => { if (tab !== 'town' || place !== 'bakery') return; if (id === 'baker') { if (!(window.PVStory && PVStory.bakerTalk && PVStory.bakerTalk())) openDlg(); } else if (OBJ_ON) showWord(id); },
+      busy: () => toast(U.busyJob || 'Pas maintenant : les clients attendent !'),
       bubble: () => !tasks.pay, active: () => place === 'bakery' && !document.hidden, exit: () => { if (place === 'bakery') exitBakery(); } };
     window.buildScene(H);
   }
@@ -590,7 +591,8 @@ function show(id) {
 }
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => show(null));
 $('misBtn').onclick = () => { updMission(); show('misSheet'); };
-$('exitBtn').onclick = () => { if (place === 'bakery') exitBakery(); };
+/* pendant le service au comptoir, on ne sort pas (sinon le service se rejouait : Jack revenait deux fois) */
+$('exitBtn').onclick = () => { if (place !== 'bakery') return; if (window.PVBakery && PVBakery.inJob && PVBakery.inJob()) { toast(U.busyJob || 'Pas maintenant : les clients attendent !'); return; } exitBakery(); };
 $('placeBtn').onclick = () => { if (place === 'bakery') exitBakery(); else { renderMap(); show('mapSheet'); } };
 $('meBtn').onclick = () => showTab('progress');
 $('goalPill').onclick = () => showTab('progress');
@@ -668,6 +670,8 @@ const voiceP = () => dlgMode === 'story' ? storyPitch : (curNpc && PV.NPCS[curNp
 /* réponses « peut-être » : le micro a hésité entre elles ; les toucher compte comme une réponse parlée */
 let maybe = new Set();
 function markMaybe(list) { maybe = new Set(list); document.querySelectorAll('#dOpts .opt').forEach((b, i) => b.classList.toggle('maybe', maybe.has(curOpts[i]))); }
+/* objets : plus touchables pour l'instant (demande du 28/11) ; restent les lieux où l'on entre et ceux de l'histoire. ?objets pour réactiver */
+const OBJ_ON = /[?&]objets\b/.test(location.search), OBJ_KEEP = new Set(['bakery', 'pharmacy', 'townhall', 'phonebox']);
 let micFails = 0;
 function render(line, tr, key) {
   line = fill(line, CV()); lastLine = line; lastLineTr = fill((tr || {})[ui] || '', CV()); $('dLine').textContent = line; $('dTrTxt').textContent = fill((tr || {})[ui] || '', CV());

@@ -243,7 +243,7 @@ const chalk=item('chalkboard');
 const chT=tex(512,320,(g,w,h)=>{g.fillStyle='#2b3330';g.fillRect(0,0,w,h);for(let i=0;i<500;i++){g.fillStyle=`rgba(255,255,255,${Math.random()*.04})`;g.fillRect(Math.random()*w,Math.random()*h,6,2)}
  g.strokeStyle='#ffe08a';g.lineWidth=4;g.lineCap='round';g.beginPath();g.moveTo(170,40);g.lineTo(342,40);g.stroke();g.beginPath();g.arc(256,40,12,0,Math.PI*2);g.stroke();
  const L=H.board.rows;g.font='600 32px "Baloo 2",Fredoka,sans-serif';
- L.forEach((l,i)=>{const y=96+i*46;g.save();g.translate(80,y);g.strokeStyle='#f5f1e8';g.lineWidth=4;drawIcon(g,l[0]);g.restore();g.setLineDash([2,10]);g.strokeStyle='rgba(245,241,232,.35)';g.lineWidth=3;g.beginPath();g.moveTo(140,y);g.lineTo(w-160,y);g.stroke();g.setLineDash([]);g.textAlign='right';g.textBaseline='middle';g.fillStyle='#ffd0dc';g.fillText(l[1],w-46,y+2)})});
+ L.forEach((l,i)=>{const y=96+i*46;g.save();g.translate(58,y);g.scale(.8,.8);g.strokeStyle='#f5f1e8';g.lineWidth=4;drawIcon(g,l[0]);g.restore();g.textAlign='left';g.textBaseline='middle';g.fillStyle='#f5f1e8';g.font='600 30px "Baloo 2",Fredoka,sans-serif';g.fillText(l[0],100,y+2);const tw=g.measureText(l[0]).width;g.font='600 32px "Baloo 2",Fredoka,sans-serif';g.setLineDash([2,10]);g.strokeStyle='rgba(245,241,232,.35)';g.lineWidth=3;g.beginPath();g.moveTo(112+tw,y);g.lineTo(w-150,y);g.stroke();g.setLineDash([]);g.textAlign='right';g.textBaseline='middle';g.fillStyle='#ffd0dc';g.fillText(l[1],w-46,y+2)})});
 function drawIcon(g,t){g.beginPath();if(t==='croissant'){g.arc(0,8,22,Math.PI*1.05,Math.PI*1.95);g.moveTo(-14,-6);g.lineTo(-10,6);g.moveTo(0,-12);g.lineTo(0,2);g.moveTo(14,-6);g.lineTo(10,6)}else if(t==='baguette'){g.ellipse(0,0,34,8,-.25,0,Math.PI*2);for(let k=-1;k<=1;k++){g.moveTo(k*14-4,-2+k*3.5);g.lineTo(k*14+4,-6+k*3.5)}}else if(t==='loaf'){g.ellipse(0,4,24,14,0,Math.PI,0);g.lineTo(-24,4);g.moveTo(-10,-4);g.lineTo(-6,-10);g.moveTo(4,-4);g.lineTo(8,-10)}else if(t==='doughnut'){g.arc(0,0,16,0,Math.PI*2);g.moveTo(6,0);g.arc(0,0,6,0,Math.PI*2)}else if(t==='cupcake'){g.moveTo(-14,0);g.lineTo(-10,16);g.lineTo(10,16);g.lineTo(14,0);g.moveTo(-16,0);g.quadraticCurveTo(0,-26,16,0);g.closePath()}g.stroke()}
 /* au mur du fond, entre les étagères et le boulanger, au-dessus des baguettes : ni la bulle « Hi! » ni les pastilles du haut de l'écran ne la cachent */
 mk(rbox(1.32,.87,.06,.028,3),wood('#6e4a2c'),-.62,2.3,-3.96,chalk);
@@ -280,7 +280,7 @@ const exitT=tex(320,128,(g,w,h)=>{g.fillStyle='#2f9e5b';g.fillRect(0,0,w,h);g.st
  ln(24,64,84,64);ln(66,46,86,64,66,82);g.beginPath();g.arc(152,30,12,0,7);g.fill();
  ln(148,46,136,76);ln(146,52,162,62,174,54);ln(146,52,130,58,120,50);ln(136,76,154,90,152,110);ln(136,76,126,96,106,100);
  g.lineWidth=8;g.strokeRect(206,18,62,94);g.beginPath();g.arc(258,66,5,0,7);g.fill()});
-mk(rbox(.66,.3,.05,.02,2),fr(),0,2.47,.02,door);mk(new THREE.PlaneGeometry(.6,.24),M('#fff',{map:exitT,roughness:.7,bumpScale:0}),0,2.47,.05,door);
+
 /* paillasson devant la porte */
 mk(paint(rbox(1.1,.035,.6,.015,3),(x,y,z)=>.85+.15*Math.abs(Math.sin(x*40))),MV('#9a6b3a',{roughness:1}),DX,.045,FZ-.5);
 
@@ -425,7 +425,7 @@ canvas.addEventListener('pointerup',e=>{if(lift(e))return;if(!down||down.id!==e.
  if(p.walk){const x=p.point.x,z=p.point.z;target=Math.abs(x-DX)<.7&&z>FZ-1.1?new THREE.Vector3(DX,0,FZ):new THREE.Vector3(clampX(x),0,clampZ(z));return}
  const g=p.obj,id=g.userData.id;
  /* porte : la 1re fois on apprend le mot « door », ensuite elle fait sortir (le tapis et le bouton aussi) */
- if(id==='door'){if(H.found&&!H.found('door')){H.pick('door');return}if(!job)leave();return}
+ if(id==='door'){if(!job)leave();else H.busy&&H.busy();return}
  H.pick(id);g.scale.setScalar(1.06);setTimeout(()=>g.scale.setScalar(1),140)});
 canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoomT*(1+Math.max(-.2,Math.min(.2,e.deltaY*.0012))))},{passive:false});
 canvas.addEventListener('pointerleave',()=>{hl(hov,false);hov=null;tip.classList.add('hidden')});
@@ -441,7 +441,7 @@ function jobStart(){job={cust:null};baker.position.x=-1;pos.x=SV.x;pos.z=SV.z;ve
 function jobEnd(){if(job&&job.cust)scene.remove(job.cust.c.g);job=null;baker.position.x=.25;baker.rotation.y=0;chalk2.visible=false;reset()}
 function cust(look,cb){if(!job)return;const c=PVClay.char(look,{});PVClay.bake(c.g);if(look.scale)c.g.scale.setScalar(look.scale);scene.add(c.g);c.yaw=Math.PI;c.ph=0;c.g.position.set(DX,0,FZ-.7);job.cust={c,to:CU.slice(),cb}}
 function custLeave(cb){if(!job||!job.cust){if(cb)cb();return}const J=job.cust;J.to=[DX,FZ-.5];J.cb=()=>{scene.remove(J.c.g);if(job)job.cust=null;if(cb)cb()}}
-window.PVBakery={reset,jobStart,jobEnd,cust,custLeave};
+window.PVBakery={reset,jobStart,jobEnd,cust,custLeave,inJob:()=>!!job};
 if(/[?&]debug\b/.test(location.search))window.PVBAK={cam,R,scene,CAMT,CAMP,job:()=>job,go(x,z,yw,pt){pos.set(x,EYE,z);yaw=tYaw=yw||0;pitch=tPitch=pt||0;target=null;vel.set(0,0,0);place()}};
 
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)});

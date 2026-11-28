@@ -145,6 +145,20 @@
     const custom = (who, cb) => B.cust ? B.cust(LK[who], () => talk(who, who, () => B.custLeave(cb))) : talk(who, who, cb);
     talk('tom', 'shop', () => custom('jack', () => custom('patel', () => talk('tom', 'pay', () => { if (B.jobEnd) B.jobEnd(); busy = false; set('step', 'errands'); errands(); }))));
   }
+  /* après le travail, Tom a une réplique courte (comme dans Animal Crossing ou Stardew Valley : une scène jouée ne se rejoue pas toute seule),
+     et on peut choisir de l'aider à nouveau au comptoir : on repasse Jack et Mrs Patel, pour s'entraîner (sans salaire) */
+  function replayWork() {
+    busy = true;
+    const B = window.PVBakery || {}, LK = S1().looks;
+    if (B.jobStart) B.jobStart();
+    const custom = (who, cb) => B.cust ? B.cust(LK[who], () => talk(who, who, () => B.custLeave(cb))) : talk(who, who, cb);
+    custom('jack', () => custom('patel', () => { if (B.jobEnd) B.jobEnd(); busy = false; }));
+  }
+  function bakerTalk() {
+    const s = st(); if (!s || s.off || busy || ['prologue', 'tom', 'work'].includes(s.step)) return false;
+    talk('tom', 'tomLater', () => { const t = st(); if (t.has && t.has.rework) { delete t.has.rework; A().save(); replayWork(); } });
+    return true;
+  }
   function errands() {
     const s = st(), T = town();
     if (s.has.police && s.has.brush) { T && T.actor('jones', { show: false }); T && T.actor('okafor', { show: false }); set('step', 'phone'); objective('phone'); return; }
@@ -204,6 +218,7 @@
       return false;
     },
     /* toucher l'étiquette d'un objet : la cabine rouge */
+    bakerTalk() { return bakerTalk(); },
     obj(id) {
       const s = st(); if (!s || s.off || busy) return false;
       if (s.step === 'errands' && id === 'pharmacy' && !s.has.brush) return this.npc('okafor');
