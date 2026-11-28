@@ -294,11 +294,12 @@ mk(cyl(.038,.038,.004,20),M('#7a4a22',{roughness:.2}),-3.45,.858,1.4,cupI);mk(ne
 
 /* ---------- lumière : soleil rasant par la fenêtre de gauche (seul endroit où il entre : son carreau tombe devant le comptoir), suspensions chaudes,
    lumière douce de la vitrine derrière soi, et le reflet chaud du carreau de soleil sur le sol ---------- */
-scene.add(new THREE.HemisphereLight('#ffe2bd','#4a3022',.16));
-const sun=new THREE.DirectionalLight("#ffc888",5.2);sun.position.set(-9,4.6,-3.2);sun.target.position.set(0,0,-1);scene.add(sun,sun.target);
+/* lumière douce et chaude partout (avant : soleil très fort et pièce presque noire, contraste dur) */
+scene.add(new THREE.HemisphereLight('#fff0dc','#7a5a40',.5));
+const sun=new THREE.DirectionalLight("#ffd9a8",2.3);sun.position.set(-9,4.6,-3.2);sun.target.position.set(0,0,-1);scene.add(sun,sun.target);
 sun.castShadow=true;sun.shadow.mapSize.set(mobile?1024:2048,mobile?1024:2048);Object.assign(sun.shadow.camera,{left:-7,right:7,top:5,bottom:-5,near:1,far:20});sun.shadow.bias=-.0005;sun.shadow.normalBias=.02;
-const fill=new THREE.DirectionalLight('#ffe7d0',.14);fill.position.set(1.5,2.6,7);scene.add(fill);
-const bounce=new THREE.PointLight('#ffb36b',.35,3.5,2);bounce.position.set(-1.5,.3,.3);scene.add(bounce);
+const fill=new THREE.DirectionalLight('#ffe7d0',.45);fill.position.set(1.5,2.6,7);scene.add(fill);
+const bounce=new THREE.PointLight('#ffb36b',.55,4.5,2);bounce.position.set(-1.5,.3,.3);scene.add(bounce);
 
 /* poussière de farine qui danse dans le rayon de soleil (un seul objet, quelques dizaines de points) */
 const SD=new THREE.Vector3(9,-4.6,2.2).normalize(),MOTES=mobile?40:70,moteP=new Float32Array(MOTES*3),moteS=[];
@@ -411,7 +412,7 @@ function placeFP(dt){const port=innerWidth/innerHeight<1,dlg=document.body.class
  ceil.material.colorWrite=ceil.material.depthWrite=true;const E=PVClay.U;E.clipOn.value=0;E.cutOn.value=0;E.bendK.value=0}
 function placeAC(dt){if(job){placeFP(dt);return}ceil.material.colorWrite=ceil.material.depthWrite=false;const asp=innerWidth/innerHeight,port=asp<1,dlg=document.body.classList.contains('dlg-open');let fov;
  if(dlg){fov=port?44:32;baker.getWorldPosition(_bk);const Hv=port?3.6:2.9,back=Hv/(2*Math.tan(fov*Math.PI/360));_cw.set(_bk.x+.6,1.0+back*.36,_bk.z+back);_cl.set(_bk.x,port?.2:.62,_bk.z)}
- else{fov=port?50:34;const tx=port?pos.x*.8:pos.x*.3,tz=port?pos.z-1.5:pos.z*.35;_cl.set(tx,.3,tz);const dist=(port?11.5:12.8)*zoomV,el=.88;_cw.set(_cl.x,_cl.y+dist*Math.sin(el),_cl.z+dist*Math.cos(el))}
+ else{/* sur ordinateur aussi : caméra plus basse et plus proche, qui suit ton personnage (avant : très haute, on voyait surtout le carrelage) */fov=port?50:38;const tx=port?pos.x*.8:pos.x*.75,tz=port?pos.z-1.5:pos.z-1.2;_cl.set(tx,.5,tz);const dist=(port?11.5:8.6)*zoomV,el=port?.88:.66;_cw.set(_cl.x,_cl.y+dist*Math.sin(el),_cl.z+dist*Math.cos(el))}
  const k=camInit?1-Math.exp(-dt*(dlg?4:6)):1;camInit=true;camP.lerp(_cw,k);camL.lerp(_cl,k);cam.position.copy(camP);cam.lookAt(camL);
  if(Math.abs(cam.fov-fov)>.05){cam.fov+=(fov-cam.fov)*k;cam.updateProjectionMatrix()}
  const E=PVClay.U;E.clipOn.value=1;E.clip.value.set(0,0,1,FZ-.15);E.clip2.value.set(0,1,0,HT-.45);E.cutOn.value=0;E.bendK.value=0}
