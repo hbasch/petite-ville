@@ -1,4 +1,4 @@
-# Chatterville : fiche de reprise (à jour au 28 novembre 2026, 15 h)
+# Chatterville : fiche de reprise (à jour au 28 novembre 2026, 17 h 30)
 
 À lire au début de chaque conversation, avec `CLAUDE.md` (règles de travail) et `CHANTIERS.md` (le chantier en cours).
 Claude est garant de cette fiche : il la met à jour à la fin de chaque séance, dans le dépôt **et** dans `Documents\Chatterville - reprise\FICHE-REPRISE.md`.
@@ -36,6 +36,15 @@ Nom de code dans l'appli : « Petite Ville ». Nom recommandé : **Chatterville*
 
 - Après-midi du 28/11 : test de niveau A1/A2/B1 (niveau annoncé), choix toujours en anglais correct, « Sorry, could you say that again? », retrouver de mémoire, cabine guidée (voir `docs/recherche-apprentissage.md`) ; boulangerie : service à la 1re personne, enseigne sur la porte, lumière adoucie ; signes « ! » mission et « ? » mot ; Firefox prévenu avant son téléchargement de 140 Mo.
 - Penser à recharger la page (Ctrl+F5) après une mise en ligne : GitHub Pages garde l'ancienne version jusqu'à 10 minutes.
+
+- Fin d'après-midi du 28/11 (en autonomie, avec agents) : boulangerie refaite (plus petite, parquet, étagères, tables) ; herbe détaillée ; chargement plus rapide et écran « Chargement… » qui restait 20 s de trop corrigé ; révision du jour « Hier à Chatterville… » ; traduction affichée d'office en A0/A1 ; corrections du testeur (Échap, traductions de la version confirmée, test moins devinable…). Rapport du testeur : `docs/rapport-test-2026-11-28.md` (points restants à traiter).
+- Boulangerie Meshy optimisée (323 Ko) visible avec `?meshy`. Avis de l'agent : jolie mais pas dans le style des autres bâtiments (plus beige, pierres, socle) ; à garder seulement si toute la rue passe à Meshy avec une palette pastel lisse.
+
+## À trancher par l'utilisateur
+- Le nom de la ville : l'histoire dit Chatterville, le mode libre dit « Petite Ville » et Rosa « Welcome to Edinburgh! » (les demandes du jour parlent du château et du chien d'Édimbourg).
+- Les 3 écarts avec le Doc : la fin (maison vue de près, Marmalade), Pemberton au pub ou au café, la cassette d'Arthur.
+- Garder ou non la boulangerie Meshy (`?meshy`), et la suite pour les bâtiments.
+- Proposition du testeur pour la fin : Pemberton révèle que les clés de la maison étaient dans la valise (relance le chapitre 2).
 
 ## Prochaines étapes
 
