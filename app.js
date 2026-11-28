@@ -749,7 +749,10 @@ function finishNpc(id) {
 /* ---------- les habitants viennent te voir ---------- */
 let idleT = 0, lastVisit = 0, visits = 0;
 const busyUI = () => (window.PVStory && PVStory.busy()) || SHEETS.some(p => !$(p).classList.contains('hidden')) || ['intro', 'win', 'onb', 'authOv'].some(p => $(p) && !$(p).classList.contains('hidden')) || document.body.classList.contains('photo');
+/* les habitants ne viennent plus te chercher d'eux-mêmes (décidé le 28/11) ; ?visites pour réactiver */
+const VISITS = /[?&]visites\b/.test(location.search);
 setInterval(() => {
+  if (!VISITS) return;
   if (!started || !town || !town.approach || place !== 'town' || tab !== 'town' || document.hidden || busyUI() || town.approaching()) { idleT = 0; return; }
   idleT++;
   const q = questToday(), pending = q && L.firstWin && !L.quest.told && !L.quest.done;

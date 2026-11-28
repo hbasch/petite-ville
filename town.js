@@ -1414,8 +1414,19 @@ canvas.addEventListener('pointerup', e => {
   if (ACCAM && (!p || p.id === 'square')) { const g = groundPick(e); if (g) { target = new THREE.Vector3(g.x, 1.45, g.z); return; } }
   if (!p) return;
   if (p.id === 'square') { target = new THREE.Vector3(p.point.x, 1.45, p.point.z); return; }
+  /* façon Animal Crossing : on touche un habitant éloigné, ton personnage va jusqu'à lui, puis la discussion s'ouvre */
+  if (ACCAM && !TALKWALK && String(p.id).startsWith('npc:')) {
+    const o = people.find(q => 'npc:' + q.id === p.id);
+    if (o && Math.hypot(o.grp.position.x - pos.x, o.grp.position.z - pos.z) > 2.6) {
+      let sp = null; try { sp = talkPlan(o); } catch (er) { sp = null; }
+      const n = o.grp.position, L = Math.hypot(n.x - pos.x, n.z - pos.z) || 1;
+      target = sp ? new THREE.Vector3(sp.sx, 1.45, sp.sz) : new THREE.Vector3(n.x + (pos.x - n.x) / L * 1.6, 1.45, n.z + (pos.z - n.z) / L * 1.6);
+      pendingTalk = { id: p.id, obj: p.obj }; return;
+    }
+  }
   H.pick(p.id, p.obj);
 });
+let pendingTalk = null;
 /* mots des objets : quand ton personnage passe tout près d'un objet, une étiquette apparaît au-dessus ; on la touche pour voir le mot */
 const wordTag = document.createElement('button'); wordTag.type = 'button'; wordTag.id = 'wordTag'; wordTag.className = 'hidden'; document.body.appendChild(wordTag);
 let tagFor = null, tagT = 0, tagLab = ''; const _tq = new THREE.Vector3(), _tp = new THREE.Vector3();
@@ -1676,8 +1687,19 @@ function updatePeople(dt, t) {
   catObj.userData.breath.scale.y = 1 + Math.sin(t * 1.6) * .05; catObj.userData.head.rotation.x = Math.sin(t * .3) > .97 ? .15 : 0;
   if (talking && !ACCAM) { const want = Math.atan2(-(talking.grp.position.x - pos.x), -(talking.grp.position.z - pos.z)); let d = want - tYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); tYaw += d * .08; tPitch += (-.3 - tPitch) * .08; }
 }
+const TALKWALK = /[?&]talkwalk\b/.test(location.search);
 function talkTo(id) {
   const o = people.find(p => p.id === id); if (!o) return; talking = o; o.pause = 999;
+  /* façon Animal Crossing : en discussion, personne ne bouge. Ton personnage reste où il est et se tourne vers l'habitant,
+     la caméra cadre une fois l'habitant (angle choisi au début) puis reste immobile. (?talkwalk : ancien comportement, on allait se placer) */
+  target = null; vel.set(0, 0, 0);
+  /* l'angle de caméra vient du plan (sans obstacle devant l'habitant), mais personne ne marche */
+  if (ACCAM && !TALKWALK) {
+    try { o.plan = talkPlan(o); } catch (e) { o.plan = null; }
+    /* discussion ouverte de loin (histoire, demande du jour) : on place ton personnage devant l'habitant, sans le faire marcher */
+    if (o.plan && Math.hypot(o.grp.position.x - pos.x, o.grp.position.z - pos.z) > 3) pos.set(o.plan.sx, pos.y, o.plan.sz);
+    return;
+  }
   if (ACCAM) { try { o.plan = talkPlan(o); } catch (e) { o.plan = null; } if (o.plan) { target = new THREE.Vector3(o.plan.sx, 1.45, o.plan.sz); return; } }
   if (o.mode === 'sit') { const f = o.grp.rotation.y; target = new THREE.Vector3(o.grp.position.x + Math.sin(f) * 2.3, 1.45, o.grp.position.z + Math.cos(f) * 2.3); return; }
   const dx = pos.x - o.grp.position.x, dz = pos.z - o.grp.position.z, d = Math.hypot(dx, dz);
@@ -1861,7 +1883,7 @@ function loop() {
   if (joy) { wish.set(0, 0, 0).addScaledVector(right, joy.x).addScaledVector(fwd, -joy.y); }
   if (locked || talking) wish.set(0, 0, 0);
   const SPEED = 2.6;
-  if (wish.lengthSq() > 0) { target = null; const wl = Math.min(1, wish.length()); wish.normalize().multiplyScalar(SPEED * (joy ? Math.max(.35, wl) : 1)); }
+  if (wish.lengthSq() > 0) { target = null; pendingTalk = null; const wl = Math.min(1, wish.length()); wish.normalize().multiplyScalar(SPEED * (joy ? Math.max(.35, wl) : 1)); }
   else if (target) { const ddx = target.x - pos.x, ddz = target.z - pos.z, L = Math.hypot(ddx, ddz); if (L < .08) target = null; else { const sp = Math.min(SPEED, L * 2.2); wish.set(ddx / L * sp, 0, ddz / L * sp); } }
   vel.lerp(wish, 1 - Math.exp(-dt * (wish.lengthSq() > 0 ? 7 : 9)));
   const px = pos.x, pz = pos.z;
@@ -1869,6 +1891,7 @@ function loop() {
   if (dt > 0) { vel.x = (pos.x - px) / dt; vel.z = (pos.z - pz) / dt; }
   const spd = Math.hypot(vel.x, vel.z);
   if (target && wish.lengthSq() > .25 && spd < .2) { if ((stuckT += dt) > .7) { target = null; stuckT = 0; } } else stuckT = 0;
+  if (pendingTalk && !target && !talking) { const pt = pendingTalk; pendingTalk = null; H.pick(pt.id, pt.obj); }
   if (ACCAM) updateTPS(dt, t, spd); else {
   yaw += (tYaw - yaw) * (1 - Math.exp(-dt * 16)); pitch += (tPitch - pitch) * (1 - Math.exp(-dt * 16));
   bob += dt * spd * 3.4;
