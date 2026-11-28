@@ -660,6 +660,7 @@ const voiceP = () => dlgMode === 'story' ? storyPitch : (curNpc && PV.NPCS[curNp
 /* réponses « peut-être » : le micro a hésité entre elles ; les toucher compte comme une réponse parlée */
 let maybe = new Set();
 function markMaybe(list) { maybe = new Set(list); document.querySelectorAll('#dOpts .opt').forEach((b, i) => b.classList.toggle('maybe', maybe.has(curOpts[i]))); }
+let micFails = 0;
 function render(line, tr, key) {
   line = fill(line, CV()); lastLine = line; $('dLine').textContent = line; $('dTrTxt').textContent = fill((tr || {})[ui] || '', CV());
   curOpts = key ? DD().opts[key].filter(o => !o.need || (window.PVStory && PVStory.has(o.need))) : [];
@@ -669,8 +670,18 @@ function render(line, tr, key) {
     /* petite icône pour entendre comment se dit la réponse (rien ne se lit tout seul) */
     const sp = el('span', 'optSpk'); sp.setAttribute('role', 'button'); sp.setAttribute('aria-label', U.listen); sp.appendChild(icon('spk'));
     sp.onclick = e => { e.stopPropagation(); say(o.t, { who: 'you', rate: 1 }); };
-    b.append(el('span', null, o.t), el('div', 'fr', o.tr[ui] || ''), sp);
-    b.onclick = () => choose(o, maybe.has(o)); box.appendChild(b);
+    /* retrouver de mémoire : une réplique déjà réussie 3 fois s'affiche d'abord en français ; il faut la dire en anglais,
+       ou toucher une première fois pour voir l'anglais, puis une seconde pour la choisir (la recherche : le rappel apprend plus que la reconnaissance) */
+    const seen = ((L && L.recall) || {})[o.t] || 0, hide = !o.again && !o.dk && seen >= 3 && !!(o.tr[ui]);
+    if (hide) {
+      const en = el('span', null, o.tr[ui]), hint = el('div', 'fr', U.recallHint || 'Dis-le en anglais · touche pour voir');
+      sp.style.visibility = 'hidden'; b.classList.add('recall'); b.append(en, hint, sp);
+      b.onclick = () => { if (!b.classList.contains('shown')) { b.classList.add('shown'); en.textContent = o.t; hint.textContent = o.tr[ui]; sp.style.visibility = ''; return; } choose(o, maybe.has(o)); };
+    } else {
+      b.append(el('span', null, o.t), el('div', 'fr', o.tr[ui] || ''), sp);
+      b.onclick = () => choose(o, maybe.has(o));
+    }
+    box.appendChild(b);
   });
   maybe = new Set();
   $('dMic').disabled = !SR || !curOpts.length;
@@ -686,6 +697,8 @@ function choose(o, spoken) {
   $('dMe').textContent = U.you + ' : « ' + o.t + ' »';
   if (o.task) tasks[o.task] = true;
   if (o.task === 'order') setTimeout(() => questProgress('bakery'), 2600);
+  if (!o.tip && !o.again && !o.dk && L) { L.recall = L.recall || {}; L.recall[o.t] = (L.recall[o.t] || 0) + 1; }
+  micFails = 0;
   if (o.tip) { mistakes++; $('dTip').textContent = o.tip[ui]; $('dTip').classList.remove('hidden'); } else $('dTip').classList.add('hidden');
   if (spoken) { spokenSession++; P.spoken++; if (!o.tip) { addXP(5); praise(true); } setTimeout(() => questProgress('say'), 1500); }
   else if (!o.tip) praise(false);
@@ -719,7 +732,7 @@ function dMicGo() {
     /* pas sûr : on montre les réponses possibles au lieu d'un simple « pas compris » */
     const cand = r.ranked.filter(x => x.s >= .3 && x.s >= r.bs - .15).slice(0, 2);
     if (cand.length) { markMaybe(cand.map(x => x.o)); $('dTip').textContent = fill(U.maybe, { h: r.heard }); $('dTip').classList.remove('hidden'); }
-    else { $('dTip').textContent = U.notUnderstood; $('dTip').classList.remove('hidden'); say(fill(DD().nodes.huh[0], CV()), { pitch: voiceP(), who: whoNow() }); }
+    else { micFails++; $('dTip').textContent = micFails >= 2 ? (U.touchIt || 'Pas grave : touche ta réponse, ou réessaie.') : U.notUnderstood; $('dTip').classList.remove('hidden'); say(fill(DD().nodes.huh[0], CV()), { pitch: voiceP(), who: whoNow() }); }
   }, err => micError(err, out), () => mic.classList.remove('on', 'wait'), alts => { const r = bestOpt(alts, curOpts); return r.sure && r.bs >= .85 && r.gap >= .25; },
   { ready: () => { mic.classList.remove('wait'); mic.classList.add('on'); out.textContent = U.listening; }, phrases: curOpts.map(o => o.t), good: alts => bestOpt(alts, curOpts).sure });
 }

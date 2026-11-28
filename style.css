@@ -456,3 +456,6 @@ body.storyDlg #dlg [data-close="dlg"]{display:none}
 #carnet{font-size:15px;padding:10px 14px;max-width:min(420px,calc(100% - 24px));border-radius:18px;background:#fffdf5;box-shadow:0 4px 0 #d9a93e,0 8px 20px rgba(42,34,51,.25);line-height:1.35}
 #carnet b{font-size:12px;padding:3px 9px}
 @media(max-width:640px){#carnet{font-size:14px;padding:9px 12px;top:calc(56px + var(--safeT, 0px))}}
+/* réplique à retrouver de mémoire : le français d'abord, l'indice toujours visible */
+#dOpts .opt.recall:not(.shown){border-style:dashed}
+#dlg .opt.recall:not(.shown) .fr{display:block;font-style:italic}
