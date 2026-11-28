@@ -471,3 +471,6 @@ body.storyDlg #dlg [data-close="dlg"]{display:none}
 #loaderTxt{font-size:14px;opacity:.75}
 #loaderTip{max-width:min(320px,82vw);min-height:3.2em;margin:4px 0 0;text-align:center;font-size:15px;line-height:1.45;color:#fff8e6;opacity:1;transition:opacity .2s}
 #nav button[hidden]{display:none}
+
+/* bouton « Entrer » devant la porte de la boulangerie */
+.enterBtn{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:30;font-size:18px;padding:14px 26px;box-shadow:0 6px 18px rgba(0,0,0,.25)}

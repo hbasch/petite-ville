@@ -7,7 +7,7 @@ const $ = id => document.getElementById(id);
 const T0 = performance.now(), TIMES = [], tmark = n => TIMES.push([n, Math.round(performance.now() - T0)]);
 const canvas = $('ct');
 const mobile = Math.min(innerWidth, innerHeight) < 700;
-let lowShadow = false; /* qualité réduite activée par la boucle si le téléphone rame */
+let lowShadow = false, doorW = null; /* qualité réduite activée par la boucle si le téléphone rame */
 const R = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
 R.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.25 : 1.5)); R.setSize(innerWidth, innerHeight);
 R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = .86;
@@ -1008,58 +1008,125 @@ const walkers = [];
 function faceProbe(g) {
   const tmp = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide })), rc = new THREE.Raycaster(), bb = g.boundingBox, H = bb.max.y - bb.min.y;
   tmp.updateMatrixWorld(true);
-  const hit = (x, y) => { rc.set(new THREE.Vector3(x, y, bb.max.z + 1), new THREE.Vector3(0, 0, -1)); const h = rc.intersectObject(tmp)[0]; if (!h) return null; const n = h.face.normal.clone(); if (n.z < 0) n.negate(); return { p: h.point, n }; };
+  /* normale lissée (interpolée entre les sommets) : sur un modèle peu détaillé, la normale de la facette saute
+     d'un triangle à l'autre et la bouche posée dessus ondulerait */
+  const pa = g.attributes.position, na = g.attributes.normal, T = new THREE.Triangle(), bc = new THREE.Vector3(), nv = [0, 1, 2].map(() => new THREE.Vector3());
+  const hit = (x, y) => { rc.set(new THREE.Vector3(x, y, bb.max.z + 1), new THREE.Vector3(0, 0, -1)); const h = rc.intersectObject(tmp)[0]; if (!h) return null;
+    let n = h.face.normal.clone();
+    if (na) { const f = h.face; T.set(new THREE.Vector3().fromBufferAttribute(pa, f.a), new THREE.Vector3().fromBufferAttribute(pa, f.b), new THREE.Vector3().fromBufferAttribute(pa, f.c)); T.getBarycoord(h.point, bc);
+      [f.a, f.b, f.c].forEach((v, k) => nv[k].fromBufferAttribute(na, v)); n = nv[0].multiplyScalar(bc.x).addScaledVector(nv[1], bc.y).addScaledVector(nv[2], bc.z).normalize(); }
+    if (n.z < 0) n.negate(); return { p: h.point, n }; };
   return { hit, bb, H };
 }
+/* géométrie quantifiée (KHR_mesh_quantization, fichiers passés par outils/meshy) : three r128 lit les sommets bruts
+   (entiers) côté processeur mais normalisés côté carte graphique ; on les remet en nombres à virgule pour que les rayons
+   du visage, les poids et les os parlent tous la même langue */
+function glbFloat(g) {
+  const DIV = { Int8Array: 127, Uint8Array: 255, Int16Array: 32767, Uint16Array: 65535 };
+  Object.keys(g.attributes).forEach(k => {
+    const a = g.attributes[k], src = a.isInterleavedBufferAttribute ? a.data.array : a.array;
+    if (!a.isInterleavedBufferAttribute && !a.normalized && src instanceof Float32Array) return;
+    const d = a.normalized ? DIV[src.constructor.name] || 1 : 1, n = a.itemSize, out = new Float32Array(a.count * n), gt = ['getX', 'getY', 'getZ', 'getW'];
+    const lo = a.normalized && (d === 127 || d === 32767) ? -1 : -Infinity; /* entiers signés : -32768 vaut -1 */
+    for (let i = 0; i < a.count; i++) for (let c = 0; c < n; c++) out[i * n + c] = Math.max(lo, a[gt[c]](i) / d);
+    g.setAttribute(k, new THREE.BufferAttribute(out, n));
+  });
+}
 function rigGlb(mesh, cfg) {
-  const g = mesh.geometry; g.computeBoundingBox();
+  const g = mesh.geometry; glbFloat(g); g.computeBoundingBox(); g.computeBoundingSphere();
   const F = faceProbe(g), bb = F.bb, H = F.H, y0 = bb.min.y, cx = (bb.min.x + bb.max.x) / 2;
   /* bout du nez = point le plus en avant du visage ; menton = première surface tournée vers le bas sous le nez */
   let noseY = cfg.noseY != null ? y0 + cfg.noseY * H : null, chinY = cfg.chinY != null ? y0 + cfg.chinY * H : null;
   if (noseY == null) { let best = -1e9; for (let f = .5; f < .95; f += .005) { const h = F.hit(cx, y0 + f * H); if (h && h.p.z > best) { best = h.p.z; noseY = h.p.y; } } }
   if (chinY == null) { for (let y = noseY - .06 * H; y > noseY - .4 * H; y -= .004 * H) { const h = F.hit(cx, y); if (h && h.n.y < -.75) { chinY = y; break; } } if (chinY == null) chinY = noseY - .12 * H; }
-  const neckY = chinY - .02 * H, mouthY = noseY - (noseY - chinY) * (cfg.mouthK || .45);
-  /* poids : la tête au-dessus du cou (sans prendre les épaules), les bras au-delà de la largeur du buste */
-  const p = g.attributes.position, n = p.count, si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+  const neckY = chinY - .02 * H, mouthY = cfg.mouthY != null ? y0 + cfg.mouthY * H : noseY - (noseY - chinY) * (cfg.mouthK || .45);
+  const p = g.attributes.position, n = p.count;
   const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  const A = cfg.arms, shX = A ? A.x * H : 0, shY = A ? y0 + A.y * H : 0;
+  /* bras : au-delà de la largeur du buste ; « s » écarte la limite sous l'aisselle (bras en A qui s'éloignent du corps :
+     le bas du tablier ne doit pas suivre la main) */
+  const A = cfg.arms, shX = A ? A.x * H : 0, shY = A ? y0 + A.y * H : 0, axY = A && A.ay != null ? y0 + A.ay * H : shY, axS = A && A.s || 0, axF = (A && A.f || .06) * H;
+  /* jambes : l'entrejambe est le premier endroit, en montant depuis le sol, où un rayon tiré de face au milieu touche
+     le modèle ; chaque jambe tourne autour d'une hanche placée juste sous l'entrejambe (le haut de la cuisse bouge
+     à peine, donc pas de déchirure sous la jupe), avec un fondu des poids sur la hauteur de la cuisse */
+  let Lg = null;
+  if (cfg.legs) {
+    const o = typeof cfg.legs === 'object' ? cfg.legs : {};
+    let crY = o.y != null ? y0 + o.y * H : null;
+    if (crY == null) for (let f = .03; f < .5; f += .004) { const y = y0 + f * H; if (F.hit(cx, y) || F.hit(cx - .006 * H, y) || F.hit(cx + .006 * H, y)) { if (f > .06) crY = y; break; } }
+    if (crY != null) {
+      let sx = 0, c = 0; for (let i = 0; i < n; i++) if (p.getY(i) < crY - .05 * H) { sx += Math.abs(p.getX(i) - cx); c++; }
+      Lg = { crY, hipY: crY + (o.hip != null ? o.hip : -.01) * H, x: o.x != null ? o.x * H : sx / Math.max(1, c), fade: (o.fade || .05) * H, w: (o.w || .14) * H };
+    }
+  }
+  /* buste : tout ce qui est au-dessus de la taille respire et porte la tête et les bras */
+  const waistY = cfg.waist != null ? y0 + cfg.waist * H : Lg ? (Lg.crY + neckY) / 2 : y0 + .45 * H;
+  /* poids par os : 0 racine (bassin, jupe), 1 buste, 2 tête, 3-4 bras gauche-droit, 5-6 jambe gauche-droite */
+  const hdW = new Float32Array(n), arW = new Float32Array(n), lgW = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const x = p.getX(i) - cx, y = p.getY(i), ax = Math.abs(x);
     let hd = ss(neckY - .015 * H, neckY + .03 * H, y); if (y < neckY + .06 * H) hd *= 1 - ss(.12 * H, .16 * H, ax);
-    let ar = 0; if (A) ar = ss(shX, shX + .06 * H, ax) * (1 - ss(shY, shY + .04 * H, y)) * (1 - hd);
-    const body = Math.max(0, 1 - hd - ar);
-    si.set([0, 1, x > 0 ? 2 : 3, 0], i * 4); sw.set([body, hd, ar, 0], i * 4);
+    let ar = 0; if (A) { const xt = shX + Math.max(0, axY - y) * axS; ar = ss(xt, xt + axF, ax) * (1 - ss(shY, shY + .04 * H, y)) * (1 - hd); }
+    let lg = 0; if (Lg) lg = (1 - ss(Lg.crY - Lg.fade, Lg.crY, y)) * (1 - ss(Lg.w, Lg.w + .02 * H, ax)) * (1 - ar);
+    hdW[i] = hd; arW[i] = ar; lgW[i] = lg;
   }
-  /* lissage des poids d'un sommet à ses voisins : pas de triangle étiré en fil entre le bras et le buste */
-  if (A && g.index) { const ix = g.index.array; for (let it = 0; it < 4; it++) { const acc = new Float32Array(n * 2), cnt = new Uint16Array(n);
-    for (let k = 0; k < ix.length; k += 3) for (let e = 0; e < 3; e++) { const v = ix[k + e]; for (let f = 0; f < 3; f++) { const u = ix[k + f]; acc[v * 2] += sw[u * 4 + 1]; acc[v * 2 + 1] += sw[u * 4 + 2]; } cnt[v] += 3; }
-    for (let v = 0; v < n; v++) if (cnt[v]) { const ar = Math.min(acc[v * 2 + 1] / cnt[v], 1 - sw[v * 4 + 1]); sw[v * 4 + 2] = ar; sw[v * 4] = Math.max(0, 1 - sw[v * 4 + 1] - ar); } } }
+  /* lissage des poids d'un sommet à ses voisins : pas de triangle étiré en fil entre le bras (ou la jambe) et le corps */
+  /* les sommets doublés le long des coutures de texture (même position, UV différentes) sont lissés ensemble :
+     sinon leurs poids divergent et la couture s'ouvre en fente claire quand la jambe ou le bras bouge */
+  const cid = new Uint32Array(n), keyOf = {}, q = 1e4 / H;
+  for (let i = 0; i < n; i++) { const k = Math.round(p.getX(i) * q) + ',' + Math.round(p.getY(i) * q) + ',' + Math.round(p.getZ(i) * q); cid[i] = keyOf[k] != null ? keyOf[k] : (keyOf[k] = i); }
+  const smooth = (W, its) => { if (!g.index) return; const ix = g.index.array;
+    for (let it = 0; it < its; it++) { const acc = new Float32Array(n), cnt = new Uint32Array(n);
+      for (let k = 0; k < ix.length; k += 3) for (let e = 0; e < 3; e++) { const v = cid[ix[k + e]]; for (let f = 0; f < 3; f++) acc[v] += W[ix[k + f]]; cnt[v] += 3; }
+      for (let v = 0; v < n; v++) { const c = cid[v]; if (cnt[c]) W[v] = Math.min(acc[c] / cnt[c], 1 - hdW[v]); } } };
+  if (A) smooth(arW, 4); if (Lg) smooth(lgW, 2);
+  const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+  for (let i = 0; i < n; i++) {
+    const x = p.getX(i) - cx, y = p.getY(i), hd = hdW[i], ar = Math.min(arW[i], 1 - hd), lg = Math.min(lgW[i], Math.max(0, 1 - hd - ar));
+    const rest = Math.max(0, 1 - hd - ar - lg), ch = ss(waistY - .05 * H, waistY + .05 * H, y);
+    /* au plus quatre os par sommet : on garde les plus lourds */
+    const L = [[0, rest * (1 - ch)], [1, rest * ch], [2, hd], [x > 0 ? 3 : 4, ar], [x > 0 ? 5 : 6, lg]].sort((a, b) => b[1] - a[1]).slice(0, 4);
+    const tot = L.reduce((s, q) => s + q[1], 0) || 1;
+    L.forEach((q, k) => { si[i * 4 + k] = q[0]; sw[i * 4 + k] = q[1] / tot; });
+  }
   g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
-  const root = new THREE.Bone(), head = new THREE.Bone(), armL = new THREE.Bone(), armR = new THREE.Bone();
-  head.position.set(cx, neckY, 0); armL.position.set(cx + shX, shY, 0); armR.position.set(cx - shX, shY, 0); root.add(head, armL, armR);
+  /* os : positions dans l'espace du modèle ; tête et bras sont accrochés au buste (ils suivent sa respiration) */
+  const root = new THREE.Bone(), chest = new THREE.Bone(), head = new THREE.Bone(), armL = new THREE.Bone(), armR = new THREE.Bone(), legL = new THREE.Bone(), legR = new THREE.Bone();
+  const neckP = new THREE.Vector3(cx, neckY, 0), chestP = new THREE.Vector3(cx, waistY, 0);
+  chest.position.copy(chestP); head.position.copy(neckP).sub(chestP);
+  armL.position.set(shX, shY - waistY, 0); armR.position.set(-shX, shY - waistY, 0);
+  const hipY = Lg ? Lg.hipY : y0, hx = Lg ? Lg.x : 0;
+  legL.position.set(cx + hx, hipY, 0); legR.position.set(cx - hx, hipY, 0);
+  root.add(chest, legL, legR); chest.add(head, armL, armR);
   mesh.material.skinning = true;
   const sk = new THREE.SkinnedMesh(g, mesh.material); sk.position.copy(mesh.position); sk.quaternion.copy(mesh.quaternion); sk.scale.copy(mesh.scale);
   sk.castShadow = mesh.castShadow; sk.receiveShadow = mesh.receiveShadow; sk.add(root); mesh.parent.add(sk); mesh.parent.remove(mesh);
-  sk.updateMatrixWorld(true); sk.bind(new THREE.Skeleton([root, head, armL, armR]));
+  sk.updateMatrixWorld(true); sk.bind(new THREE.Skeleton([root, chest, head, armL, armR, legL, legR]));
   /* bouche : un boudin en sourire qui suit la courbe de la joue, et une bouche ouverte (avec la langue) pour parler */
   const mouth = new THREE.Group(); head.add(mouth);
-  const hw = (cfg.mouthW || .034) * H, dep = .012 * H, lift = .004 * H, pts = [];
-  for (let k = 0; k <= 8; k++) { const u = k / 4 - 1, x = cx + u * hw, y = mouthY + dep * u * u, h = F.hit(x, y); if (h) pts.push(h.p.clone().addScaledVector(h.n, lift).sub(head.position)); }
+  const hw = (cfg.mouthW || .034) * H, dep = (cfg.mouthD || .012) * H, lift = .004 * H, lr = (cfg.lipR || .008) * H, pts = [];
+  for (let k = 0; k <= 8; k++) { const u = k / 4 - 1, x = cx + u * hw, y = mouthY + dep * u * u, h = F.hit(x, y); if (h) pts.push(h.p.clone().addScaledVector(h.n, lift).sub(neckP)); }
   const lipM = C(cfg.lip || '#7a2e2e', { bumpScale: 0, roughness: .35 }); lipM.userData.noCut = true;
-  const smile = pts.length > 3 ? new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, .008 * H, 8, false), lipM) : new THREE.Group();
+  const smile = pts.length > 3 ? new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, lr, 8, false), lipM) : new THREE.Group();
   mouth.add(smile);
-  [pts[0], pts[pts.length - 1]].forEach(q => { if (q) { const cap = new THREE.Mesh(G_('lipCap', () => sph(1, 8)), lipM); cap.scale.setScalar(.008 * H); cap.position.copy(q); mouth.add(cap); } });
+  [pts[0], pts[pts.length - 1]].forEach(q => { if (q) { const cap = new THREE.Mesh(G_('lipCap', () => sph(1, 8)), lipM); cap.scale.setScalar(lr); cap.position.copy(q); mouth.add(cap); } });
   const c0 = F.hit(cx, mouthY + .004 * H), open = new THREE.Group();
-  if (c0) { open.position.copy(c0.p).addScaledVector(c0.n, lift * 1.4).sub(head.position); open.lookAt(open.position.clone().add(c0.n)); }
+  if (c0) { open.position.copy(c0.p).addScaledVector(c0.n, lift * 1.4).sub(neckP); open.lookAt(open.position.clone().add(c0.n)); }
   const hole = new THREE.Mesh(G_('mHole', () => sph(1, 16)), (() => { const m = C('#4a1620', { bumpScale: 0, roughness: .4 }); m.userData.noCut = true; return m; })()); hole.scale.set(.026 * H, .022 * H, .006 * H); open.add(hole);
   const tongue = new THREE.Mesh(G_('mTongue', () => sph(1, 12)), (() => { const m = C('#e0707a', { bumpScale: 0, roughness: .4 }); m.userData.noCut = true; return m; })()); tongue.scale.set(.016 * H, .009 * H, .005 * H); tongue.position.set(0, -.01 * H, .003 * H); open.add(tongue);
   open.scale.set(1, .01, 1); mouth.add(open);
-  return { sk, head, armL, armR, smile, open, arms: !!A };
+  return { sk, chest, head, armL, armR, legL, legR, smile, open, arms: !!A, legs: !!Lg, info: { H, noseY: (noseY - y0) / H, chinY: (chinY - y0) / H, mouthY: (mouthY - y0) / H, crY: Lg && (Lg.crY - y0) / H, legX: Lg && Lg.x / H, waist: (waistY - y0) / H } };
 }
 
 /* ---------- habitants modelés (images Gemini puis Meshy) : remplacent la version en code quand le fichier est là ----------
-   noseY / chinY (fraction de la hauteur) seulement si la détection automatique se trompe ; arms : épaule en fraction de la hauteur */
-const GLB_CHARS = { rosa: { url: 'assets/rosa.glb?v=1', h: 1.42 } };
+   Toutes les mesures sont en fraction de la hauteur du modèle (0 = semelles, 1 = haut du chignon).
+   noseY / chinY / mouthY seulement si la détection automatique se trompe (mouthY = milieu de la bouche) ; mouthW : demi-largeur,
+   mouthD : remontée des coins, lipR : épaisseur, lip : couleur (pour recouvrir la bouche peinte sur la texture, s'il y en a une).
+   arms : épaule { x, y } ; sous l'aisselle (ay) la limite bras/corps s'écarte de s par unité de hauteur (bras en A), f = fondu.
+   legs : true (entrejambe trouvé tout seul) ou { y: entrejambe, x: écart des hanches, hip: hanche par rapport à l'entrejambe,
+   fade: hauteur du fondu de la cuisse, w: largeur max d'une jambe } ; à omettre pour un personnage en robe longue.
+   waist : hauteur de la taille (bas du buste qui respire). L'ancienne Rosa (v1, sans jambes) reste dans assets/rosa_v1.glb. */
+const GLB_CHARS = { rosa: { url: 'assets/rosa.glb?v=2', h: 1.42, arms: { x: .12, y: .555, ay: .47, s: .6, f: .04 }, legs: true, waist: .43,
+  mouthY: .7115, mouthW: .031, mouthD: .009, lipR: .0055, lip: '#8a4040' } };
 /* chargés juste après la première image (la version en code s'affiche d'abord) : le décodage et le « squelette »
    automatique (~0,1 à 0,3 s) ne retardent plus l'apparition de la ville */
 let glbAsked = false;
@@ -1092,21 +1159,31 @@ function animGlb(o, dt, talk) {
   const sp = Math.hypot(gp.x - G.px, gp.z - G.pz) / Math.max(dt, 1e-3); G.px = gp.x; G.pz = gp.z;
   G.walk += ((sp > .15 ? 1 : 0) - G.walk) * Math.min(1, dt * 6); G.ph += dt * (4 + sp * 5);
   G.acc += dt; if (G.acc < 1 / 12) return; G.acc = 0;
-  const t = o.t, w = G.walk, hap = Math.max(0, o.happy || 0), p = G.pivot;
-  const breath = Math.sin(t * 2.1) * .014, talkB = talk ? Math.abs(Math.sin(t * 8.5)) * .03 : 0;
-  p.position.y = w * Math.abs(Math.sin(G.ph)) * .05 + hap * Math.abs(Math.sin(t * 9)) * .07 + talkB * .6;
-  p.rotation.z = Math.sin(t * 1.1) * .02 + w * Math.sin(G.ph) * .09;
+  const t = o.t, w = G.walk, hap = Math.max(0, o.happy || 0), p = G.pivot, rg = G.rig, legs = rg && rg.legs;
+  const breath = Math.sin(t * 2.1) * .014, talkB = talk ? Math.abs(Math.sin(t * 8.5)) * .03 : 0, sw = Math.sin(G.ph);
+  /* avec de vraies jambes, la figurine ne se dandine presque plus : ce sont les jambes qui marchent */
+  p.position.y = w * Math.abs(sw) * (legs ? .025 : .05) + hap * Math.abs(Math.sin(t * 9)) * .07 + talkB * .6;
+  p.rotation.z = Math.sin(t * 1.1) * .02 + w * sw * (legs ? .035 : .09);
   p.rotation.x = (talk ? Math.sin(t * 6.3) * .035 : 0) + w * .05;
   p.rotation.y = talk ? Math.sin(t * 2.3) * .06 : 0;
-  p.scale.set(1 - breath * .5 - talkB * .3, 1 + breath + talkB, 1 - breath * .5 - talkB * .3);
+  /* respiration : le buste seul (os « chest ») si le squelette existe, sinon toute la figurine comme avant */
+  const br = rg ? 0 : breath;
+  p.scale.set(1 - br * .5 - talkB * .3, 1 + br + talkB, 1 - br * .5 - talkB * .3);
   /* tête, bras et bouche recopiés (en plus doux) sur l'habitant fait en code, qui reste invisible */
-  const rg = G.rig, P = o.c.P; if (!rg) return;
+  const P = o.c.P; if (!rg) return;
   const cl = (v, m) => Math.max(-m, Math.min(m, v));
+  rg.chest.scale.set(1 + breath * .35, 1 + breath * .8, 1 + breath * .5);
+  rg.chest.rotation.set(0, legs ? w * sw * .07 : 0, 0);
+  rg.head.scale.set(1 / rg.chest.scale.x, 1 / rg.chest.scale.y, 1 / rg.chest.scale.z);
   rg.head.rotation.set(cl(P.head.rotation.x * .9, .25), cl(P.head.rotation.y * .8, .42), cl(P.head.rotation.z, .18));
   if (rg.arms) {
-    rg.armL.rotation.set(cl(P.arms[1].rotation.x * .4, .25), 0, cl((P.arms[1].rotation.z - .12) * .25, .28));
-    rg.armR.rotation.set(cl(P.arms[0].rotation.x * .4, .25), 0, cl((P.arms[0].rotation.z + .12) * .25, .28));
+    /* en marchant, les bras balancent à l'opposé des jambes (rotation x positive = vers l'arrière) */
+    const aw = legs ? w * sw * .32 : 0;
+    rg.armL.rotation.set(cl(P.arms[1].rotation.x * .4 * (1 - w), .25) - aw, 0, cl((P.arms[1].rotation.z - .12) * .25, .28));
+    rg.armR.rotation.set(cl(P.arms[0].rotation.x * .4 * (1 - w), .25) + aw, 0, cl((P.arms[0].rotation.z + .12) * .25, .28));
   }
+  /* jambes : balancement en marchant, immobiles à l'arrêt (w retombe à 0) */
+  if (legs) { const lw = w * sw * .42; rg.legL.rotation.x = lw; rg.legR.rotation.x = -lw; }
   const op = P.open.scale.y; rg.open.scale.y = Math.max(.01, op); rg.open.visible = op > .08; rg.smile.visible = op < .3;
   rg.smile.parent.children.forEach(c => { if (c !== rg.open && c !== rg.smile) c.visible = rg.smile.visible; });
 }
@@ -1529,7 +1606,7 @@ let tagFor = null, tagT = 0, tagLab = ''; const _tq = new THREE.Vector3(), _tp =
 wordTag.addEventListener('pointerdown', e => e.stopPropagation());
 wordTag.addEventListener('click', e => { e.stopPropagation(); if (tagFor) H.pick(tagFor.userData.id, tagFor); });
 function hideTag() { if (tagFor) { tagFor = null; wordTag.classList.add('hidden'); } }
-const ALLTAGS = /[?&]tags\b/.test(location.search), OBJTAGS = /[?&]objets\b/.test(location.search), TAG_KEEP = new Set(['bakery', 'pharmacy', 'townhall', 'phonebox']);
+const ALLTAGS = /[?&]tags\b/.test(location.search), OBJTAGS = /[?&]objets\b/.test(location.search), TAG_KEEP = new Set(['bakery', 'bakeryShop', 'pharmacy', 'townhall', 'phonebox']);
 let stillT = 0;
 function updWordTag(t, spd, dt) {
   /* moins d'encombrement : l'étiquette d'un objet n'apparaît que si tu t'arrêtes tout près (?tags : toujours, comme avant) */
@@ -1756,7 +1833,7 @@ function updatePeople(dt, t) {
     const dx = pos.x - o.grp.position.x, dz = pos.z - o.grp.position.z, dist = Math.hypot(dx, dz);
     const isTalk = talking === o;
     /* marche */
-    if (o.go) { goStep(o, P, dt); return; }
+    if (o.go) { goStep(o, P, dt); if (o.glb) animGlb(o, dt, false); return; }
     if (o.appr) approachStep(o, P, dt);
     else if (o.mode === 'walk' && !isTalk) {
       /* on ne traverse pas le joueur : si on est sur son chemin, il s'arrête et attend */
@@ -2051,7 +2128,7 @@ loop();
 
 /* sortir de la boulangerie : devant sa porte, face à la place */
 /* outil de test : ?debug dans l'adresse donne window.PVDBG pour placer la caméra (captures de vérification) */
-if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, times: () => TIMES, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, camYaw: a => { camYaw = a; }, colliders, W2S, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges, tag: () => ({ on: tagFor && tagFor.userData.id, x: +pos.x.toFixed(2), z: +pos.z.toFixed(2), n: hits.length, t: tagT, near: hits.filter(o => o.userData.box).map(o => [o.userData.id, +o.userData.box.distanceToPoint(new THREE.Vector3(pos.x, (o.userData.box.min.y + o.userData.box.max.y) / 2, pos.z)).toFixed(2)]).sort((a, b) => a[1] - b[1]).slice(0, 4), talking: !!talking }) };
+if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, times: () => TIMES, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, camYaw: a => { camYaw = a; }, colliders, W2S, door: () => doorW, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges, tag: () => ({ on: tagFor && tagFor.userData.id, x: +pos.x.toFixed(2), z: +pos.z.toFixed(2), n: hits.length, t: tagT, near: hits.filter(o => o.userData.box).map(o => [o.userData.id, +o.userData.box.distanceToPoint(new THREE.Vector3(pos.x, (o.userData.box.min.y + o.userData.box.max.y) / 2, pos.z)).toFixed(2)]).sort((a, b) => a[1] - b[1]).slice(0, 4), talking: !!talking }) };
 function placeAtBakery() { const g = bld.bakery.g, [bu] = W2S(g.position.x, g.position.z), [bx, bz] = S2W(bu - 1.2, frontV(bu) - .4), a = G + Math.PI; pos.set(bx, 1.45, bz); yaw = tYaw = a; pitch = tPitch = -.05; target = null; vel.set(0, 0, 0); camYaw = Math.atan2(-pos.x, -pos.z); camInit = false; if (me) me.yaw = a; }
 
 return {
@@ -2062,6 +2139,9 @@ return {
   suitcase: holdSuitcase, lock: on => { locked = !!on; if (on) { target = null; joyEnd(); } },
   mePos: () => ({ x: pos.x, z: pos.z }), spot: (id, r) => spotAt(angOf(id), r || 8.6), exitPt: r => S2W(-UMAX - 2 - Math.max(0, (r || 13.5) - 13.5), 0),
   cheer: id => { const o = people.find(p => p.id === id); if (o) o.happy = 1.5; },
+  /* devant la porte de la boulangerie (moins de 2,6 m) : l'interface montre un gros bouton « Entrer » */
+  nearDoor: () => { if (!doorW) { const o = hits.find(h => h.userData && h.userData.id === 'bakeryShop' && h.userData.tagAt); if (!o) return false; o.updateMatrixWorld(); doorW = o.userData.tagAt.clone().applyMatrix4(o.matrixWorld); }
+    return Math.hypot(pos.x - doorW.x, pos.z - doorW.z) < 2.6; },
   /* boutiques à visiter pour la mission : pastille dorée « ! » et étiquette dorée */
   shopMarks: ids => { questIds.clear(); (ids || []).forEach(i => questIds.add(i)); badges.forEach(b => { b.quest = questIds.has(b.id); }); },
   marker: (id, kind, secs) => { const o = people.find(p => p.id === id); if (!o) return; if (kind === 'heart') o.heartUntil = clockT.elapsedTime + (secs || 3); else o.quest = kind === 'quest'; },

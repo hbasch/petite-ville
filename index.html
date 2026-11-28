@@ -8,7 +8,7 @@
 <meta name="description" content="Apprends l'anglais ou le polonais en parlant aux habitants d'une petite ville en 3D.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=41">
+<link rel="stylesheet" href="style.css?v=42">
 <script>
 /* pas de zoom de la page entière (iPhone) : le pincement sert à zoomer dans la ville */
 document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
@@ -101,6 +101,7 @@ if (/[?&]debug\b/.test(location.search)) {
  </div>
 </section>
 
+<button type="button" class="btn enterBtn hidden" id="enterBtn">Entrer · Bakery</button>
 <button type="button" class="btn exitBtn hidden" id="exitBtn"><span data-i="exitShop"></span></button>
 
 <section id="misSheet" class="sheet hidden">
@@ -305,8 +306,8 @@ if (/[?&]debug\b/.test(location.search)) {
 <script src="story-data.js?v=6"></script>
 <script src="clay.js?v=21"></script>
 <script src="scene.js?v=28"></script>
-<script src="town.js?v=74"></script>
+<script src="town.js?v=75"></script>
 <script src="story.js?v=6"></script>
-<script src="app.js?v=47"></script>
+<script src="app.js?v=48"></script>
 </body>
 </html>

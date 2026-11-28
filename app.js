@@ -626,6 +626,9 @@ function showWord(id) {
   updSave(); show('card'); say(w[T], { who: 'word' });
 }
 function updSave() { $('wSaveTxt').textContent = L.cards[curWord] ? U.saved : U.save; }
+/* gros bouton « Entrer » quand on est devant la porte de la boulangerie (plus simple que l'étiquette) */
+$('enterBtn').onclick = () => { $('enterBtn').classList.add('hidden'); enterBakery(); };
+setInterval(() => { const ok = started && town && town.nearDoor && tab === 'town' && place === 'town' && !document.body.classList.contains('dlg-open') && town.nearDoor(); $('enterBtn').classList.toggle('hidden', !ok); }, 300);
 $('wEnter').onclick = () => { if (curWord === 'bakeryShop') enterBakery(); else toast(U.soon); }; /* pas de paiement pour l'instant : le café arrive bientôt, gratuit */
 $('wListen').onclick = () => { const w = W[curWord]; say(w[T], { who: 'word' }); say(w.ex[T], { queue: true, who: 'word' }); };
 $('wSave').onclick = () => { if (L.cards[curWord]) delete L.cards[curWord]; else L.cards[curWord] = { box: 1, due: dayNum() }; save(); updSave(); updHud(); };
@@ -673,7 +676,7 @@ const voiceP = () => dlgMode === 'story' ? storyPitch : (curNpc && PV.NPCS[curNp
 let maybe = new Set();
 function markMaybe(list) { maybe = new Set(list); document.querySelectorAll('#dOpts .opt').forEach((b, i) => b.classList.toggle('maybe', maybe.has(curOpts[i]))); }
 /* objets : plus touchables pour l'instant (demande du 28/11) ; restent les lieux où l'on entre et ceux de l'histoire. ?objets pour réactiver */
-const OBJ_ON = /[?&]objets\b/.test(location.search), OBJ_KEEP = new Set(['bakery', 'pharmacy', 'townhall', 'phonebox']);
+const OBJ_ON = /[?&]objets\b/.test(location.search), OBJ_KEEP = new Set(['bakery', 'bakeryShop', 'pharmacy', 'townhall', 'phonebox']);
 let micFails = 0;
 function render(line, tr, key) {
   line = fill(line, CV()); lastLine = line; lastLineTr = fill((tr || {})[ui] || '', CV()); $('dLine').textContent = line; $('dTrTxt').textContent = fill((tr || {})[ui] || '', CV());
