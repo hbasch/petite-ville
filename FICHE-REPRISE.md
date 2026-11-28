@@ -1,4 +1,4 @@
-# Chatterville : fiche de reprise (à jour au 28 novembre 2026, 17 h 30)
+# Chatterville : fiche de reprise (à jour au 28 novembre 2026, 20 h 15)
 
 À lire au début de chaque conversation, avec `CLAUDE.md` (règles de travail) et `CHANTIERS.md` (le chantier en cours).
 Claude est garant de cette fiche : il la met à jour à la fin de chaque séance, dans le dépôt **et** dans `Documents\Chatterville - reprise\FICHE-REPRISE.md`.
@@ -39,6 +39,9 @@ Nom de code dans l'appli : « Petite Ville ». Nom recommandé : **Chatterville*
 
 - Fin d'après-midi du 28/11 (en autonomie, avec agents) : boulangerie refaite (plus petite, parquet, étagères, tables) ; herbe détaillée ; chargement plus rapide et écran « Chargement… » qui restait 20 s de trop corrigé ; révision du jour « Hier à Chatterville… » ; traduction affichée d'office en A0/A1 ; corrections du testeur (Échap, traductions de la version confirmée, test moins devinable…). Rapport du testeur : `docs/rapport-test-2026-11-28.md` (points restants à traiter).
 - Boulangerie Meshy optimisée (323 Ko) visible avec `?meshy`. Avis de l'agent : jolie mais pas dans le style des autres bâtiments (plus beige, pierres, socle) ; à garder seulement si toute la rue passe à Meshy avec une palette pastel lisse.
+
+- Soir du 28/11 : objets non touchables (`?objets` pour réactiver) ; ardoise avec le nom des produits ; on ne sort plus pendant le service ; Tom a une réplique courte après le travail et propose de rejouer le service ; herbe d'avant rétablie (`?herbe2` pour la détaillée) ; écran de chargement avec barre et astuces ; onglet « Histoires » retiré ; bouton « Entrer · Bakery » devant la porte (l'entrée était cassée par le filtre des objets) ; qualité réduite plus vite sur téléphone ; nouvelle Rosa Meshy (137 Ko) en ligne, intégration des jambes en cours par un agent (vérifier son état).
+- Micro : la reconnaissance du navigateur ne marche pas sur Brave (coupée exprès), mal sur Safari, Firefox télécharge 140 Mo. **Décision : essayer la reconnaissance via ElevenLabs** (enregistrer la voix dans le navigateur, l'envoyer par une fonction Supabase qui garde la clé). Pas d'appli pour l'instant (les gens téléchargent moins).
 
 ## À trancher par l'utilisateur
 - Le nom de la ville : l'histoire dit Chatterville, le mode libre dit « Petite Ville » et Rosa « Welcome to Edinburgh! » (les demandes du jour parlent du château et du chien d'Édimbourg).
