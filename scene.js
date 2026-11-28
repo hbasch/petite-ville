@@ -157,7 +157,7 @@ const scr=mk(rbox(.2,.07,.02,.008,1),B('#ffb347'),1.45,1.4,-1.4,till);scr.userDa
 const baker=item('baker');baker.position.set(.25,0,-1.98);
 const BK=PVClay.char({skin:'#f1c7a5',hair:'#6a4026',style:'toque',mustache:'big',eyes:'#4a3020',outfit:'chef',shirt:'#f8f6f2',apron:'#d9566f',rolled:true,pants:'#3a3a4a',shoes:'#3a2a22'},{det:1});
 BK.g.scale.setScalar(1.12);BK.g.position.y=.12;baker.add(BK.g);const BP=BK.P;/* sur une marche derrière le comptoir */
-BP.legs.forEach(l=>{BK.g.remove(l)});/* cachées par le comptoir */
+/* jambes gardées : pendant le service on le voit de côté, depuis la caisse */
 BP.arms.forEach((a,i)=>{a.rotation.x=-1.42;a.rotation.z=(i?1:-1)*.3});
 baker.updateMatrixWorld(true);
 /* bras et mains immobiles : rattachés au buste (en gardant leur place) pour être regroupés avec lui */
@@ -200,6 +200,12 @@ const bouleG=[bread(.12,.085,.12,[[0,0,0,.6],[0,0,Math.PI/2,.6]],true),bread(.12
  if(k===3){const b=mk(bouleG[i%2],MV('#ffffff',{roughness:.6}),x,y+.06,-3.74,loaf);b.rotation.y=Math.random()*3}
  else{const l=mk(batG[(i+k)%2],MV('#ffffff',{roughness:.6}),x,y+.075,-3.74,loaf);l.rotation.y=(Math.random()-.5)*.3}}});
 
+/* plateau de pains sur le comptoir, devant la caisse : premier plan pendant le service */
+const tray=item('loaf');tray.position.set(.86,1.045,-1.22);tray.rotation.y=.06;
+mk(paint(rbox(.5,.035,.3,.015,2),(x,y)=>y<0?.75:1),MV('#a8743f'),0,.018,0,tray);
+mk(bouleG[0],MV('#ffffff',{roughness:.6}),-.13,.072,0,tray).scale.setScalar(.75);
+{const b=mk(batG[0],MV('#ffffff',{roughness:.6}),.1,.074,.01,tray);b.scale.setScalar(.72);b.rotation.y=1.2}
+
 /* ---------- panier en osier et baguettes ---------- */
 const basket=item('basket');
 mk(paint(new THREE.CylinderGeometry(.24,.19,.5,32,12,true),(x,y,z)=>{const a=Math.atan2(x,z);return .78+.22*(.5+.5*Math.sin(a*16+(Math.floor((y+.25)*24)%2)*Math.PI))}),MV('#b07a42',{side:THREE.DoubleSide,roughness:.9}),-.7,.25,-3.55,basket);
@@ -219,6 +225,12 @@ const chT=tex(512,320,(g,w,h)=>{g.fillStyle='#2b3330';g.fillRect(0,0,w,h);for(le
 function drawIcon(g,t){g.beginPath();if(t==='croissant'){g.arc(0,8,22,Math.PI*1.05,Math.PI*1.95);g.moveTo(-14,-6);g.lineTo(-10,6);g.moveTo(0,-12);g.lineTo(0,2);g.moveTo(14,-6);g.lineTo(10,6)}else if(t==='baguette'){g.ellipse(0,0,34,8,-.25,0,Math.PI*2);for(let k=-1;k<=1;k++){g.moveTo(k*14-4,-2+k*3.5);g.lineTo(k*14+4,-6+k*3.5)}}else if(t==='loaf'){g.ellipse(0,4,24,14,0,Math.PI,0);g.lineTo(-24,4);g.moveTo(-10,-4);g.lineTo(-6,-10);g.moveTo(4,-4);g.lineTo(8,-10)}else if(t==='doughnut'){g.arc(0,0,16,0,Math.PI*2);g.moveTo(6,0);g.arc(0,0,6,0,Math.PI*2)}else if(t==='cupcake'){g.moveTo(-14,0);g.lineTo(-10,16);g.lineTo(10,16);g.lineTo(14,0);g.moveTo(-16,0);g.quadraticCurveTo(0,-26,16,0);g.closePath()}g.stroke()}
 mk(rbox(1.74,1.14,.06,.028,3),wood('#6e4a2c'),.45,2.2,-3.96,chalk);
 mk(new THREE.PlaneGeometry(1.6,1),M('#fff',{map:chT,roughness:.95,bumpScale:.006}),.45,2.2,-3.925,chalk);
+/* ardoise suspendue au plafond, au-dessus du comptoir côté clients (deux faces, mêmes prix) : elle n'apparaît que pendant le service,
+   vu à la première personne depuis la caisse (l'ardoise du mur est alors dans notre dos) */
+const chalk2=item('chalkboard');chalk2.position.set(.85,2.08,.2);chalk2.visible=false;
+mk(rbox(1.2,.76,.05,.026,3),wood('#6e4a2c'),0,0,0,chalk2);
+[1,-1].forEach(s=>{const f=mk(new THREE.PlaneGeometry(1.1,.68),M('#fff',{map:chT,roughness:.95,bumpScale:0}),0,0,-s*.03,chalk2);if(s>0)f.rotation.y=Math.PI});
+[-.5,.5].forEach(x=>mk(cyl(.008,.008,HT-2.46,6),M('#3a302a',{metalness:.6,roughness:.4}),x,.38+(HT-2.46)/2,0,chalk2));
 
 /* ---------- fenêtres : côté gauche (celle du soleil), côté droit, vitrine de la façade ---------- */
 const skyT=tex(256,256,(g,w,h)=>{const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#8fd0ff');gr.addColorStop(1,'#fff1d0');g.fillStyle=gr;g.fillRect(0,0,w,h);g.fillStyle='rgba(255,255,255,.85)';[[60,70,30],[90,62,24],[180,110,26],[205,104,20]].forEach(c=>{g.beginPath();g.arc(c[0],c[1],c[2],0,7);g.fill()});
@@ -303,6 +315,7 @@ PVClay.bake(scene,mobile?null:n=>{for(let q=n;q;q=q.parent)if(q.userData.id)retu
 scene.traverse(o=>{if(o.isMesh&&!o.userData.noShadow&&!o.userData.glow&&!o.userData.keep){o.castShadow=true;o.receiveShadow=true}});
 /* les murs et le plafond projettent leur ombre : le soleil n'entre que par la fenêtre */
 wallsM.castShadow=ceil.castShadow=true;ceil.receiveShadow=true;
+chalk2.traverse(o=>{if(o.isMesh)o.castShadow=false});
 if(ACI){ceil.material=ceil.material.clone();ceil.material.colorWrite=false;ceil.material.depthWrite=false;scene.fog.near=22;scene.fog.far=52}
 /* tout est immobile (sauf la tête du boulanger) : la carte d'ombre n'est calculée qu'une fois */
 R.shadowMap.autoUpdate=false;R.shadowMap.needsUpdate=true;
@@ -327,7 +340,8 @@ function place(){cam.position.set(pos.x,pos.y+Math.sin(bob)*.018*Math.min(1,Math
 /* picking : objets (mots), sol et murs (marcher) */
 const ray=new THREE.Raycaster(),ptr=new THREE.Vector2(),pickables=hits.concat(floor,walls);let hov=null,down=null;const tip=$('hover');canvas.style.cursor=PVClay.cursor.hand;
 function pick(e){const r=canvas.getBoundingClientRect();ptr.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ptr,cam);
- const hs=ray.intersectObjects(pickables,true).filter(h=>!h.object.userData.glass&&!(ACI&&h.point.z>FZ-.15));if(!hs.length)return null;
+ const shown=o=>{for(;o;o=o.parent)if(!o.visible)return false;return true};
+ const hs=ray.intersectObjects(pickables,true).filter(h=>!h.object.userData.glass&&!(ACI&&!job&&h.point.z>FZ-.15)&&shown(h.object));if(!hs.length)return null;
  let o=hs[0].object;if(o.userData.keep)return{walk:true,point:hs[0].point};while(o&&!o.userData.id)o=o.parent;return o?{obj:o}:null}
 function hl(g,on){if(!g)return;g.traverse(o=>{if(o.isMesh&&o.material.emissive&&!o.userData.glow&&!o.userData.baked){if(on){if(o.userData.e===undefined)o.userData.e=o.material.emissive.getHex();o.material.emissive.setHex(0x3a2410)}else if(o.userData.e!==undefined)o.material.emissive.setHex(o.userData.e)}})}
 const exitLab=()=>{const b=$('exitBtn');return '← '+(b?b.textContent.trim():'')};
@@ -354,7 +368,7 @@ canvas.addEventListener('pointerup',e=>{if(lift(e))return;if(!down||down.id!==e.
  if(p.walk){const x=p.point.x,z=p.point.z;target=Math.abs(x-DX)<.7&&z>FZ-1.1?new THREE.Vector3(DX,0,FZ):new THREE.Vector3(clampX(x),0,clampZ(z));return}
  const g=p.obj,id=g.userData.id;
  /* porte : la 1re fois on apprend le mot « door », ensuite elle fait sortir (le tapis et le bouton aussi) */
- if(id==='door'){if(H.found&&!H.found('door')){H.pick('door');return}leave();return}
+ if(id==='door'){if(H.found&&!H.found('door')){H.pick('door');return}if(!job)leave();return}
  H.pick(id);g.scale.setScalar(1.06);setTimeout(()=>g.scale.setScalar(1),140)});
 canvas.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoomT*(1+Math.max(-.2,Math.min(.2,e.deltaY*.0012))))},{passive:false});
 canvas.addEventListener('pointerleave',()=>{hl(hov,false);hov=null;tip.classList.add('hidden')});
@@ -363,14 +377,15 @@ canvas.addEventListener('pointerleave',()=>{hl(hov,false);hov=null;tip.classList
 function reset(){camInit=false;pos.set(START.x,EYE,START.z);yaw=tYaw=START.yaw;pitch=tPitch=START.pitch;vel.set(0,0,0);target=null;stuckT=0;bob=0;zoomT=zoomV=1;gone=false;
  down=null;pinch=null;multi=false;touches.clear();for(const k in keys)keys[k]=false;hl(hov,false);hov=null;tip.classList.add('hidden');place()}
 reset();
-/* histoire : tu tiens le comptoir. Toi derrière, Tom à côté, les clients entrent par la porte, viennent au comptoir puis repartent */
-let job=null;
-function jobStart(){job={cust:null};baker.position.x=1.75;pos.x=-1.05;pos.z=-1.95;vel.set(0,0,0);target=null;if(me)me.yaw=0}
-function jobEnd(){if(job&&job.cust)scene.remove(job.cust.c.g);job=null;baker.position.x=.25;reset()}
-function cust(look,cb){if(!job)return;const c=PVClay.char(look,{});if(look.scale)c.g.scale.setScalar(look.scale);scene.add(c.g);c.yaw=Math.PI;c.ph=0;c.g.position.set(DX,0,FZ-.7);job.cust={c,to:[-1.05,-.25],cb}}
+/* histoire : tu tiens le comptoir. Toi derrière la caisse (vue à la première personne), Tom à ta droite,
+   les clients entrent par la porte, viennent au comptoir puis repartent. SV = ta place, CU = celle du client */
+let job=null;const SV={x:.82,z:-2.05},CU=[.7,-.3];
+function jobStart(){job={cust:null};baker.position.x=-1;pos.x=SV.x;pos.z=SV.z;vel.set(0,0,0);target=null;if(me)me.yaw=0;chalk2.visible=true;fpInit=false}
+function jobEnd(){if(job&&job.cust)scene.remove(job.cust.c.g);job=null;baker.position.x=.25;baker.rotation.y=0;chalk2.visible=false;reset()}
+function cust(look,cb){if(!job)return;const c=PVClay.char(look,{});if(look.scale)c.g.scale.setScalar(look.scale);scene.add(c.g);c.yaw=Math.PI;c.ph=0;c.g.position.set(DX,0,FZ-.7);job.cust={c,to:CU.slice(),cb}}
 function custLeave(cb){if(!job||!job.cust){if(cb)cb();return}const J=job.cust;J.to=[DX,FZ-.5];J.cb=()=>{scene.remove(J.c.g);if(job)job.cust=null;if(cb)cb()}}
 window.PVBakery={reset,jobStart,jobEnd,cust,custLeave};
-if(/[?&]debug\b/.test(location.search))window.PVBAK={cam,R,scene,go(x,z,yw,pt){pos.set(x,EYE,z);yaw=tYaw=yw||0;pitch=tPitch=pt||0;target=null;vel.set(0,0,0);place()}};
+if(/[?&]debug\b/.test(location.search))window.PVBAK={cam,R,scene,job:()=>job,go(x,z,yw,pt){pos.set(x,EYE,z);yaw=tYaw=yw||0;pitch=tPitch=pt||0;target=null;vel.set(0,0,0);place()}};
 
 addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)});
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -380,14 +395,26 @@ const clock=new THREE.Clock();const tmp=new THREE.Vector3();let bkBlink=2;
 const me=ACI?PVClay.char(PVClay.playerLook,{}):null;
 if(me){scene.add(me.g);me.yaw=Math.PI;const sh=new THREE.Mesh(new THREE.CircleGeometry(.36,24),new THREE.MeshBasicMaterial({color:'#3a2418',transparent:true,opacity:.22,depthWrite:false}));sh.rotation.x=-Math.PI/2;sh.position.y=.012;me.g.add(sh)}
 const camP=new THREE.Vector3(),camL=new THREE.Vector3(),_cw=new THREE.Vector3(),_cl=new THREE.Vector3(),_bk=new THREE.Vector3();
-function placeAC(dt){const asp=innerWidth/innerHeight,port=asp<1,dlg=document.body.classList.contains('dlg-open');let fov;
- if(job&&job.cust){fov=port?50:36;const g=job.cust.c.g.position;_cw.set(g.x+.7,2.5,-3.35);_cl.set(g.x,.75,g.z+.3)}
- else if(job&&!dlg){fov=port?50:36;_cw.set(-.2,2.9,-3.4);_cl.set(.2,.6,1.2)}
- else if(dlg){fov=port?44:32;baker.getWorldPosition(_bk);const Hv=port?3.6:2.9,back=Hv/(2*Math.tan(fov*Math.PI/360));_cw.set(_bk.x+.6,1.0+back*.36,_bk.z+back);_cl.set(_bk.x,port?.2:.62,_bk.z)}
+/* service au comptoir : vue à la première personne, debout derrière la caisse, à hauteur d'yeux.
+   On regarde la porte et la salle (l'ardoise suspendue en haut, le comptoir et ses pains en bas) ; quand Tom parle, on se tourne vers lui.
+   Sur téléphone, pendant une conversation, le bas de l'écran est caché : on relève un peu le regard pour garder client et ardoise au-dessus */
+let fpY=Math.PI,fpP=0,fpInit=false;
+function placeFP(dt){const port=innerWidth/innerHeight<1,dlg=document.body.classList.contains('dlg-open');
+ /* sur ordinateur, la bulle de dialogue couvre le bas de l'écran : champ un peu plus large et regard plus bas pour voir ardoise et client */
+ let yw=Math.PI,pt,fov=port?78:(dlg?66:60);
+ if(dlg&&!job.cust){baker.getWorldPosition(_bk);yw=Math.atan2(-(_bk.x-SV.x),-(_bk.z-SV.z))+(port?0:.25);pt=port?-.15:-.02}
+ else pt=port?-.2:(dlg?-.16:-.1);
+ const k=fpInit?1-Math.exp(-dt*3.2):1;fpInit=true;let d=yw-fpY;d=Math.atan2(Math.sin(d),Math.cos(d));fpY+=d*k;fpP+=(pt-fpP)*k;
+ cam.position.set(SV.x,EYE,SV.z);cam.rotation.set(fpP,fpY,0,'YXZ');
+ if(Math.abs(cam.fov-fov)>.05){cam.fov+=(fov-cam.fov)*k;cam.updateProjectionMatrix()}
+ /* plafond et façade visibles (en vue d'en haut, ils sont effacés) */
+ ceil.material.colorWrite=ceil.material.depthWrite=true;const E=PVClay.U;E.clipOn.value=0;E.cutOn.value=0;E.bendK.value=0}
+function placeAC(dt){if(job){placeFP(dt);return}ceil.material.colorWrite=ceil.material.depthWrite=false;const asp=innerWidth/innerHeight,port=asp<1,dlg=document.body.classList.contains('dlg-open');let fov;
+ if(dlg){fov=port?44:32;baker.getWorldPosition(_bk);const Hv=port?3.6:2.9,back=Hv/(2*Math.tan(fov*Math.PI/360));_cw.set(_bk.x+.6,1.0+back*.36,_bk.z+back);_cl.set(_bk.x,port?.2:.62,_bk.z)}
  else{fov=port?50:34;const tx=port?pos.x*.8:pos.x*.3,tz=port?pos.z-1.5:pos.z*.35;_cl.set(tx,.3,tz);const dist=(port?11.5:12.8)*zoomV,el=.88;_cw.set(_cl.x,_cl.y+dist*Math.sin(el),_cl.z+dist*Math.cos(el))}
  const k=camInit?1-Math.exp(-dt*(dlg?4:6)):1;camInit=true;camP.lerp(_cw,k);camL.lerp(_cl,k);cam.position.copy(camP);cam.lookAt(camL);
  if(Math.abs(cam.fov-fov)>.05){cam.fov+=(fov-cam.fov)*k;cam.updateProjectionMatrix()}
- const E=PVClay.U;E.clipOn.value=1;E.clip.value.set(0,0,1,job?99:FZ-.15);E.clip2.value.set(0,1,0,HT-.45);E.cutOn.value=0;E.bendK.value=0}
+ const E=PVClay.U;E.clipOn.value=1;E.clip.value.set(0,0,1,FZ-.15);E.clip2.value.set(0,1,0,HT-.45);E.cutOn.value=0;E.bendK.value=0}
 /* reflets de la pâte : intérieur chaud (crème au plafond, bois au sol) au lieu du ciel de la place */
 const envT=new THREE.Color('#f6ead4').convertSRGBToLinear().multiplyScalar(.8),envH=new THREE.Color('#efe0c8').convertSRGBToLinear().multiplyScalar(.75),envG=new THREE.Color('#8a5a3a').convertSRGBToLinear().multiplyScalar(.6);
 function clayEnv(){const E=PVClay.U;E.envT.value.copy(envT);E.envH.value.copy(envH);E.envG.value.copy(envG)}
@@ -398,7 +425,7 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  let talking=false;try{talking=window.PVSpeaking?window.PVSpeaking():speechSynthesis.speaking}catch(e){}
  if(!reduce){baker.position.y=Math.sin(t*(talking?7:1.6))*(talking?.012:.008);bubble.position.y=2.62+Math.sin(t*2.4)*.04;
   ovenL.intensity=1.1+Math.sin(t*9)*.12+Math.sin(t*23)*.08}
- bubble.visible=H.bubble();
+ bubble.visible=H.bubble()&&!job;
  if(!reduce){for(let i=0;i<MOTES;i++){const k=moteS[i];moteP[i*3]+=Math.sin(t*.4+k)*dt*.03;moteP[i*3+1]+=(Math.sin(t*.3+k*1.7)*.04-.012)*dt;moteP[i*3+2]+=Math.cos(t*.35+k)*dt*.03;if(moteP[i*3+1]<.15)mote(i)}moteG.attributes.position.needsUpdate=true}
  /* le boulanger respire, cligne des yeux ; quand il parle, la bouche s'ouvre et les sourcils montent */
  bkBlink-=dt;const shut=bkBlink<0;if(bkBlink<-.12)bkBlink=1.5+Math.random()*3.5;BP.lids[0].rotation.x+=((shut?1.45:-1.25)-BP.lids[0].rotation.x)*.6;
@@ -415,18 +442,19 @@ function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.
  if(job){wish.set(0,0,0);target=null}
  vel.lerp(wish,1-Math.exp(-dt*(wish.lengthSq()>0?7:9)));
  const px=pos.x,pz=pos.z;pos.addScaledVector(vel,dt);collide(pos);
- if(job){pos.x=-1.05;pos.z=-1.95}
+ if(job){pos.x=SV.x;pos.z=SV.z}
  if(dt>0){vel.x=(pos.x-px)/dt;vel.z=(pos.z-pz)/dt}
  const spd=Math.hypot(vel.x,vel.z);
  if(target&&wish.lengthSq()>.25&&spd<.2){if((stuckT+=dt)>.7){target=null;stuckT=0}}else stuckT=0;
  /* sur le paillasson en avançant vers la porte : on sort */
  if(!gone&&Math.abs(pos.x-DX)<.5&&pos.z>FZ-.5&&wish.z>.1){leave();return}
  yaw+=(tYaw-yaw)*(1-Math.exp(-dt*16));pitch+=(tPitch-pitch)*(1-Math.exp(-dt*16));bob+=dt*spd*3.4;zoomV+=(zoomT-zoomV)*(1-Math.exp(-dt*12));
- if(ACI){placeAC(dt);if(me){me.g.position.set(pos.x,0,pos.z);const dlg=document.body.classList.contains('dlg-open');let want=me.yaw;if(job)want=0;else if(dlg){baker.getWorldPosition(_bk);want=Math.atan2(_bk.x-pos.x,_bk.z-pos.z)}else if(spd>.2)want=Math.atan2(vel.x,vel.z);PVClay.walk(me,dt,t,spd,want)}
+ if(ACI){placeAC(dt);if(job){const dl=document.body.classList.contains('dlg-open')&&!job.cust,w=dl?Math.atan2(SV.x-baker.position.x,SV.z-baker.position.z)*.75:0;baker.rotation.y+=(w-baker.rotation.y)*(1-Math.exp(-dt*4))}
+  if(me){me.g.visible=!job;me.g.position.set(pos.x,0,pos.z);const dlg=document.body.classList.contains('dlg-open');let want=me.yaw;if(job)want=0;else if(dlg){baker.getWorldPosition(_bk);want=Math.atan2(_bk.x-pos.x,_bk.z-pos.z)}else if(spd>.2)want=Math.atan2(vel.x,vel.z);PVClay.walk(me,dt,t,spd,want)}
   if(job&&job.cust){const J=job.cust,g=J.c.g.position,dx=J.to[0]-g.x,dz=J.to[1]-g.z,L=Math.hypot(dx,dz);let sp=0;if(L>.05){const st=Math.min(L,1.3*dt);g.x+=dx/L*st;g.z+=dz/L*st;sp=1.3}else if(J.cb){const f=J.cb;J.cb=null;f()}PVClay.walk(J.c,dt,t,sp,L>.05?Math.atan2(dx,dz):Math.PI)}}
  else{place();{const f=FOV*zoomV;if(Math.abs(cam.fov-f)>.01){cam.fov=f;cam.updateProjectionMatrix()}}}
  /* le boulanger tourne la tête vers nous */
- cam.getWorldPosition(tmp);const dx=tmp.x-baker.position.x,dz=tmp.z-baker.position.z;head.rotation.y+=(Math.max(-.6,Math.min(.6,Math.atan2(dx,dz)))-head.rotation.y)*.08;
+ cam.getWorldPosition(tmp);const dx=tmp.x-baker.position.x,dz=tmp.z-baker.position.z;head.rotation.y+=(Math.max(-.6,Math.min(.6,Math.atan2(dx,dz)-baker.rotation.y))-head.rotation.y)*.08;
  clayEnv();R.render(scene,cam)}
 loop();
 };

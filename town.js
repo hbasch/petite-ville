@@ -322,6 +322,8 @@ function windowAt(g, x, y, z, sp, lit) {
   if (sp.shutters) [-1, 1].forEach(sg => mk(shutG, C(sp.shutters), x + sg * .58, y, z, g));
   if (sp.flowers && Math.random() < .55) { mk(boxG, C('#8a5a3a'), x, y - .66, z + .12, g); for (let j = 0; j < 5; j++) mk(G_('fl', () => sph(.07, 8)), C(['#ff6f91', '#ffd35a', '#fff4e2', PAL.walls[4], PAL.accent][j]), x - .3 + j * .15, y - .5, z + .14, g); }
 }
+/* boutiques où l'on peut entrer : enseigne et pastille au-dessus de la porte */
+const ENTER = new Set(['bakeryShop']);
 function building(sp, ang, rad) {
   const g = item(sp.id); const d = 3.4, wall = C(sp.color, { bumpScale: .026, stone: STONE });
   g.position.set(Math.sin(ang) * rad, 0, Math.cos(ang) * rad); g.rotation.y = ang + Math.PI;
@@ -355,14 +357,17 @@ function building(sp, ang, rad) {
   mk(rbox(sp.w + .06, .14, .22, .06, 2), C(TRIM), 0, gfm, d / 2, g);
   /* rez-de-chaussée */
   if (sp.shop) {
-    const sw = sp.w * .48, sx = -sp.w * .17, FR_ = sp.front || PAL.accent;
+    const sw = sp.w * .48, sx = -sp.w * .17, FR_ = sp.front || PAL.accent, dx = sp.w * .3;
     mk(rbox(sw + .2, 1.75, .22, .1, 3), C(FR_), sx, 1.02, d / 2, g);
-    signBoards.push({ id: sp.id, g, x: sx + .2, y: 2.72, z: d / 2 + .17, w: 3.36, h: .42, bg: (CITY.sign.bg) || FR_ });
-    mk(rbox(3.5, .56, .14, .06, 2), C(shade((CITY.sign.bg) || FR_, -.12)), sx + .2, 2.72, d / 2 + .08, g);
+    /* enseigne : au-dessus de la vitrine, sauf pour une boutique où l'on entre (la boulangerie) : au-dessus de la porte, elle montre où entrer */
+    const sgn = ENTER.has(sp.id) ? { x: dx, y: 2.44, w: 1.85, h: .4, fw: 2.0, fh: .54 } : { x: sx + .2, y: 2.72, w: 3.36, h: .42, fw: 3.5, fh: .56 };
+    signBoards.push({ id: sp.id, g, x: sgn.x, y: sgn.y, z: d / 2 + .17, w: sgn.w, h: sgn.h, bg: (CITY.sign.bg) || FR_ });
+    mk(rbox(sgn.fw, sgn.fh, .14, .06, 2), C(shade((CITY.sign.bg) || FR_, -.12)), sgn.x, sgn.y, d / 2 + .08, g);
+    if (ENTER.has(sp.id)) g.userData.tagAt = new THREE.Vector3(dx, 2.0, d / 2 + .3);
     mk(rbox(sw - .12, 1.45, .14, .08, 3), shopGlass, sx, 1.05, d / 2 + .06, g);
     vitrine(g, sp, d, sx, sw);
     mk(rbox(sw + .3, .22, .4, .08, 2), C(FR_), sx, .2, d / 2 + .12, g);
-    const dx = sp.w * .3; mk(rbox(1.02, 1.75, .2, .12, 3), C(FR_), dx, .88, d / 2, g); mk(rbox(.78, 1.5, .14, .1, 3), C(shade(sp.color, -.25)), dx, .8, d / 2 + .06, g); mk(rbox(.5, .5, .1, .06, 2), shopGlass, dx, 1.15, d / 2 + .12, g); mk(G_('dpan', () => rbox(.5, .38, .04, .02, 1)), C(shade(sp.color, -.32)), dx, .45, d / 2 + .14, g);
+    mk(rbox(1.02, 1.75, .2, .12, 3), C(FR_), dx, .88, d / 2, g); mk(rbox(.78, 1.5, .14, .1, 3), C(shade(sp.color, -.25)), dx, .8, d / 2 + .06, g); mk(rbox(.5, .5, .1, .06, 2), shopGlass, dx, 1.15, d / 2 + .12, g); mk(G_('dpan', () => rbox(.5, .38, .04, .02, 1)), C(shade(sp.color, -.32)), dx, .45, d / 2 + .14, g);
     mk(sph(.06, 8), C('#e8c35a', { metalness: .6, roughness: .3 }), dx + .25, .8, d / 2 + .16, g);
     /* auvent bombé */
     const aw = new THREE.Group(); aw.position.set(sx + .2, 2.12, d / 2 + .1); g.add(aw);
@@ -374,7 +379,7 @@ function building(sp, ang, rad) {
     const fy = Rb * (Math.cos(th1) - Math.cos(th0)), fz = Rb * (Math.sin(th1) - Math.sin(th0));
     for (let k = 0; k < nS; k++) mk(segG, C(k % 2 ? TRIM : sp.awning), -awW / 2 + awW * (k + .5) / nS, .02, 0, aw);
     for (let k = 0; k < nS; k++) { const sc = mk(G_('scal', () => sph(.19, 12)), C(k % 2 ? TRIM : sp.awning), -awW / 2 + awW * (k + .5) / nS, fy - .07, fz - .02, aw); sc.scale.set(1.1, .6, .5); sc.rotation.x = th1 * .6; }
-    signPost(sp.shop, g, sp.w / 2 - .25, 3.0, d / 2);
+    signPost(sp.shop, g, sp.w / 2 - .25, ENTER.has(sp.id) ? 3.35 : 3.0, d / 2);
   } else if (!sp.hall) {
     mk(rbox(1.08, 1.82, .2, .14, 3), C(TRIM), 0, .91, d / 2, g); mk(rbox(.84, 1.62, .14, .12, 3), C(sp.door || shade(sp.color, -.3)), 0, .82, d / 2 + .06, g);
     mk(sph(.06, 8), C('#e8c35a', { metalness: .6, roughness: .3 }), .28, .8, d / 2 + .15, g);
@@ -417,15 +422,20 @@ const ICONS = {
   hall(g) { g.fillStyle = '#5f9483'; g.strokeStyle = INK; g.lineWidth = 5; g.lineJoin = 'round'; g.beginPath(); g.moveTo(74, 100); g.lineTo(128, 68); g.lineTo(182, 100); g.closePath(); g.fill(); g.stroke(); g.fillStyle = '#ffffff'; [86, 112, 138, 164].forEach(x => { g.fillRect(x - 2, 104, 12, 50); g.strokeRect(x - 2, 104, 12, 50); }); g.fillStyle = '#e3d6c2'; g.fillRect(70, 156, 116, 14); g.strokeRect(70, 156, 116, 14); }
 };
 function drawBadge(b) {
-  const g = b.cv.getContext('2d'), lab = H.label(b.id); b.lab = lab;
+  const g = b.cv.getContext('2d'), lab = H.label(b.id); b.lab = lab; b.qd = b.quest;
   g.clearRect(0, 0, 256, 320);
   g.fillStyle = b.ring; g.beginPath(); g.moveTo(104, 212); g.lineTo(128, 246); g.lineTo(152, 212); g.closePath(); g.fill();
   g.beginPath(); g.arc(128, 118, 106, 0, TAU); g.fill();
   g.fillStyle = '#fff8ee'; g.beginPath(); g.arc(128, 118, 90, 0, TAU); g.fill();
   ICONS[b.icon](g);
-  if (lab === '?') {
-    g.fillStyle = '#ffb547'; g.strokeStyle = '#fff8ee'; g.lineWidth = 8; g.beginPath(); g.arc(212, 38, 32, 0, TAU); g.fill(); g.stroke();
-    g.fillStyle = INK; g.font = '800 44px "Baloo 2",Nunito,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', 212, 41);
+  /* deux signes qui ne se confondent pas : mission = grosse pastille dorée « ! » (comme au-dessus des habitants à voir) ;
+     mot encore inconnu = petite bulle blanche « ? », discrète */
+  if (b.quest) {
+    g.fillStyle = '#ffb547'; g.strokeStyle = '#fff8ee'; g.lineWidth = 9; g.beginPath(); g.arc(206, 44, 40, 0, TAU); g.fill(); g.stroke();
+    g.fillStyle = '#1d2142'; g.font = '800 58px "Baloo 2",Nunito,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('!', 206, 48);
+  } else if (lab === '?') {
+    g.fillStyle = '#ffffff'; g.strokeStyle = '#cfc6d8'; g.lineWidth = 5; g.beginPath(); g.arc(214, 34, 25, 0, TAU); g.fill(); g.stroke();
+    g.fillStyle = '#6a5f7a'; g.font = '800 34px "Baloo 2",Nunito,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', 214, 37);
   } else if (false) { /* le mot s'affiche dans l'étiquette de proximité, pas deux fois */
     let fs = 40; g.font = '800 ' + fs + 'px "Baloo 2",Nunito,sans-serif'; while (g.measureText(lab).width > 210 && fs > 22) { fs -= 2; g.font = '800 ' + fs + 'px "Baloo 2",Nunito,sans-serif'; }
     const w = Math.min(244, g.measureText(lab).width + 34); g.fillStyle = 'rgba(29,33,66,.92)'; g.beginPath(); g.roundRect ? g.roundRect(128 - w / 2, 258, w, 54, 27) : g.rect(128 - w / 2, 258, w, 54); g.fill();
@@ -440,9 +450,9 @@ function shopBadge(g, sp, d) {
   const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
   const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true, fog: false }));
   spr.scale.set(.95, 1.19, 1); spr.renderOrder = 3;
-  const x = sp.hall ? 0 : -sp.w * .17 + .2, y = sp.hall ? 3.3 : 3.55;
+  const x = sp.hall ? 0 : ENTER.has(sp.id) ? sp.w * .3 : -sp.w * .17 + .2, y = sp.hall ? 3.3 : 3.55;
   spr.position.set(x, y, d / 2 + (sp.hall ? 1.0 : 1.15)); g.add(spr);
-  const b = { id: sp.id, icon, ring: sp.id === 'bakeryShop' ? '#ffb547' : sp.hall ? '#5f9483' : (sp.awning || PAL.accent), cv, tex, spr, y, lab: null };
+  const b = { id: sp.id, g, icon, ring: sp.id === 'bakeryShop' ? '#ffb547' : sp.hall ? '#5f9483' : (sp.awning || PAL.accent), cv, tex, spr, y, lab: null, quest: false, qd: null };
   drawBadge(b); badges.push(b);
 }
 const wallLampM = C('#fff3d0', { unique: true, emissive: '#ffcf7a', emissiveIntensity: 0, bumpScale: 0 }); lampMats.push(wallLampM);
@@ -482,7 +492,7 @@ function houseDetails(g, sp, d, rh, hw) {
   }
   /* lanterne au-dessus de la porte, jardinières au pied de la façade */
   if (sp.hall) { [-1, 1].forEach(sg => { wallLantern(g, sg * 1.55, 2.2, d / 2); planter(g, sg * 2.25, d / 2 + .5, true); }); }
-  else if (sp.shop) { wallLantern(g, sp.w * .3, 2.0, d / 2); planter(g, -sp.w / 2 + .38, d / 2 + .52); }
+  else if (sp.shop) { if (ENTER.has(sp.id)) wallLantern(g, sp.w * .3 + .74, 1.55, d / 2); else wallLantern(g, sp.w * .3, 2.0, d / 2); planter(g, -sp.w / 2 + .38, d / 2 + .52); }
   else { wallLantern(g, 0, 2.02, d / 2); [-1, 1].forEach(sg => planter(g, sg * sp.w * .32, d / 2 + .36)); }
   /* ombre douce au pied de la façade */
   sblobAt(g, 0, d / 2 + .1, sp.w * .62, .55);
@@ -541,9 +551,12 @@ function buildSigns() {
     const y0 = i * RH, txt = CITY.signs[b.id];
     g2.fillStyle = b.bg; g2.beginPath(); g2.roundRect ? g2.roundRect(4, y0 + 4, RW - 8, RH - 8, 18) : g2.rect(4, y0 + 4, RW - 8, RH - 8); g2.fill();
     if (S.border) { g2.strokeStyle = S.border; g2.lineWidth = 5; g2.beginPath(); g2.roundRect ? g2.roundRect(16, y0 + 16, RW - 32, RH - 32, 10) : g2.rect(16, y0 + 16, RW - 32, RH - 32); g2.stroke(); }
-    let fs = 78; const F = () => '700 ' + fs + 'px ' + S.font; g2.font = F(); while (g2.measureText(txt).width > RW - 110 && fs > 30) { fs -= 3; g2.font = F(); }
-    g2.fillStyle = 'rgba(0,0,0,.25)'; g2.textAlign = 'center'; g2.textBaseline = 'middle'; g2.fillText(txt, RW / 2 + 2, y0 + RH / 2 + 5);
-    g2.fillStyle = S.fg; g2.fillText(txt, RW / 2, y0 + RH / 2 + 3);
+    /* panneau moins allongé que la bande de texture (enseigne de porte) : lettres élargies d'autant, pour ne pas les voir écrasées */
+    const kx = Math.max(1, (RW / RH) / (b.w / b.h));
+    let fs = 78; const F = () => '700 ' + fs + 'px ' + S.font; g2.font = F(); while (g2.measureText(txt).width * kx > RW - 110 && fs > 30) { fs -= 3; g2.font = F(); }
+    g2.save(); g2.translate(RW / 2, 0); g2.scale(kx, 1);
+    g2.fillStyle = 'rgba(0,0,0,.25)'; g2.textAlign = 'center'; g2.textBaseline = 'middle'; g2.fillText(txt, 2 / kx, y0 + RH / 2 + 5);
+    g2.fillStyle = S.fg; g2.fillText(txt, 0, y0 + RH / 2 + 3); g2.restore();
     const geo = new THREE.PlaneGeometry(b.w, b.h); b.g.updateMatrixWorld(true);
     geo.applyMatrix4(new THREE.Matrix4().multiplyMatrices(b.g.matrixWorld, new THREE.Matrix4().makeTranslation(b.x, b.y, b.z)));
     const pa = geo.attributes.position, na = geo.attributes.normal, ua = geo.attributes.uv;
@@ -1408,6 +1421,7 @@ canvas.addEventListener('pointerup', e => {
   if (locked || talking) { down = null; return; }
   if (photo || !down || down.id !== e.pointerId) { down = null; return; }
   const moved = down.moved; down = null; if (moved > 8) return;
+  { const bb = badgePick(e); if (bb) { H.pick(bb.id, bb.g); return; } }
   let p = pick(e);
   /* aide au toucher : si le doigt tombe à côté d'un habitant, on le prend quand même */
   if (ACCAM && (!p || p.id === 'square')) { const q = nearPick(e, (mobile ? 52 : 28)); if (q) p = q; }
@@ -1448,9 +1462,13 @@ function updWordTag(t, spd, dt) {
     });
     const lab = best ? H.label(best.userData.id) : '';
     if (best !== tagFor || lab !== tagLab) { tagFor = best; tagLab = lab; wordTag.textContent = lab; wordTag.classList.toggle('unknown', lab === '?'); wordTag.classList.toggle('hidden', !best); }
+    wordTag.classList.toggle('mission', !!(best && questIds.has(best.userData.id)));
   }
   if (!tagFor) return;
-  const b = tagFor.userData.box; _tp.set((b.min.x + b.max.x) / 2, Math.min(b.max.y, 2.4) + .3, (b.min.z + b.max.z) / 2); _tp.y -= bendDrop(_tp.x, _tp.z); _tp.project(cam);
+  const b = tagFor.userData.box;
+  if (tagFor.userData.tagAt) { tagFor.updateMatrixWorld(); _tp.copy(tagFor.userData.tagAt).applyMatrix4(tagFor.matrixWorld); }
+  else _tp.set((b.min.x + b.max.x) / 2, Math.min(b.max.y, 2.4) + .3, (b.min.z + b.max.z) / 2);
+  _tp.y -= bendDrop(_tp.x, _tp.z); _tp.project(cam);
   if (_tp.z > 1) { wordTag.style.visibility = 'hidden'; return; }
   const r = canvas.getBoundingClientRect(); wordTag.style.visibility = '';
   wordTag.style.left = ((_tp.x + 1) / 2 * r.width + r.left) + 'px'; wordTag.style.top = ((1 - _tp.y) / 2 * r.height + r.top) + 'px';
@@ -1468,6 +1486,20 @@ function nearPick(e, radius) {
     /* les habitants se « captent » de loin, les objets seulement tout près (sinon un tap pour marcher ouvrirait un mot) */
     const d = Math.hypot(sx - e.clientX, sy - e.clientY);
     if (d < bd) { bd = d; best = { id, obj: o, point: _np.clone() }; }
+  });
+  return best;
+}
+/* pastilles au-dessus des boutiques : on peut les toucher (même effet que l'étiquette du mot : apprendre, entrer, objectif).
+   Les images flottantes ne sont pas abaissées par l'horizon arrondi (sinon écran beige sous Windows) : on vise leur vraie place */
+const questIds = new Set(), _bp = new THREE.Vector3(), _bq = new THREE.Vector3();
+function badgePick(e) {
+  const r = canvas.getBoundingClientRect(); let best = null, bd = 1e9;
+  badges.forEach(b => {
+    if (!b.spr.visible || !b.g.visible) return;
+    const sc = b.spr.scale.y / 1.19; b.spr.getWorldPosition(_bp); _bp.y += .156 * sc; _bq.copy(_bp); _bq.y += .42 * sc;
+    _bp.project(cam); _bq.project(cam); if (_bp.z > 1 || _bp.z < -1) return;
+    const sx = (_bp.x + 1) / 2 * r.width + r.left, sy = (1 - _bp.y) / 2 * r.height + r.top, rad = Math.max(mobile ? 26 : 18, Math.abs(_bq.y - _bp.y) / 2 * r.height);
+    const d = Math.hypot(sx - e.clientX, sy - e.clientY); if (d < rad && d < bd) { bd = d; best = b; }
   });
   return best;
 }
@@ -1871,8 +1903,8 @@ function loop() {
     water.material.emissiveIntensity = .22 + Math.sin(t * 2) * .05;
   }
   updateFx(dt, t);
-  badges.forEach((b, i) => { b.spr.position.y = b.y + Math.sin(t * 1.8 + i * 1.3) * .06; });
-  if (t - lastBadgeCheck > .7) { lastBadgeCheck = t; badges.forEach(b => { if (H.label(b.id) !== b.lab) drawBadge(b); }); }
+  badges.forEach((b, i) => { b.spr.position.y = b.y + (b.quest ? Math.abs(Math.sin(t * 3.2)) * .16 : Math.sin(t * 1.8 + i * 1.3) * .06); const k = b.quest ? 1.15 : 1; b.spr.scale.set(.95 * k, 1.19 * k, 1); });
+  if (t - lastBadgeCheck > .7) { lastBadgeCheck = t; badges.forEach(b => { if (H.label(b.id) !== b.lab || b.quest !== b.qd) drawBadge(b); }); }
   if (photo) { hideTag(); PVClay.U.cutOn.value = 0; PVClay.U.bendK.value = 0; PVClay.U.clipOn.value = 0; ctl.update(); clayEnv(); if (composer) composer.render(); else R.render(scene, cam); sky.position.copy(cam.position); stars.position.copy(cam.position); return; }
   /* marche */
   if (ACCAM) yaw = camYaw; else { PVClay.U.cutOn.value = 0; PVClay.U.bendK.value = 0; PVClay.U.clipOn.value = 0; }
@@ -1935,6 +1967,8 @@ return {
   suitcase: holdSuitcase, lock: on => { locked = !!on; if (on) { target = null; joyEnd(); } },
   mePos: () => ({ x: pos.x, z: pos.z }), spot: (id, r) => spotAt(angOf(id), r || 8.6), exitPt: r => S2W(-UMAX - 2 - Math.max(0, (r || 13.5) - 13.5), 0),
   cheer: id => { const o = people.find(p => p.id === id); if (o) o.happy = 1.5; },
+  /* boutiques à visiter pour la mission : pastille dorée « ! » et étiquette dorée */
+  shopMarks: ids => { questIds.clear(); (ids || []).forEach(i => questIds.add(i)); badges.forEach(b => { b.quest = questIds.has(b.id); }); },
   marker: (id, kind, secs) => { const o = people.find(p => p.id === id); if (!o) return; if (kind === 'heart') o.heartUntil = clockT.elapsedTime + (secs || 3); else o.quest = kind === 'quest'; },
   approach: (id, cb) => { const o = people.find(p => p.id === id); if (!o || o.appr || talking || photo) return false; o.appr = { state: 'go', t: 0, cb, hx: o.grp.position.x, hz: o.grp.position.z }; o.pause = 0; return true; },
   approaching: () => people.some(p => p.appr && p.appr.state !== 'back'),

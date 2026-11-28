@@ -801,7 +801,9 @@ function questHint() {
   return q.type === 'find' ? fill(U.questFind, { w: w(q.target) }) : q.type === 'talk' ? fill(U.questTalk, { w: w(q.target) }) : q.type === 'say' ? fill(U.questSay, { k: Math.min(L.quest.n || 0, q.n), t: q.n }) : U.questBakery;
 }
 function announceQuest() { const q = questToday(); if (!q || L.quest.told || L.quest.done || place !== 'town') return; refreshMarkers(); toast(fill(U.questFrom, { n: PV.NPCS[q.giver].name })); }
-function refreshMarkers() { if (!town || !town.marker) return; const q = questToday(), sm = (window.PVStory && PVStory.marks) ? PVStory.marks() : []; Object.keys(PV.NPCS).forEach(id => town.marker(id, sm.includes(id) || (q && q.giver === id && !L.quest.told && !L.quest.done) ? 'quest' : null)); }
+function refreshMarkers() { if (!town || !town.marker) return; const q = questToday(), sm = (window.PVStory && PVStory.marks) ? PVStory.marks() : []; Object.keys(PV.NPCS).forEach(id => town.marker(id, sm.includes(id) || (q && q.giver === id && !L.quest.told && !L.quest.done) ? 'quest' : null));
+  /* boutiques à visiter : la boulangerie quand l'histoire t'envoie travailler, la cible d'une quête « trouve » en cours */
+  if (town.shopMarks) { const s = L.story, ids = []; if (s && !s.off && s.step === 'work') ids.push('bakeryShop'); if (q && q.type === 'find' && L.quest.told && !L.quest.done) ids.push(q.target); town.shopMarks(ids); } }
 function questProgress(type, id) {
   const q = questToday(); if (!q || !L.quest.told || L.quest.done || q.type !== type) return;
   let ok = false;
@@ -809,7 +811,7 @@ function questProgress(type, id) {
   else if (type === 'say') { L.quest.n = (L.quest.n || 0) + 1; ok = L.quest.n >= q.n; if (!ok) { save(); updMission(); return; } }
   else ok = true;
   if (!ok) return;
-  L.quest.done = true; const g = PV.NPCS[q.giver];
+  L.quest.done = true; refreshMarkers(); const g = PV.NPCS[q.giver];
   addXP(30, fill(U.questDone, { n: g.name })); friendUp(q.giver, false); confetti();
   if (town && town.cheer) { town.cheer(q.giver); town.marker(q.giver, 'heart', 5); }
   say(T === 'pl' ? 'Dziękuję!' : 'Thank you!', { pitch: g.pitch, who: q.giver }); updMission();

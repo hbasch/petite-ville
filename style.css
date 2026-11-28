@@ -418,7 +418,11 @@ body:not(.nomic) #dUseMic{display:none}
 /* étiquette du mot d'un objet tout proche (remplace le toucher sur les objets) */
 #wordTag{position:fixed;z-index:6;transform:translate(-50%,-100%);border:0;border-radius:99px;padding:6px 14px 7px;background:#fff8e6;color:#5a4a3a;font:800 15px Nunito,sans-serif;box-shadow:0 3px 0 #d9a93e,0 6px 14px rgba(74,58,42,.25);cursor:pointer;white-space:nowrap;animation:tagIn .25s ease-out}
 #wordTag::after{content:'';position:absolute;left:50%;bottom:-7px;margin-left:-7px;border:7px solid transparent;border-bottom:0;border-top-color:#fff8e6}
-#wordTag.unknown{background:#f6cf6e;color:#6e4512;min-width:38px}
+#wordTag.unknown{background:#ffffff;color:#6a5f7a;min-width:38px;box-shadow:0 3px 0 #cfc6d8,0 6px 14px rgba(74,58,42,.25)}
+#wordTag.unknown::after{border-top-color:#ffffff}
+/* objectif de mission : doré, comme les « ! » au-dessus des habitants à voir */
+#wordTag.mission{background:#ffb547;color:#1d2142;box-shadow:0 3px 0 #c9851c,0 6px 14px rgba(74,58,42,.25)}
+#wordTag.mission::after{border-top-color:#ffb547}
 #wordTag.hidden{display:none}
 body.dlg-open #wordTag,body.photo #wordTag{display:none}
 @keyframes tagIn{from{opacity:0;transform:translate(-50%,-80%)}}
