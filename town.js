@@ -127,14 +127,23 @@ const poolM = new THREE.MeshBasicMaterial({ map: null, color: '#ffc77a', transpa
 
 /* ---------- l'île en argile ---------- */
 const G = 0.7; /* direction de l'entrée */
-const grassTop = DA_AC ? C('#46a12f', { roughness: 1, bumpScale: 0 }) : C(shade(PAL.leaf, .12)); grassTop.metalness = 0; grassTop.envMapIntensity = .25;
-const grass = mk(cyl(44, 44, .7, 96), [C(EARTH), grassTop, C(EARTH)], 0, -.35, 0); grass.receiveShadow = true;
+const grassTop = DA_AC ? C('#45a028', { roughness: 1, bumpScale: 0, vertexColors: true }) : C(shade(PAL.leaf, .12)); grassTop.metalness = 0; grassTop.envMapIntensity = .25;
+/* le dessus de l'herbe est maillé en anneaux serrés (et non un seul éventail centre-bord) : l'horizon arrondi plie les sommets,
+   un grand triangle restait plat et passait sous les maisons (on voyait le ciel entre le sol et les boutiques) */
+mk(new THREE.CylinderGeometry(44, 44, .7, 96, 1, true), C(EARTH), 0, -.35, 0);
+const grass = mk(new THREE.RingGeometry(0, 44, 96, 30).rotateX(-Math.PI / 2), grassTop, 0, 0, 0); grass.receiveShadow = true;
+/* larges taches d'herbe un peu plus jaunes ou plus sombres, peintes dans les sommets : le sol n'est plus un aplat uniforme */
+{ const p = grass.geometry.attributes.position, cl = [];
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), n = Math.sin(x * .31 + 1.3) * Math.cos(z * .27 - .4) + .6 * Math.sin(x * .73 - z * .58 + 2.1);
+    cl.push(1 + n * .05 + Math.max(0, n) * .03, 1 + n * .045, 1 - n * .03); }
+  grass.geometry.setAttribute('color', new THREE.Float32BufferAttribute(cl, 3)); }
 mk(lump(cyl(15.1, 11.5, 2.6, 48, 6), .3), C(EARTH), 0, -1.95, 0);
 mk(lump(cyl(11.5, 6, 3.2, 40, 6), .4), C(shade(EARTH, -.08)), 0, -4.8, 0);
 const tipM = mk(lump(new THREE.ConeGeometry(6, 5, 32, 6), .45), C(shade(EARTH, -.15)), 0, -8.9, 0); tipM.rotation.x = Math.PI;
 [[9, -3, 4], [-7, -4, 9], [3, -5.5, -10]].forEach(([x, y, z]) => mk(lump(sph(1.4, 16), .2), C(shade(EARTH, -.05)), x, y, z));
 const square = item('square');
 const base = mk(cyl(10.1, 10.1, .1, 72), DA_AC ? C('#6cc248') : C(shade('#' + new THREE.Color(PAL.ground).lerp(new THREE.Color(EARTH), .35).getHexString(), -.27)), 0, -.03, 0, square); base.receiveShadow = true; base.userData.keep = true; base.userData.noCast = true;
+if (DA_AC) base.visible = false; /* place de village : l'herbe continue jusqu'aux pavés, pas de disque d'une autre teinte */
 /* pavés posés un à un, en arcs autour de la fontaine : chaque pavé est un coussin de pâte bombé,
    aux coins arrondis, enfoncé dans un joint sombre (l'ombre de contact du shader creuse les joints) */
 {
@@ -155,20 +164,23 @@ const base = mk(cyl(10.1, 10.1, .1, 72), DA_AC ? C('#6cc248') : C(shade('#' + ne
   pts.forEach(([x, z, a], i) => { o.position.set(x, .012, z); o.rotation.set(rnd(-.04, .04), a + rnd(-.1, .1), rnd(-.04, .04)); o.scale.set(rnd(.145, .162), rnd(.034, .05), rnd(.118, .132)); o.updateMatrix(); im.setMatrixAt(i, o.matrix); col.set(shade(PAL.ground, rnd(-.13, .05))); col.offsetHSL(rnd(-.02, .02), rnd(-.05, .05), 0); im.setColorAt(i, col); });
   im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.receiveShadow = true; im.userData.noCast = true; square.add(im);
   /* bordure arrondie entre la place et l'herbe, et margelle autour de la fontaine */
-  const curb = mk(new THREE.TorusGeometry(9.86, .16, 6, mobile ? 90 : 140), C(shade(PAL.ground, -.06), { roughness: .55 }), 0, .02, 0, square); curb.rotation.x = Math.PI / 2; curb.scale.z = .55;
+  const curb = mk(new THREE.TorusGeometry(9.86, .16, 6, mobile ? 90 : 140), C(shade(PAL.ground, -.06), { roughness: .55 }), 0, .02, 0, square); curb.rotation.x = Math.PI / 2; curb.scale.z = .55; if (DA_AC) curb.visible = false;
 }
 const path = mk(rbox(2.6, .1, 5.2, .05, 2), C(shade(PAL.ground, -.08)), Math.sin(G) * 12.5, -.02, Math.cos(G) * 12.5, square); path.rotation.y = G; path.receiveShadow = true;
 /* touffes d'herbe et fleurs */
 {
-  const tg = new THREE.ConeGeometry(.07, .26, 5), tm = C(shade(PAL.leaf, .02)), N = mobile ? 260 : 480;
+  /* version village : semées plus bas en petites touffes groupées (pied des arbres, haie, poteaux), plus ici en vrac */
+  const tg = new THREE.ConeGeometry(.07, .26, 5), tm = C(shade(PAL.leaf, .02)), N = DA_AC ? 0 : mobile ? 260 : 480;
   const im = new THREE.InstancedMesh(tg, tm, N), o = new THREE.Object3D();
   for (let i = 0; i < N; i++) { let a = rnd(0, TAU), r = rnd(10.4, 14.7); while (Math.cos(a - G) > 0 && Math.abs(Math.sin(a - G) * r) < 1.5) a = rnd(0, TAU); o.position.set(Math.sin(a) * r, .1, Math.cos(a) * r); o.rotation.set(rnd(-.2, .2), 0, rnd(-.2, .2)); o.scale.setScalar(rnd(.7, 1.3)); o.updateMatrix(); im.setMatrixAt(i, o.matrix); }
   scene.add(im);
-  const fg = sph(.07, 8), fm = C('#ffffff'), F = 90, fim = new THREE.InstancedMesh(fg, fm, F), col = new THREE.Color(), fc = ['#fff4e2', '#ffd35a', PAL.walls[4], PAL.accent];
+  const fg = sph(.07, 8), fm = C('#ffffff'), F = DA_AC ? 0 : 90, fim = new THREE.InstancedMesh(fg, fm, F), col = new THREE.Color(), fc = ['#fff4e2', '#ffd35a', PAL.walls[4], PAL.accent];
   for (let i = 0; i < F; i++) { let a = rnd(0, TAU), r = rnd(10.6, 14.6); while (Math.cos(a - G) > 0 && Math.abs(Math.sin(a - G) * r) < 1.5) a = rnd(0, TAU); o.position.set(Math.sin(a) * r, .16, Math.cos(a) * r); o.rotation.set(0, 0, 0); o.scale.setScalar(rnd(.8, 1.3)); o.updateMatrix(); fim.setMatrixAt(i, o.matrix); col.set(fc[i % 4]); fim.setColorAt(i, col); }
   if (fim.instanceColor) fim.instanceColor.needsUpdate = true; scene.add(fim);
 }
 
+/* objets déjà posés en coordonnées de rue : le déroulage (plus bas) ne doit pas les déplacer une seconde fois */
+const STREET = new Set();
 /* ---------- au sol : marelle à la craie, plaque d'égout, herbes entre les pavés ---------- */
 {
   /* craie : traits doublés et un peu tremblés, comme dessinés par un enfant */
@@ -190,15 +202,21 @@ const path = mk(rbox(2.6, .1, 5.2, .05, 2), C(shade(PAL.ground, -.08)), Math.sin
   T.anisotropy = 8;
   const hm = new THREE.MeshStandardMaterial({ map: T, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 });
   const ha = G + Math.PI + .12, hop = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 3.0), hm);
-  hop.position.set(Math.sin(ha) * 6.3, .066, Math.cos(ha) * 6.3); hop.rotation.set(-Math.PI / 2, 0, ha + Math.PI); hop.receiveShadow = true; hop.renderOrder = 1; scene.add(hop);
+  hop.position.set(Math.sin(ha) * 6.3, .066, Math.cos(ha) * 6.3); hop.rotation.set(-Math.PI / 2, 0, ha + Math.PI);
+  /* version village : marelle et plaque d'égout sur le chemin de sable devant les boutiques (u vers la gauche de l'écran, v vers les boutiques),
+     plus sur l'herbe ni sur le cercle où passent les promeneurs */
+  const SW = (u, v) => [Math.cos(G + Math.PI) * u + Math.sin(G + Math.PI) * v, -Math.sin(G + Math.PI) * u + Math.cos(G + Math.PI) * v];
+  if (DA_AC) { const [hx, hz] = SW(-1.2, 11.6 - 2.2 + .006 * 1.44 - .95); hop.position.set(hx, .045, hz); hop.rotation.set(-Math.PI / 2, 0, G + Math.PI / 2); hop.scale.setScalar(.85); } hop.receiveShadow = true; hop.renderOrder = 1; scene.add(hop);
   /* plaque d'égout en fonte */
-  const ma = G - 1.85, mx = Math.sin(ma) * 6.3, mz = Math.cos(ma) * 6.3, fonte = C('#55555f', { metalness: .45, roughness: .5 });
+  const ma = G - 1.85, [mx, mz] = DA_AC ? SW(-8.5, 11.6 - 2.2 + .006 * 72 - .7) : [Math.sin(ma) * 6.3, Math.cos(ma) * 6.3], fonte = C('#55555f', { metalness: .45, roughness: .5 });
+  const nCh0 = scene.children.length;
   mk(cyl(.44, .44, .03, 28), fonte, mx, .06, mz); mk(new THREE.TorusGeometry(.4, .025, 6, 28), C('#6a6a74', { metalness: .45, roughness: .45 }), mx, .075, mz).rotation.x = Math.PI / 2;
   for (let k = -3; k <= 3; k++) { const L2 = Math.sqrt(Math.max(0, .36 * .36 - (k * .09) * (k * .09))) * 2; if (L2 > .05) mk(rbox(L2, .015, .03, .007, 1), C('#6a6a74', { metalness: .45, roughness: .45 }), mx, .078, mz + k * .09); }
+  if (DA_AC) { STREET.add(hop); scene.children.slice(nCh0).forEach(o => STREET.add(o)); }
   /* herbes folles entre les pavés, le long des façades et au pied des réverbères */
-  const wg = new THREE.ConeGeometry(.028, .1, 4), wm = C(shade(PAL.leaf, .05), { bumpScale: 0 }), WN = mobile ? 160 : 260, wi = new THREE.InstancedMesh(wg, wm, WN), o = new THREE.Object3D();
+  const wg = new THREE.ConeGeometry(.028, .1, 4), wm = C(shade(PAL.leaf, .05), { bumpScale: 0 }), WN = DA_AC ? 54 : mobile ? 160 : 260, wi = new THREE.InstancedMesh(wg, wm, WN), o = new THREE.Object3D();
   for (let i = 0; i < WN; i++) {
-    let x, z; if (i % 3) { const a2 = rnd(0, TAU), r = rnd(9.15, 9.6); x = Math.sin(a2) * r; z = Math.cos(a2) * r; } else { const a2 = G + .5 + ((i / 3 | 0) % 6) * (TAU - 1) / 5, r2 = rnd(.15, .35), b2 = rnd(0, TAU); x = Math.sin(a2) * 8.7 + Math.sin(b2) * r2; z = Math.cos(a2) * 8.7 + Math.cos(b2) * r2; }
+    let x, z; if (i % 3 && !DA_AC) { const a2 = rnd(0, TAU), r = rnd(9.15, 9.6); x = Math.sin(a2) * r; z = Math.cos(a2) * r; } else { const a2 = G + .5 + ((i / 3 | 0) % 6) * (TAU - 1) / 5, r2 = rnd(.15, .35), b2 = rnd(0, TAU); x = Math.sin(a2) * 8.7 + Math.sin(b2) * r2; z = Math.cos(a2) * 8.7 + Math.cos(b2) * r2; }
     o.position.set(x, .06, z); o.rotation.set(rnd(-.35, .35), rnd(0, TAU), rnd(-.35, .35)); o.scale.setScalar(rnd(.6, 1.3)); o.updateMatrix(); wi.setMatrixAt(i, o.matrix);
   }
   wi.userData.noCast = true; scene.add(wi);
@@ -513,7 +531,9 @@ B.forEach((sp, i) => { if (OPEN(i)) return; const ang = a0 + span * i / (B.lengt
 
 /* enseignes peintes dans la langue du pays (toutes dans une texture, une seule géométrie) */
 let signMat = null;
-(function buildSigns() {
+/* appelée après le déroulage de la rue (plus bas) : la géométrie est posée en coordonnées du monde,
+   construite avant elle restait sur l'ancien cercle et flottait au milieu de la place */
+function buildSigns() {
   const list = signBoards.filter(b => CITY.signs && CITY.signs[b.id]); if (!list.length) return;
   const RW = 1024, RH = 128, N = list.length, cv = document.createElement('canvas'); cv.width = RW; cv.height = RH * N;
   const g2 = cv.getContext('2d'), S = CITY.sign, P = [], Nn = [], U = [], I = []; let vo = 0;
@@ -534,7 +554,7 @@ let signMat = null;
   const tx = new THREE.CanvasTexture(cv); tx.encoding = THREE.sRGBEncoding; tx.anisotropy = 8;
   signMat = new THREE.MeshStandardMaterial({ map: tx, roughness: .65, emissive: '#ffffff', emissiveMap: tx, emissiveIntensity: .05 });
   const m = new THREE.Mesh(out, signMat); m.userData.keep = true; m.userData.noCast = true; m.receiveShadow = true; scene.add(m);
-})();
+}
 
 /* beffroi avec horloge qui donne l'heure */
 const hall = bld.hall.g, hs = bld.hall.sp, tw = 2.6, th = 4.6, ty = hs.h + .2;
@@ -619,7 +639,9 @@ for (let i = 0; i < 6; i++) { const a = G + .5 + i * (TAU - 1) / 5; lamp(Math.si
 const bulbM = C('#fff3d0', { unique: true, emissive: '#ffcf7a', emissiveIntensity: 0, bumpScale: 0 }); lampMats.push(bulbM);
 const lampTops = hits.filter(h => h.userData.id === 'streetlamp').map(l => new THREE.Vector3(l.position.x, 3.55, l.position.z));
 const strands = [];
-lampTops.forEach((p, i) => { const q = lampTops[(i + 1) % lampTops.length]; if (p.distanceTo(q) < 14) strands.push([p, q]); });
+/* version village : plus de guirlande côté caméra ni sur les côtés (elles barraient l'écran en diagonale, juste devant l'objectif) */
+const camSide = p => (p.x * Math.sin(G) + p.z * Math.cos(G)) > -1.5; /* seule reste celle qui longe les boutiques */
+lampTops.forEach((p, i) => { const q = lampTops[(i + 1) % lampTops.length]; if (p.distanceTo(q) < 14 && !(DA_AC && (camSide(p) || camSide(q)))) strands.push([p, q]); });
 const bulbPts = [], flagPts = [];
 const wireM = C('#3a3a48', { bumpScale: 0 });
 strands.forEach(([a, b]) => {
@@ -730,9 +752,11 @@ function tree(x, z, s) {
   mk(G_('troot', () => lump(sph(.3, 12), .02)), C('#7a4e32'), 0, .04, 0, t).scale.set(1, .38, 1);
   colliders.push({ x, z, r: .6 * s }); sblob(x, z, 1.25 * s);
 }
-[[11.2, 2.4], [11.6, -2.5], [13.2, 3.4], [13.0, -3.6], [12.2, 4.7], [12.4, -4.8], [14.0, 2.2], [14.1, -2.3]].forEach(([r, s]) => tree(Math.sin(G) * r + Math.cos(G) * s, Math.cos(G) * r - Math.sin(G) * s, rnd(.9, 1.2)));
+/* (version village : plus d'arbres côté caméra ; le déroulage les envoyait loin aux deux bouts, au hasard. Arbres des bouts : voir la rue) */
+(DA_AC ? [] : [[11.2, 2.4], [11.6, -2.5], [13.2, 3.4], [13.0, -3.6], [12.2, 4.7], [12.4, -4.8], [14.0, 2.2], [14.1, -2.3]]).forEach(([r, s]) => tree(Math.sin(G) * r + Math.cos(G) * s, Math.cos(G) * r - Math.sin(G) * s, rnd(.9, 1.2)));
 /* plus d'arbres au milieu de la place, côté caméra : ils cachaient Rosa et les habitants en conversation ; des jardinières basses à la place */
-[G + 1.3, G - 1.3].forEach(a => planter(scene, Math.sin(a) * 7.4, Math.cos(a) * 7.4, true));
+/* (8,0 : hors du cercle des promeneurs, qui va jusqu'à 7,2, et en deçà de la bande déroulée, qui commence à 8,15) */
+[G + 1.3, G - 1.3].forEach(a => { const r = DA_AC ? 8.0 : 7.4; planter(scene, Math.sin(a) * r, Math.cos(a) * r, true); colliders.push({ x: Math.sin(a) * r, z: Math.cos(a) * r, r: .5 }); sblob(Math.sin(a) * r, Math.cos(a) * r, .55); });
 /* (l'ancienne haie en anneau est remplacée par une haie basse au bord de la rue, côté caméra) */
 
 /* ---------- ce qui fait chaque ville ---------- */
@@ -909,7 +933,7 @@ B.forEach((sp, i) => { if (sp.id !== 'florist') return; const a = a0 + span * i 
 { const a = G + 1.2, bx = Math.sin(a) * 4.15, bz = Math.cos(a) * 4.15; person('leo', { skin: SK[1], hair: '#ece8e0', style: COUNTRY === 'fr' ? 'beret' : 'flatcap', hat: COUNTRY === 'gb' ? '#6a5e48' : COUNTRY === 'pl' ? '#4a4a55' : '#3a4a6a', mustache: true, eyes: '#3a5a8a', outfit: 'cardigan', shirt: '#9a6a44', buttons: '#e8c35a', scarf: PAL.walls[0], pants: '#4a4a5a', shoes: '#3a2a22' }, 'sit', bx, bz, a); }
 person('maya', { skin: SK[3], hair: '#1a1a22', style: 'curly', lashes: true, eyes: '#3a2418', outfit: 'hoodie', shirt: PAL.walls[1], backpack: PAL.accent, pants: '#2f3a5a', shoes: '#f4efe6' }, 'walk', 0, 7.2, 0, { r: 7.2, a: 1.2, sp: .055, pause: 0 });
 { const a = G - .55, r = 5.6 - .95; person('sam', { skin: SK[2], hair: '#3a2418', style: 'cap', hat: PAL.roofs[0], mustache: true, eyes: '#3a2418', shirt: '#f3efe6', stripes: PAL.roofs[0], rolled: true, apron: '#c99a62' }, 'idle', Math.sin(a) * r, Math.cos(a) * r, a); }
-[[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => (mobile && i !== 1) ? null : person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1, tote: i === 0 ? '#efe3cf' : null, balloon: i === 2 ? '#e8423a' : null }, 'walk', 0, 0, 0, { r: i === 1 ? 6.6 : rnd(6.5, 8.2), a: rnd(0, TAU), sp: (i === 1 ? .05 : rnd(.05, .085)) * (i % 2 ? 1 : -1), pause: 0, dog: i === 1 }));
+[[SK[0], '#e8c070', 'bob', PAL.walls[4], '#3a3a4a', 'dress'], [SK[2], '#2a1a12', 'short', PAL.roofs[1], '#5a4a3a', 'cardigan'], [SK[1], '#8a3a1e', 'bun', PAL.walls[2], '#3a3a5a', 'hoodie']].forEach(([s, h, st, sh, pa, of], i) => (mobile && i !== 1) ? null : person('passerby', { skin: s, hair: h, style: st, fringe: i !== 1, shirt: sh, pants: pa, outfit: of, lashes: i !== 1, tote: i === 0 ? '#efe3cf' : null, balloon: i === 2 ? '#e8423a' : null }, 'walk', 0, 0, 0, { r: i === 1 ? 6.6 : rnd(6.5, DA_AC ? 7.2 : 8.2), /* version village : le cercle ne traverse plus la haie côté caméra */ a: rnd(0, TAU), sp: (i === 1 ? .05 : rnd(.05, .085)) * (i % 2 ? 1 : -1), pause: 0, dog: i === 1 }));
 /* ---------- personnages de l'histoire (chapitre 1) : cachés tant que l'histoire n'en a pas besoin ---------- */
 const angOf = id => { const i = B.findIndex(b => b.id === id); return i < 0 ? G + Math.PI : a0 + span * i / (B.length - 1); };
 const spotAt = (a, r) => [Math.sin(a) * r, Math.cos(a) * r];
@@ -1100,7 +1124,7 @@ for (let i = 0; i < 6; i++) {
   for (let j = 0; j < 5; j++) mk(lump(sph(rnd(1.2, 2.2), 16), .08, 1), cm, rnd(-2.5, 2.5), rnd(-.4, .6), rnd(-1, 1), c);
   c.userData.dyn = true; clouds.push({ c, r, a, y, sp: rnd(.004, .009) });
 }
-[[38, 2, -20], [-34, -3, -26], [-30, 5, 24]].forEach(([x, y, z], i) => {
+(DA_AC ? [] : [[38, 2, -20], [-34, -3, -26], [-30, 5, 24]]).forEach(([x, y, z], i) => { /* version village : le sol va jusqu'au bord, elles flottaient juste au-dessus de l'herbe */
   const isl = new THREE.Group(); isl.position.set(x, y, z); scene.add(isl);
   mk(cyl(2.4, 2.4, .5, 22), [C(EARTH), C(shade(PAL.leaf, .1)), C(EARTH)], 0, 0, 0, isl);
   mk(lump(new THREE.ConeGeometry(2.3, 3, 16, 3), .15), C(shade(EARTH, -.08)), 0, -1.75, 0, isl).rotation.x = Math.PI;
@@ -1117,8 +1141,9 @@ const moteMat = new THREE.PointsMaterial({ map: dotT, size: .09, transparent: tr
 const motes = new THREE.Points(moteGeo, moteMat); scene.add(motes);
 const leafG = rbox(.13, .012, .09, .005, 1), leafM = C('#ffffff', { roughness: .7, bumpScale: 0 }), LEAVES = mobile ? 18 : 34;
 const leafIM = new THREE.InstancedMesh(leafG, leafM, LEAVES); leafIM.userData.dyn = true; scene.add(leafIM);
-const trees = hits.filter(h => h.userData.id === 'tree'), leaves = [], lo = new THREE.Object3D(), lc = new THREE.Color();
-function respawnLeaf(L) { const t = trees[(Math.random() * trees.length) | 0]; L.x = t.position.x + rnd(-.7, .7); L.z = t.position.z + rnd(-.7, .7); L.y = rnd(2, 3) * t.scale.x; L.vy = rnd(.25, .45); L.ph = rnd(0, TAU); L.ground = 0; }
+/* les arbres sont plantés plus bas (aux deux bouts de la rue) : la liste est relue à chaque fois, et les feuilles sont replacées après la rue */
+const treesNow = () => hits.filter(h => h.userData.id === 'tree'), leaves = [], lo = new THREE.Object3D(), lc = new THREE.Color();
+function respawnLeaf(L) { const trees = treesNow(); if (!trees.length) { L.x = 0; L.z = 0; L.y = -9; L.vy = 0; L.ph = 0; L.ground = 0; return; } const t = trees[(Math.random() * trees.length) | 0]; L.x = t.position.x + rnd(-.7, .7); L.z = t.position.z + rnd(-.7, .7); L.y = rnd(2, 3) * t.scale.x; L.vy = rnd(.25, .45); L.ph = rnd(0, TAU); L.ground = 0; }
 for (let i = 0; i < LEAVES; i++) { const L = {}; respawnLeaf(L); L.y = rnd(0, 3); leaves.push(L); lc.set([shade(PAL.leaf, .05), '#e8893a', '#f2b33a', '#c9562e'][i % 4]); leafIM.setColorAt(i, lc); }
 if (leafIM.instanceColor) leafIM.instanceColor.needsUpdate = true;
 /* cheminée de la boulangerie et sa fumée */
@@ -1141,7 +1166,7 @@ colliders.push(...people.filter(p => p.mode !== 'walk').map(p => ({ x: p.grp.pos
   const inBand = (x, z) => { const r = Math.hypot(x, z); return r > 8.15 && r < 13.4; };
   const kept = (i, k) => i >= KEEP0[k] && i < KEEP1[k];
   scene.children.slice().forEach((o, i) => {
-    if (kept(i, 'ch') || o.isInstancedMesh || o === sky || o.isLight && !o.isPointLight) return;
+    if (kept(i, 'ch') || STREET.has(o) || o.isInstancedMesh || o === sky || o.isLight && !o.isPointLight) return;
     const p = o.position; if (!inBand(p.x, p.z)) return;
     const t = toStreet(p.x, p.z); p.x = t.x; p.z = t.z; o.rotation.y += t.dr;
     const pp = people.find(q => q.grp === o); if (pp) { pp.base += t.dr; if (pp.home) pp.home = [t.x, t.z, pp.home[2] + t.dr]; }
@@ -1149,32 +1174,86 @@ colliders.push(...people.filter(p => p.mode !== 'walk').map(p => ({ x: p.grp.pos
   sblobs.forEach((b, i) => { if (kept(i, 'bl') || !inBand(b[0], b[1])) return; const t = toStreet(b[0], b[1]); b[0] = t.x; b[1] = t.z; b[4] += t.dr; });
   colliders.forEach((c, i) => { if (kept(i, 'co') || !inBand(c.x, c.z)) return; const t = toStreet(c.x, c.z); c.x = t.x; c.z = t.z; });
   BLDC.length = 0; B.forEach((sp, i) => { if (OPEN(i)) return; const g = hits.find(h => h.userData.id === sp.id && h.parent === scene); if (g) BLDC.push({ x: g.position.x, z: g.position.z, r: sp.w / 2 + 2.4 }); });
-  /* chemin de sable devant les boutiques, jusqu'à l'arrêt de bus (à gauche) et à la barrière du parc (à droite) */
-  const sandM = C(PAL.ground, { bumpScale: .01 });
-  for (let k = -12; k <= 12; k++) { const u = k * 1.9, [x, z] = S2W(u, frontV(u) - .9); const m = mk(rbox(2.1, .05, 2.6, .02, 1), sandM, x, .02, z); m.rotation.y = G; m.receiveShadow = true; }
+  /* chemin de sable devant les boutiques : un seul ruban continu qui suit la courbe de la rue et descend à chaque bout
+     vers l'arrêt de bus (u < 0, à droite de l'écran) et vers la barrière du parc (u > 0, à gauche), bords légèrement ondulés,
+     posé sur une bande un peu plus sombre qui dessine son bord (maillé serré pour suivre l'horizon arrondi) */
+  const U_BUS = -UMAX - .4, V_BUS = 4.2, U_PARK = UMAX + 1.2, V_PARK = 1.5;
+  const pathV = u => { const t = Math.min(1, Math.max(0, (Math.abs(u) - 12.5) / (Math.abs(u < 0 ? U_BUS : U_PARK) - 12.5))), e = t * t * (3 - 2 * t); return (frontV(u) - .9) * (1 - e) + (u < 0 ? V_BUS - 1.3 : V_PARK) * e; };
+  const ribbon = (hw, y, mat, u0, u1) => {
+    const N = mobile ? 110 : 160, P = [], I = [];
+    for (let i = 0; i <= N; i++) {
+      const u = u0 + (u1 - u0) * i / N, v = pathV(u), du = .05, dv = (pathV(u + du) - pathV(u - du)) / (2 * du), L = Math.hypot(1, dv), nu = -dv / L, nv = 1 / L;
+      const end = Math.min(1, (u - u0) / 1.2, (u1 - u) / 1.2), w = hw * Math.sqrt(Math.max(.04, 1 - (1 - end) * (1 - end)));
+      [-1, 1].forEach(sg => { const ww = w * (1 + .07 * Math.sin(u * 1.7 + sg * 2.1) + .04 * Math.sin(u * 4.3 + sg)), [x, z] = S2W(u + nu * ww * sg, v + nv * ww * sg); P.push(x, y, z); });
+      if (i) { const a = (i - 1) * 2; I.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); /* faces tournées vers le ciel */ }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex(I); g.computeVertexNormals();
+    const n = g.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);
+    const m = mk(g, mat, 0, 0, 0); m.receiveShadow = true; m.userData.noCast = true; return m;
+  };
+  ribbon(1.42, .012, C('#b8935a', { roughness: .95, bumpScale: .01 }), U_BUS, U_PARK);
+  ribbon(1.27, .026, C('#e0c48c', { roughness: .9, bumpScale: .012 }), U_BUS, U_PARK);
   /* haie basse au bord, côté caméra */
   for (let k = -14; k <= 14; k++) { const u = k * 1.55, [x, z] = S2W(u, -7.8); mk(lump(sph(rnd(.28, .38), 12), .04, 2), C(shade(PAL.leaf, rnd(-.1, .04))), x, .26, z); }
-  /* arrêt de bus (à gauche) : poteau, panneau, petit abri */
-  { const [x, z] = S2W(-UMAX - 1.2, 1.5), g = new THREE.Group(); scene.add(g); g.position.set(x, 0, z); g.rotation.y = G + Math.PI / 2;
-    mk(cyl(.05, .05, 2.4, 8), C('#3a3a48'), 0, 1.2, -1.4, g); mk(cyl(.32, .32, .06, 18), C('#c8202a'), 0, 2.45, -1.4, g).rotation.x = Math.PI / 2;
-    mk(rbox(2.4, .12, 1.1, .05, 2), C('#3a3a48'), 0, 2.3, 0, g); [-1.1, 1.1].forEach(dx => mk(cyl(.05, .05, 2.3, 8), C('#3a3a48'), dx, 1.15, -.45, g));
-    mk(rbox(2.2, .08, .4, .03, 2), C('#b07a4a'), 0, .5, -.35, g); colliders.push({ x, z, r: 1.0 }); sblob(x, z, 1.4, .8); }
-  /* barrière du parc (à droite), fermée jusqu'au chapitre 2 */
-  { const [x, z] = S2W(UMAX + 1.2, 1.5), g = new THREE.Group(); scene.add(g); g.position.set(x, 0, z); g.rotation.y = G + Math.PI / 2;
-    const wood = C('#b07a4a'); [-1.6, 1.6].forEach(dx => mk(rbox(.22, 1.3, .22, .06, 2), wood, dx, .65, 0, g)); [.45, .9].forEach(y => mk(rbox(3.2, .12, .1, .04, 2), wood, 0, y, 0, g)); }
-  /* la maison d'Arthur, au fond sur la colline : on voit son but dès le début */
-  /* les deux bouts de la rue : quelques arbres et des massifs de fleurs */
-  [[-18.5, 7.2, 1.1], [-23, -4.5, 1.0], [-26, 6, 1.2], [18.5, 7.2, 1.05], [24, -5, 1.0]].forEach(([u, v, sc]) => { const [x, z] = S2W(u, v); tree(x, z, sc); });
+  /* la route du bus, au-delà du bout droit de la rue (maillée en long pour l'horizon arrondi), et l'arrêt de bus face à la caméra */
+  { const RU = U_BUS - 3.6, rg = new THREE.PlaneGeometry(3.4, 34, 1, 34).rotateX(-Math.PI / 2), [x, z] = S2W(RU, 2);
+    const road = mk(rg, C('#8d8a92', { roughness: .85, bumpScale: .01 }), x, .02, z); road.rotation.y = G; road.receiveShadow = true; road.userData.noCast = true;
+    for (let k = -8; k <= 8; k++) { const [lx, lz] = S2W(RU, 2 + k * 2); mk(G_('roadDash', () => rbox(.12, .02, .9, .01, 1)), C('#fff4e2', { bumpScale: 0 }), lx, .035, lz).rotation.y = G; }
+    [-1, 1].forEach(sg => { const kg = new THREE.PlaneGeometry(.22, 34, 1, 34).rotateX(-Math.PI / 2), [kx, kz] = S2W(RU + sg * 1.8, 2); const kb = mk(kg, C('#d9d2c4'), kx, .05, kz); kb.rotation.y = G; }); }
+  { const [x, z] = S2W(U_BUS, V_BUS), g = new THREE.Group(); scene.add(g); g.position.set(x, 0, z); g.rotation.y = G;
+    const dark = C('#3a3a48'), red = C('#d8322e'), yel = C('#f2c200');
+    mk(rbox(2.6, .14, 1.2, .06, 2), red, 0, 2.32, -.05, g); mk(rbox(2.5, 1.5, .06, .03, 1), C('#cfe4ee', { roughness: .15 }), 0, 1.45, -.58, g);
+    [-1.2, 1.2].forEach(dx => mk(cyl(.055, .055, 2.3, 8), dark, dx, 1.15, -.55, g));
+    mk(rbox(2.0, .1, .42, .04, 2), C('#b07a4a'), 0, .5, -.3, g); [-.8, .8].forEach(dx => mk(rbox(.08, .45, .3, .03, 1), dark, dx, .25, -.3, g));
+    /* poteau d'arrêt avec son disque et un panneau « BUS STOP » lisible de loin */
+    mk(cyl(.05, .05, 2.7, 8), dark, 1.75, 1.35, .25, g); const disc = mk(cyl(.36, .36, .07, 20), red, 1.75, 2.7, .25, g); disc.rotation.x = Math.PI / 2;
+    mk(cyl(.22, .22, .08, 20), yel, 1.75, 2.7, .26, g).rotation.x = Math.PI / 2;
+    const lab = mk(new THREE.PlaneGeometry(1.5, .41), new THREE.MeshBasicMaterial({ map: labelTex('BUS STOP', 512, 140, true), transparent: true }), 0, 2.62, .56, g); lab.userData.keep = true;
+    colliders.push({ x, z, r: 1.15 }); { const [px, pz] = S2W(U_BUS - 1.75, V_BUS + .25); colliders.push({ x: px, z: pz, r: .3 }); } sblob(x, z, 1.5, .8, G); }
+  /* barrière du parc (à gauche de l'écran), fermée jusqu'au chapitre 2 : un portail et une clôture basse qui longe le parc */
+  { const wood = C('#b07a4a'), woodD = C('#9a6a40');
+    { const [x, z] = S2W(U_PARK, V_PARK), g = new THREE.Group(); scene.add(g); g.position.set(x, 0, z); g.rotation.y = G + Math.PI / 2;
+      [-1.6, 1.6].forEach(dx => { mk(rbox(.26, 1.5, .26, .07, 2), woodD, dx, .75, 0, g); mk(sph(.17, 10), wood, dx, 1.55, 0, g); });
+      [.45, .9].forEach(y => mk(rbox(3.2, .12, .1, .04, 2), wood, 0, y, 0, g)); mk(rbox(.1, .6, .08, .03, 1), wood, -.8, .68, 0, g).rotation.z = .9; mk(rbox(.1, .6, .08, .03, 1), wood, .8, .68, 0, g).rotation.z = -.9;
+      colliders.push({ x, z, r: 1.0 }); }
+    for (let v = -6.6; v <= 11; v += 1.6) { if (Math.abs(v - V_PARK) < 2.2) continue; const g = new THREE.Group(), [x, z] = S2W(U_PARK, v); scene.add(g); g.position.set(x, 0, z); g.rotation.y = G + Math.PI / 2;
+      mk(G_('fpost', () => rbox(.16, .9, .16, .05, 2)), woodD, -.8, .45, 0, g); mk(G_('frail', () => rbox(1.6, .1, .08, .03, 1)), wood, 0, .62, 0, g); mk(G_('frail2', () => rbox(1.6, .1, .08, .03, 1)), wood, 0, .32, 0, g); } }
+  /* les deux bouts de la rue : arbres (le parc derrière la barrière), buissons et massifs de fleurs, un banc et un réverbère près de l'arrêt */
+  const ENDS_T = [[-18.5, 8.2, 1.1], [-17, -5.6, .95], [-23.5, -5, 1.0], [-30, 7, 1.2], [-30.5, -2, 1.05], [-27, 12, 1.0],
+    [18.5, 8.6, 1.05], [17.5, -5.4, .95], [25.5, 4.8, 1.15], [27.5, -1.5, 1.05], [25, -6, 1.0], [30, 7.5, 1.2], [29.5, 1.5, .95]];
+  ENDS_T.forEach(([u, v, sc]) => { const [x, z] = S2W(u, v); tree(x, z, sc); });
   const FL = ['#ff6f91', '#ffd35a', '#fff4e2', PAL.walls[4], PAL.accent];
-  [[-14, -4], [-9, -5.2], [9, -5.2], [14, -4], [-20, 3.5], [20, 3.5]].forEach(([u, v], k) => { const [x, z] = S2W(u, v); mk(lump(sph(.55, 12), .04, 2), C(shade(PAL.leaf, -.05)), x, .2, z).scale.set(1.3, .45, 1); for (let j = 0; j < 7; j++) { const a = j / 7 * TAU; mk(G_('fl2', () => sph(.09, 8)), C(FL[(j + k) % 5]), x + Math.cos(a) * .5, .38, z + Math.sin(a) * .35); } });
+  const BEDS = [[-14, -4.6], [-9, -5.6], [9, -5.6], [14, -4.6], [-20.5, 7.5], [20.5, 7.5], [-19.5, -2.5], [19.5, -2.8], [24, 9.5], [-24, 9]];
+  BEDS.forEach(([u, v], k) => { const [x, z] = S2W(u, v); mk(lump(sph(.55, 12), .04, 2), C(shade(PAL.leaf, -.05)), x, .2, z).scale.set(1.3, .45, 1); for (let j = 0; j < 7; j++) { const a = j / 7 * TAU; mk(G_('fl2', () => sph(.09, 8)), C(FL[(j + k) % 5]), x + Math.cos(a) * .5, .38, z + Math.sin(a) * .35); } colliders.push({ x, z, r: .7 }); });
+  { const b = new THREE.Group(), [x, z] = S2W(U_BUS + 3.1, V_BUS + .6); scene.add(b); b.position.set(x, 0, z); b.rotation.y = G;
+    mk(rbox(1.6, .14, .55, .06, 2), woodM, 0, .48, 0, b); const bk = mk(rbox(1.6, .42, .12, .06, 2), woodM, 0, .84, -.24, b); bk.rotation.x = .16; [-.65, .65].forEach(dx => mk(rbox(.1, .48, .5, .04, 2), iron, dx, .24, 0, b));
+    colliders.push({ x, z, r: .85 }); sblob(x, z, 1.0, .5, G); }
+  /* petites touffes d'herbe groupées (pied des arbres, des massifs, de la haie, de la clôture, au bord du chemin) : plus en vrac dans l'herbe */
+  { const spots = [];
+    ENDS_T.forEach(([u, v]) => spots.push([u, v, 3]));
+    BEDS.forEach(([u, v]) => spots.push([u, v, 2]));
+    for (let k = -13; k <= 13; k += 2) spots.push([k * 1.55 + rnd(-.3, .3), -7.45, 2]);
+    for (let v = -6; v <= 10; v += 3.2) spots.push([U_PARK - .35, v, 2]);
+    for (let k = 0; k < 14; k++) { const u = rnd(-UMAX, UMAX), sg = k % 2 ? 1 : -1, v = pathV(u) + sg * rnd(1.45, 1.7) * (sg > 0 ? .55 : 1); spots.push([u, v, 1]); }
+    const TN = spots.reduce((a, s2) => a + s2[2] * (mobile ? 3 : 4), 0), tg = new THREE.ConeGeometry(.045, .17, 5).translate(0, .085, 0);
+    const im = new THREE.InstancedMesh(tg, C(shade(PAL.leaf, -.04), { bumpScale: 0 }), TN), o = new THREE.Object3D(); let n = 0;
+    const fT = [], fg = new THREE.InstancedMesh(G_('fl3', () => sph(.055, 8)), C('#ffffff', { bumpScale: 0 }), 60), col = new THREE.Color();
+    spots.forEach(([u, v, w], si) => { const cnt = w * (mobile ? 3 : 4); for (let j = 0; j < cnt && n < TN; j++) { const a = rnd(0, TAU), r = rnd(.25, .4 + w * .28), [x, z] = S2W(u + Math.cos(a) * r, v + Math.sin(a) * r * .7);
+      o.position.set(x, 0, z); o.rotation.set(rnd(-.25, .25), rnd(0, TAU), rnd(-.25, .25)); o.scale.setScalar(rnd(.6, 1.05)); o.updateMatrix(); im.setMatrixAt(n++, o.matrix);
+      if (j < 2 && si % 3 === 0 && fT.length < 60) fT.push([x + rnd(-.12, .12), z + rnd(-.12, .12), FL[si % 5]]); } });
+    im.count = n; im.userData.noCast = true; scene.add(im);
+    fT.forEach(([x, z, c], i) => { o.position.set(x, .2, z); o.rotation.set(0, 0, 0); o.scale.setScalar(1); o.updateMatrix(); fg.setMatrixAt(i, o.matrix); fg.setColorAt(i, col.set(c)); });
+    fg.count = fT.length; if (fg.instanceColor) fg.instanceColor.needsUpdate = true; fg.userData.noCast = true; scene.add(fg); }
   /* la maison d'Arthur : sur la colline, au-delà de la barrière du parc ; on la voit en marchant vers la droite */
-  { const [x, z] = S2W(UMAX + 11, 9), hill = mk(lump(sph(9, 24), .05, 2), C('#62b843'), x, -3.4, z); hill.scale.set(1, .62, 1);
+  { const [x, z] = S2W(UMAX + 11, 9), hill = mk(lump(sph(9, 24), .05, 2), C('#45a028', { roughness: 1, bumpScale: 0 }), x, -3.4, z); hill.scale.set(1, .62, 1);
     const g = new THREE.Group(); scene.add(g); g.position.set(x, 2.3, z); g.rotation.y = G;
     mk(lump(rbox(4.2, 2.6, 3.4, .3, 5), .03, .7), C('#f7e7c4'), 0, 1.3, 0, g);
     const roof = mk(new THREE.ConeGeometry(3.3, 1.9, 4), C('#e2604e'), 0, 3.5, 0, g); roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, .82);
     mk(rbox(.5, 1.1, .5, .1, 2), C('#b07a4a'), 1.1, 4.1, .2, g); mk(rbox(.8, 1.4, .1, .05, 2), C('#22b2a0'), 0, .7, 1.72, g);
     [-1.3, 1.3].forEach(dx => mk(rbox(.7, .7, .1, .05, 2), C('#9fcbef', { roughness: .2 }), dx, 1.6, 1.72, g)); }
 }
+buildSigns();
+leaves.forEach(L => { respawnLeaf(L); L.y = rnd(0, 3); });
 { const im = new THREE.InstancedMesh(G_('blobG', () => new THREE.CircleGeometry(1, 24)), BLOB, sblobs.length), o = new THREE.Object3D();
   sblobs.forEach(([x, z, sx, sz, yw], i) => { o.position.set(x, .068, z); o.rotation.set(-Math.PI / 2, yw, 0, 'YXZ'); o.scale.set(sx, sz, 1); o.updateMatrix(); im.setMatrixAt(i, o.matrix); });
   im.renderOrder = 1; im.frustumCulled = false; scene.add(im); }
@@ -1254,7 +1333,8 @@ function applyHour(h) {
   /* reflets de la pâte : ciel, horizon et sol chaud du moment */
   { const k = 1 - lightsOn * .6; envT.copy(skyU.top.value).multiplyScalar(k); envH.copy(skyU.hor.value).multiplyScalar(k); envG.set(shade(PAL.ground, -.15)).convertSRGBToLinear().multiplyScalar(k * .8); }
   if (DA_AC) {
-    const dk = 1 - lightsOn; hemi.intensity *= 1.3; sun.intensity *= .95; GRADE.uniforms.sat.value = 1.2 - lightsOn * .1; GRADE.uniforms.con.value = 1.03; R.toneMappingExposure += .02;
+    const dk = 1 - lightsOn; /* soleil nettement plus doux le jour : l'herbe au soleil ne blanchit plus (ACES écrasait les clairs) et l'écart lumière/ombre reste ~1,6 */
+    hemi.intensity *= 1.3 + dk * .1; sun.intensity *= .95 - dk * .56; GRADE.uniforms.sat.value = 1.12 - lightsOn * .04; GRADE.uniforms.con.value = 1.03; R.toneMappingExposure += .02;
     skyU.top.value.lerp(new THREE.Color('#5fb4ee').convertSRGBToLinear(), .65 * dk); skyU.hor.value.lerp(new THREE.Color('#e6f6ff').convertSRGBToLinear(), .6 * dk);
   }
   const hm = h % 12, mm = (h * 60) % 60;
@@ -1811,7 +1891,7 @@ loop();
 
 /* sortir de la boulangerie : devant sa porte, face à la place */
 /* outil de test : ?debug dans l'adresse donne window.PVDBG pour placer la caméra (captures de vérification) */
-if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges, tag: () => ({ on: tagFor && tagFor.userData.id, x: +pos.x.toFixed(2), z: +pos.z.toFixed(2), n: hits.length, t: tagT, near: hits.filter(o => o.userData.box).map(o => [o.userData.id, +o.userData.box.distanceToPoint(new THREE.Vector3(pos.x, (o.userData.box.min.y + o.userData.box.max.y) / 2, pos.z)).toFixed(2)]).sort((a, b) => a[1] - b[1]).slice(0, 4), talking: !!talking }) };
+if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, camYaw: a => { camYaw = a; }, colliders, W2S, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges, tag: () => ({ on: tagFor && tagFor.userData.id, x: +pos.x.toFixed(2), z: +pos.z.toFixed(2), n: hits.length, t: tagT, near: hits.filter(o => o.userData.box).map(o => [o.userData.id, +o.userData.box.distanceToPoint(new THREE.Vector3(pos.x, (o.userData.box.min.y + o.userData.box.max.y) / 2, pos.z)).toFixed(2)]).sort((a, b) => a[1] - b[1]).slice(0, 4), talking: !!talking }) };
 function placeAtBakery() { const g = bld.bakery.g, [bu] = W2S(g.position.x, g.position.z), [bx, bz] = S2W(bu - 1.2, frontV(bu) - .4), a = G + Math.PI; pos.set(bx, 1.45, bz); yaw = tYaw = a; pitch = tPitch = -.05; target = null; vel.set(0, 0, 0); camYaw = Math.atan2(-pos.x, -pos.z); camInit = false; if (me) me.yaw = a; }
 
 /* horizon arrondi aussi pour les matières qui ne sont pas en pâte */
