@@ -371,7 +371,7 @@ PV.NPCS = {
  tom: { name: 'Tom', role: { fr: 'le boulanger', pl: 'le boulanger' }, pitch: 0.9,
   dlg: { en: { nodes: { start: ['Hello! Fresh bread this morning!', { fr: 'Bonjour ! Du pain frais ce matin !' }, 'a'], end: ['Bye!', { fr: 'Au revoir !' }], huh: ['Sorry?', { fr: 'Pardon ?' }] },
     opts: { a: [{ t: 'Great! See you later, Tom.', tr: { fr: 'Super ! À plus tard, Tom.' }, to: 'END', reply: ['See you!', { fr: 'À plus !' }] }] } } } },
- jones: { name: 'Agent Jones', role: { fr: 'la police', pl: 'la police' }, pitch: 0.8,
+ jones: { name: 'PC Jones', role: { fr: 'la police', pl: 'la police' }, pitch: 0.8,
   dlg: { en: { nodes: { start: ['Good afternoon. All quiet today.', { fr: 'Bonjour. Tout est calme aujourd’hui.' }, 'a'], end: ['Bye!', { fr: 'Au revoir !' }], huh: ['Sorry?', { fr: 'Pardon ?' }] },
     opts: { a: [{ t: 'Good. Thank you!', tr: { fr: 'Tant mieux. Merci !' }, to: 'END', reply: ['Take care!', { fr: 'Prenez soin de vous !' }] }] } } } },
  okafor: { name: 'Mr Okafor', role: { fr: 'le pharmacien', pl: 'le pharmacien' }, pitch: 0.85,

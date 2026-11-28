@@ -594,7 +594,8 @@ $('exitBtn').onclick = () => { if (place === 'bakery') exitBakery(); };
 $('placeBtn').onclick = () => { if (place === 'bakery') exitBakery(); else { renderMap(); show('mapSheet'); } };
 $('meBtn').onclick = () => showTab('progress');
 $('goalPill').onclick = () => showTab('progress');
-addEventListener('keydown', e => { if (e.key === 'Escape') { show(null); $('authOv').classList.add('hidden'); } });
+/* Échap ne ferme pas une scène de l'histoire (sinon l'histoire attendait sa fin et le joueur restait bloqué) */
+addEventListener('keydown', e => { if (e.key === 'Escape') { if (!document.body.classList.contains('storyDlg')) show(null); $('authOv').classList.add('hidden'); } });
 
 function discover(id) { if (!L.found.includes(id)) { L.found.push(id); addXP(5, U.xpWord); updMission(); } }
 
@@ -672,14 +673,18 @@ function render(line, tr, key) {
   line = fill(line, CV()); lastLine = line; lastLineTr = fill((tr || {})[ui] || '', CV()); $('dLine').textContent = line; $('dTrTxt').textContent = fill((tr || {})[ui] || '', CV());
   curOpts = key ? DD().opts[key].filter(o => !o.need || (window.PVStory && PVStory.has(o.need))) : [];
   const box = $('dOpts'); box.innerHTML = '';
+  const rc = (L && L.recall) || {}, recallAll = curOpts.some(o => !o.again && !o.dk && (rc[o.t] || 0) >= 3 && !!(o.tr[ui]));
   curOpts.forEach(o => {
     const b = el('button', 'opt'); b.type = 'button';
     /* petite icône pour entendre comment se dit la réponse (rien ne se lit tout seul) */
     const sp = el('span', 'optSpk'); sp.setAttribute('role', 'button'); sp.setAttribute('aria-label', U.listen); sp.appendChild(icon('spk'));
     sp.onclick = e => { e.stopPropagation(); say(o.t, { who: 'you', rate: 1 }); };
+    /* une réponse fausse (celles qui ont une astuce) ne se fait pas prononcer : on n'entend que de l'anglais correct */
+    if (o.tip) sp.style.display = 'none';
     /* retrouver de mémoire : une réplique déjà réussie 3 fois s'affiche d'abord en français ; il faut la dire en anglais,
        ou toucher une première fois pour voir l'anglais, puis une seconde pour la choisir (la recherche : le rappel apprend plus que la reconnaissance) */
-    const seen = ((L && L.recall) || {})[o.t] || 0, hide = !o.again && !o.dk && seen >= 3 && !!(o.tr[ui]);
+    /* tout ou rien : si une réponse est à retrouver de mémoire, toutes passent en français (sinon la seule en français trahit la bonne) */
+    const hide = recallAll && !o.again && !o.dk && !!(o.tr[ui]);
     if (hide) {
       const en = el('span', null, o.tr[ui]), hint = el('div', 'fr', U.recallHint || 'Dis-le en anglais · touche pour voir');
       sp.style.visibility = 'hidden'; b.classList.add('recall'); b.append(en, hint, sp);
@@ -705,7 +710,7 @@ function choose(o, spoken) {
   if (o.task) tasks[o.task] = true;
   if (o.task === 'order') setTimeout(() => questProgress('bakery'), 2600);
   if (!o.tip && !o.again && !o.dk && L) { L.recall = L.recall || {}; L.recall[o.t] = (L.recall[o.t] || 0) + 1; }
-  if (L && dlgMode !== 'review' && dlgMode !== 'first' && !o.again && !o.dk && qLine && !/\{\w+\}/.test(o.t + qLine)) revLog(o);
+  if (L && dlgMode !== 'review' && dlgMode !== 'first' && !o.again && !o.dk && o.pl !== 0 && qLine && !/\{\w+\}/.test(o.t + qLine)) revLog(o);
   micFails = 0;
   if (o.tip) { mistakes++; $('dTip').textContent = o.tip[ui]; $('dTip').classList.remove('hidden'); } else $('dTip').classList.add('hidden');
   if (spoken) { spokenSession++; P.spoken++; if (!o.tip) { addXP(5); praise(true); } setTimeout(() => questProgress('say'), 1500); }
@@ -794,7 +799,8 @@ function startReview(items, pool) {
   items.forEach((r, i) => {
     const id = i ? 'q' + i : 'start', next = i < items.length - 1 ? 'q' + (i + 1) : 'END';
     nodes[id] = [r.q, { [ui]: r.qt }, 'k' + i, undefined, r.w && r.w !== 'baker' ? r.w : null];
-    const others = pool.filter(x => x !== r && x.a !== r.a && !r.a.includes(x.a) && !x.a.includes(r.a)).sort(() => Math.random() - .5).slice(0, 2);
+    /* leurres : d'abord d'autres répliques du même personnage (moins évidentes), puis les autres */
+    const others = pool.filter(x => x !== r && x.a !== r.a && !r.a.includes(x.a) && !x.a.includes(r.a)).sort(() => Math.random() - .5).sort((x, y) => (y.w === r.w) - (x.w === r.w)).slice(0, 2);
     const list = [{ t: r.a, tr: { [ui]: r.at }, to: next }].concat(others.map(x => ({ t: x.a, tr: { [ui]: x.at }, to: id, reply: ['Sorry? ' + r.q, { [ui]: r.qt }], tip: { [ui]: U.revTry || 'Réécoute la question et réessaie.' } })));
     opts['k' + i] = list.sort(() => Math.random() - .5);
     r.seen = (r.seen || 0) + 1;
@@ -858,7 +864,8 @@ function questHint() {
   return q.type === 'find' ? fill(U.questFind, { w: w(q.target) }) : q.type === 'talk' ? fill(U.questTalk, { w: w(q.target) }) : q.type === 'say' ? fill(U.questSay, { k: Math.min(L.quest.n || 0, q.n), t: q.n }) : U.questBakery;
 }
 function announceQuest() { const q = questToday(); if (!q || L.quest.told || L.quest.done || place !== 'town') return; refreshMarkers(); toast(fill(U.questFrom, { n: PV.NPCS[q.giver].name })); }
-function refreshMarkers() { if (!town || !town.marker) return; const q = questToday(), sm = (window.PVStory && PVStory.marks) ? PVStory.marks() : []; Object.keys(PV.NPCS).forEach(id => town.marker(id, sm.includes(id) || (q && q.giver === id && !L.quest.told && !L.quest.done) ? 'quest' : null));
+/* pendant le chapitre en cours, pas de demande du jour en parallèle : une seule mission à la fois */
+function refreshMarkers() { if (!town || !town.marker) return; const sto = L.story && !L.story.off && L.story.step !== 'done', q = sto ? null : questToday(), sm = (window.PVStory && PVStory.marks) ? PVStory.marks() : []; Object.keys(PV.NPCS).forEach(id => town.marker(id, sm.includes(id) || (q && q.giver === id && !L.quest.told && !L.quest.done) ? 'quest' : null));
   /* boutiques à visiter : la boulangerie quand l'histoire t'envoie travailler, la cible d'une quête « trouve » en cours */
   if (town.shopMarks) { const s = L.story, ids = []; if (s && !s.off && s.step === 'work') ids.push('bakeryShop'); if (q && q.type === 'find' && L.quest.told && !L.quest.done) ids.push(q.target); town.shopMarks(ids); } }
 function questProgress(type, id) {

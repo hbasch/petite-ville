@@ -52,12 +52,12 @@
     const sp = letters.join(' - '), w = letters.slice(); if (w.length > 1) { const t = w[0]; w[0] = w[1]; w[1] = t; } else w.push('E');
     const fillS = x => typeof x === 'string' ? x.replace(/\{n\}/g, n).replace(/\{sp\}/g, sp).replace(/\{sw\}/g, w.join(' - ')) : x;
     const nodes = {}, opts = {};
-    Object.keys(d.nodes).forEach(k => { const v = d.nodes[k]; nodes[k] = [fillS(conf && v[3] ? v[3] : v[0]), { fr: fillS(v[1].fr) }, v[2], (d.listen || []).includes(k) ? 'listen' : undefined]; });
+    Object.keys(d.nodes).forEach(k => { const v = d.nodes[k]; nodes[k] = [fillS(conf && v[3] ? v[3] : v[0]), { fr: fillS((conf && v[3] && v[4] ? v[4] : v[1]).fr) }, v[2], (d.listen || []).includes(k) ? 'listen' : undefined]; });
     Object.keys(d.opts).forEach(k => {
       opts[k] = d.opts[k].map(o => {
         const r = Object.assign({}, o);
         r.t = fillS(conf && o.tc ? o.tc : o.t); r.tr = { fr: fillS(((conf && o.trc) || o.tr || {}).fr || '') };
-        if (o.reply) r.reply = [fillS(conf && o.reply[2] ? o.reply[2] : o.reply[0]), { fr: fillS(o.reply[1].fr) }];
+        if (o.reply) r.reply = [fillS(conf && o.reply[2] ? o.reply[2] : o.reply[0]), { fr: fillS((conf && o.reply[2] && o.reply[3] ? o.reply[3] : o.reply[1]).fr) }];
         return r;
       });
       /* ordre mélangé : la bonne réponse n'est pas toujours la première ; « répéter » et « je ne comprends pas » restent en dernier */
@@ -102,7 +102,7 @@
   const town = () => A().town();
   function startCard() {
     const t = S1().start;
-    card(t.title, t.text, [[t.deb, () => begin('deb', false)], [t.test, () => begin('conf', true)], [t.free, () => { A().L().story = { off: 1 }; A().save(); A().freeStart(); }, 'btn ghost']]);
+    card(t.title, t.text, [[t.deb, () => begin('deb', false)], [t.test, () => begin('deb', true)], [t.free, () => { A().L().story = { off: 1 }; A().save(); A().freeStart(); }, 'btn ghost']]);
   }
   function begin(reg, withTest) { A().L().story = { ch: 1, step: 'prologue', reg, coins: 0, has: {}, test: withTest ? 1 : 0 }; A().save(); prologue(); }
   let fIv = 0;
