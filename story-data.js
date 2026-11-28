@@ -68,7 +68,7 @@ PV.STORY1 = {
     tomHelp: { nodes: {
       start: ["Oh no! Are you OK? I'm Tom, the baker.", { fr: 'Oh non ! Ça va ? Je suis Tom, le boulanger.' }, 'a', "Oh dear, are you all right? I'm Tom — I run the bakery over there."],
       j2: ['You have nothing? You can sleep above my bakery.', { fr: 'Tu n’as plus rien ? Tu peux dormir au-dessus de ma boulangerie.' }, 'b', "You've got nothing at all? Right — you can stay in the little room above my bakery."],
-      j3: ['But you work in the morning. OK?', { fr: 'Mais tu travailles le matin. D’accord ?' }, 'c', 'In exchange, you give me a hand in the shop. Deal?'],
+      j3: ['And you help me in the mornings. OK?', { fr: 'Et tu m’aides le matin. D’accord ?' }, 'c', 'In exchange, you give me a hand in the shop. Deal?'],
       end: ['Great! Come to the bakery.', { fr: 'Super ! Viens à la boulangerie.' }],
       huh: ['Sorry?', { fr: 'Pardon ?' }] },
       opts: {
@@ -104,7 +104,7 @@ PV.STORY1 = {
       end: ['Now go to the police!', { fr: 'Maintenant, va voir la police !' }], huh: ['Sorry?', { fr: 'Pardon ?' }] },
       opts: { a: [{ t: 'Thank you, Tom!', tc: 'Cheers, Tom!', tr: { fr: 'Merci, Tom !' }, to: 'END', flag: 'paid', reply: ['Now go to the police. And buy a toothbrush!', { fr: 'Maintenant, va voir la police. Et achète une brosse à dents !' }, 'Now go and report that theft. And get yourself a toothbrush!'] }] } },
     okafor: { nodes: {
-      start: ['Hello! Can I help you?', { fr: 'Bonjour ! Je peux vous aider ?' }, 'a', 'Afternoon! What can I get you?'],
+      start: ['Hello! Can I help you?', { fr: 'Bonjour ! Je peux vous aider ?' }, 'a', 'Hello there! What can I get you?'],
       o2: ['Here you are. Two pounds, please.', { fr: 'Voilà. Deux livres, s’il vous plaît.' }, 'b', "Here we are. That's two pounds, please."],
       end: ['Goodbye!', { fr: 'Au revoir !' }], huh: ['Sorry?', { fr: 'Pardon ?' }] },
       opts: {
@@ -114,7 +114,7 @@ PV.STORY1 = {
             { t: 'Sorry, I have no money.', tr: { fr: 'Désolé, je n’ai pas d’argent.' }, to: 'END', reply: ['No problem. Come back later!', { fr: 'Pas de souci. Revenez plus tard !' }] }]
       } },
     jones: { nodes: {
-      start: ['Hello. What happened?', { fr: 'Bonjour. Qu’est-ce qui s’est passé ?' }, 'a', 'Afternoon. Is everything all right?'],
+      start: ['Hello. What happened?', { fr: 'Bonjour. Qu’est-ce qui s’est passé ?' }, 'a', 'Hello there. Is everything all right?'],
       j2: ['What colour is it?', { fr: 'De quelle couleur est-elle ?' }, 'b', 'I see. Can you describe it? What colour is it?'],
       j3: ['Is it big or small?', { fr: 'Elle est grande ou petite ?' }, 'c'],
       j4: ["What's your name?", { fr: 'Comment tu t’appelles ?' }, 'd', 'Right. And your name, please?'],
@@ -122,7 +122,7 @@ PV.STORY1 = {
       j6: ['Thank you. Your number is two, four, seven.', { fr: 'Merci. Ton numéro de dossier est le 247.' }, 'f', "Thank you. Your crime number is two-four-seven. Don't lose it!"],
       end: ['Good luck!', { fr: 'Bonne chance !' }], huh: ['Sorry?', { fr: 'Pardon ?' }] },
       opts: {
-        a: [{ t: 'A man took my suitcase.', tc: 'Someone stole my suitcase at the bus stop.', tr: { fr: 'Un homme a pris ma valise.' }, trc: { fr: 'Quelqu’un a volé ma valise à l’arrêt de bus.' }, to: 'j2' },
+        a: [{ t: 'A man took my suitcase.', tc: 'Someone stole my suitcase by the fountain.', tr: { fr: 'Un homme a pris ma valise.' }, trc: { fr: 'Quelqu’un a volé ma valise près de la fontaine.' }, to: 'j2' },
             { t: "I'm hungry.", tr: { fr: 'J’ai faim.' }, to: 'start', reply: ['Sorry? What happened?', { fr: 'Pardon ? Qu’est-ce qui s’est passé ?' }] }],
         b: [{ t: "It's red.", tr: { fr: 'Elle est rouge.' }, to: 'j3' }, { t: "It's blue.", tr: { fr: 'Elle est bleue.' }, to: 'j2', reply: ['Blue? Are you sure?', { fr: 'Bleue ? Tu es sûr ?' }], tip: { fr: 'Ta valise est rouge : « It’s red ».' } }],
         c: [{ t: 'Big.', tc: "It's quite big.", tr: { fr: 'Grande.' }, to: 'j4' }, { t: 'Small.', tr: { fr: 'Petite.' }, to: 'j4' }],
@@ -150,7 +150,7 @@ PV.STORY1 = {
         b: [{ t: 'Can I see the photo?', tc: 'Really? Can I have a look?', tr: { fr: 'Je peux voir la photo ?' }, trc: { fr: 'C’est vrai ? Je peux regarder ?' }, to: 'END', flag: 'photo', reply: ["Here! Look, he's talking to a man in a yellow coat.", { fr: 'Tiens ! Regarde, il parle à un homme en ciré jaune.' }, "Here. See? He's chatting to some lad in a yellow raincoat."] }]
       } },
     pemberton: { nodes: {
-      start: ["Good afternoon! You're Arthur's grandchild. I'm the notary.", { fr: 'Bonjour ! Tu es le petit-enfant d’Arthur. Je suis le notaire.' }, 'a', "Good afternoon! You must be Arthur's grandchild. Pemberton, the notary. Dreadful business, your suitcase."],
+      start: ["Hello! You're Arthur's grandchild. I'm the solicitor.", { fr: 'Bonjour ! Tu es le petit-enfant d’Arthur. Je suis le notaire.' }, 'a', "How do you do? You must be Arthur's grandchild. Pemberton, the family solicitor. Dreadful business, your suitcase."],
       p2: ['Me? No! I never talk about my clients!', { fr: 'Moi ? Non ! Je ne parle jamais de mes clients !' }, 'b', 'Me? Certainly not! I never discuss my clients.'],
       p3: ['Oh… Well… Yes, I talked at the café. A young man in a yellow coat listened.', { fr: 'Oh… Eh bien… Oui, j’ai parlé au café. Un jeune homme en ciré jaune écoutait.' }, 'c', 'Ah. Well… I may have mentioned it at the café. There was a young man in a yellow raincoat, hanging on every word.'],
       end: ['Good day!', { fr: 'Bonne journée !' }], huh: ['I beg your pardon?', { fr: 'Pardon ?' }] },
