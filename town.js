@@ -662,14 +662,14 @@ const KEEP1 = { ch: scene.children.length, bl: sblobs.length, co: colliders.leng
 
 /* vélo près de la boulangerie */
 {
-  const ba = bld.bakery.ang + .19, bike = item('bicycle'); bike.position.set(Math.sin(ba) * 9.1, 0, Math.cos(ba) * 9.1); bike.rotation.y = ba + Math.PI / 2;
+  const ba = bld.bakery.ang + .19, bike = item('bicycle'); bike.position.set(Math.sin(ba) * 9.45, 0, Math.cos(ba) * 9.45); /* contre le mur : on ne se coince plus entre le vélo et le réverbère */ bike.rotation.y = ba + Math.PI / 2;
   const red = C(PAL.accent), tyre = C('#2a2a30');
   [-.55, .55].forEach(x => { mk(new THREE.TorusGeometry(.33, .05, 8, 24), tyre, x, .38, 0, bike); mk(sph(.06, 8), red, x, .38, 0, bike); });
   const bar = (x1, y1, x2, y2) => { const m = mk(cyl(.035, .035, Math.hypot(x2 - x1, y2 - y1), 8), red, (x1 + x2) / 2, (y1 + y2) / 2, 0, bike); m.rotation.z = Math.atan2(x1 - x2, y2 - y1); };
   bar(-.55, .38, -.05, .38); bar(-.05, .38, .35, .84); bar(-.55, .38, -.15, .82); bar(-.15, .82, .38, .84); bar(.55, .38, .38, .84); bar(-.05, .38, -.15, .82);
   mk(rbox(.26, .08, .14, .04, 2), C('#3a2a22'), -.17, .88, 0, bike); mk(rbox(.08, .08, .5, .04, 2), C('#3a2a22'), .38, .92, 0, bike);
   mk(rbox(.34, .2, .26, .06, 2), C('#a8763e'), .62, .8, 0, bike);
-  colliders.push({ x: bike.position.x, z: bike.position.z, r: .7 }); sblob(bike.position.x, bike.position.z, .95, .35, bike.rotation.y);
+  colliders.push({ x: bike.position.x, z: bike.position.z, r: .5 }); sblob(bike.position.x, bike.position.z, .95, .35, bike.rotation.y);
 }
 /* parasol de café : toile à côtes alternées, festons, mât */
 function parasol(t, col) {
@@ -1433,10 +1433,14 @@ let tagFor = null, tagT = 0, tagLab = ''; const _tq = new THREE.Vector3(), _tp =
 wordTag.addEventListener('pointerdown', e => e.stopPropagation());
 wordTag.addEventListener('click', e => { e.stopPropagation(); if (tagFor) H.pick(tagFor.userData.id, tagFor); });
 function hideTag() { if (tagFor) { tagFor = null; wordTag.classList.add('hidden'); } }
-function updWordTag(t) {
+const ALLTAGS = /[?&]tags\b/.test(location.search);
+let stillT = 0;
+function updWordTag(t, spd, dt) {
+  /* moins d'encombrement : l'étiquette d'un objet n'apparaît que si tu t'arrêtes tout près (?tags : toujours, comme avant) */
+  stillT = spd < .3 ? stillT + (dt || .016) : 0;
   if (t - tagT > .2) {
-    tagT = t; let best = null, bd = 1.7;
-    if (!talking) hits.forEach(o => {
+    tagT = t; let best = null, bd = ALLTAGS ? 1.7 : 1.2;
+    if (!talking && (ALLTAGS || stillT > .5)) hits.forEach(o => {
       const id = o.userData.id; if (!id || id === 'square' || id.startsWith('npc:') || !o.visible) return;
       if (!o.userData.box) { o.updateWorldMatrix(true, true); o.userData.box = new THREE.Box3().setFromObject(o); }
       const b = o.userData.box; if (b.isEmpty()) return;
@@ -1899,7 +1903,7 @@ function loop() {
   cam.rotation.set(pitch, yaw, 0, 'YXZ');
   zoomV += (zoomT - zoomV) * (1 - Math.exp(-dt * 12)); { const f = (mobile ? 70 : 62) * zoomV; if (Math.abs(cam.fov - f) > .01) { cam.fov = f; cam.updateProjectionMatrix(); } }
   }
-  if (ACCAM) updWordTag(t);
+  if (ACCAM) updWordTag(t, spd, dt);
   if (!window.PVTownReady) requestAnimationFrame(() => { window.PVTownReady = true; });
   sky.position.copy(cam.position); stars.position.copy(cam.position);
   if (!fp && !fpFailed) { try { fp = makeFP(); } catch (e) { fpFailed = true; console.warn(e); } }
