@@ -115,6 +115,13 @@ function stopListen() { if (sess) sess.stop(); }
 function listen(onInterim, onFinal, onError, onEnd, early, o) {
   o = o || {};
   if (!SR) { onError('unsupported'); if (onEnd) onEnd(); return; }
+  /* Firefox reconnaît la voix sur l'appareil : la première fois, il veut télécharger ~140 Mo. On prévient avant, une seule fois ;
+     si tu refuses, le jeu passe en réponses touchées (le micro reste possible plus tard). */
+  if (/Firefox\//.test(navigator.userAgent) && !store.get('pv_ffsr')) {
+    const ok = window.confirm(U.ffSr || 'Firefox doit télécharger une seule fois environ 140 Mo pour reconnaître ta voix sur ton appareil (rien ne part sur Internet).\n\nOK : télécharger et parler.\nAnnuler : répondre en touchant (ou jouer avec Chrome, Edge ou Safari, sans téléchargement).');
+    if (!ok) { setNoMic(true); if (onEnd) onEnd(); return; }
+    store.set('pv_ffsr', 1);
+  }
   shush();
   if (sess) sess.cancel();
   let done = false, ended = false, alts = [], acc = '', restarts = 0, retried = false, ready = false, quiet = 0, hard = 0, rdyT = 0, dog = 0, cur = null;
