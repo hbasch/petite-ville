@@ -474,7 +474,7 @@ function start() {
     const H = { palette: palette(), country: country(), label: id => L.found.includes(id) ? W[id][T] : '?',
       pick: (id, obj) => { if (tab !== 'town' || place !== 'town') return; if (id === 'npc:passerby') greetPasserby(obj); else if (id.startsWith('npc:')) openNpc(id.slice(4)); else if (window.PVStory && PVStory.obj(id, obj)) { /* l'histoire répond */ } else { showWord(id); const cid = obj && obj.userData && obj.userData.collect; if (cid) setTimeout(() => collect(id, cid), 900); setTimeout(() => questProgress('find', id), cid ? 2200 : 1100); } },
       active: () => place === 'town' && !document.hidden };
-    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); refreshMarkers(); updTime(); if (!(window.PVStory && PVStory.boot()) && !L.found.some(id => TOWN.has(id))) showIntro('town'); if (!store.get('pv_help')) setTimeout(() => helpShow(true), 1200); if (L.firstWin || L.found.length) { L.firstWin = 1; setTimeout(announceQuest, 2500); } });
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { town = window.buildTown(H); refreshMarkers(); updTime(); setTimeout(maybeReview, 9000); if (!(window.PVStory && PVStory.boot()) && !L.found.some(id => TOWN.has(id))) showIntro('town'); if (!store.get('pv_help')) setTimeout(() => helpShow(true), 1200); if (L.firstWin || L.found.length) { L.firstWin = 1; setTimeout(announceQuest, 2500); } });
   }
   started = true;
 }
@@ -657,7 +657,7 @@ function renderMap() {
 }
 
 /* ---------- dialogue ---------- */
-let lastLine = '', lastWho = '', curOpts = [], curNpc = null;
+let qLine = '', qLineTr = '', lastLine = '', lastLineTr = '', lastWho = '', curOpts = [], curNpc = null;
 const whoNow = () => curNpc || 'baker';
 let curDlg = null, dlgMode = null;
 const CV = () => ({ c: PV.CITY_NAME[country()] || 'Petite Ville', cl: PV.CITY_LOC[country()] || 'w Petite Ville' });
@@ -669,7 +669,7 @@ let maybe = new Set();
 function markMaybe(list) { maybe = new Set(list); document.querySelectorAll('#dOpts .opt').forEach((b, i) => b.classList.toggle('maybe', maybe.has(curOpts[i]))); }
 let micFails = 0;
 function render(line, tr, key) {
-  line = fill(line, CV()); lastLine = line; $('dLine').textContent = line; $('dTrTxt').textContent = fill((tr || {})[ui] || '', CV());
+  line = fill(line, CV()); lastLine = line; lastLineTr = fill((tr || {})[ui] || '', CV()); $('dLine').textContent = line; $('dTrTxt').textContent = fill((tr || {})[ui] || '', CV());
   curOpts = key ? DD().opts[key].filter(o => !o.need || (window.PVStory && PVStory.has(o.need))) : [];
   const box = $('dOpts'); box.innerHTML = '';
   curOpts.forEach(o => {
@@ -695,7 +695,7 @@ function render(line, tr, key) {
   $('dHeard').textContent = curOpts.length ? (SR ? U.speakNow : U.noMic) : '';
 }
 /* slow : « Sorry, could you say that again? » → le personnage répète plus lentement ; une question d'écoute (n[3] = 'listen') ne s'affiche pas */
-function go(id, line, queue, slow) { const n = DD().nodes[id]; const l = fill(line ? line[0] : n[0], CV()); render(l, line ? line[1] : n[1], n[2]); if (!line && n[3] === 'listen') { $('dLine').textContent = '🔊 …'; $('dTrTxt').textContent = ''; } lastWho = whoNow(); say(l, { queue, pitch: voiceP(), who: lastWho, rate: slow ? .72 : undefined, slow: !!slow }); }
+function go(id, line, queue, slow) { const n = DD().nodes[id]; if (dlgMode === 'review' && n[4]) curNpc = n[4]; const l = fill(line ? line[0] : n[0], CV()); render(l, line ? line[1] : n[1], n[2]); if (!line) { qLine = l; qLineTr = fill((n[1] || {})[ui] || '', CV()); } if (!line && n[3] === 'listen') { $('dLine').textContent = '🔊 …'; $('dTrTxt').textContent = ''; } lastWho = whoNow(); say(l, { queue, pitch: voiceP(), who: lastWho, rate: slow ? .72 : undefined, slow: !!slow }); }
 function choose(o, spoken) {
   if (dlgMode === 'story' && window.PVStory) { const alt = PVStory.choose(o); if (alt) o = Object.assign({}, o, alt, { tip: null }); }
   /* une réponse touchée pendant que le micro écoute : on arrête l'écoute (sinon elle répondrait à la question suivante) */
@@ -705,6 +705,7 @@ function choose(o, spoken) {
   if (o.task) tasks[o.task] = true;
   if (o.task === 'order') setTimeout(() => questProgress('bakery'), 2600);
   if (!o.tip && !o.again && !o.dk && L) { L.recall = L.recall || {}; L.recall[o.t] = (L.recall[o.t] || 0) + 1; }
+  if (L && dlgMode !== 'review' && dlgMode !== 'first' && !o.again && !o.dk && qLine && !/\{\w+\}/.test(o.t + qLine)) revLog(o);
   micFails = 0;
   if (o.tip) { mistakes++; $('dTip').textContent = o.tip[ui]; $('dTip').classList.remove('hidden'); } else $('dTip').classList.add('hidden');
   if (spoken) { spokenSession++; P.spoken++; if (!o.tip) { addXP(5); praise(true); } setTimeout(() => questProgress('say'), 1500); }
@@ -720,7 +721,11 @@ function choose(o, spoken) {
 }
 function openDlg() { if (window.PVStory && PVStory.npc('baker')) return; curNpc = null; curDlg = null; dlgMode = null; $('dWho').textContent = S.baker; tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
 $('dReplay').onclick = () => say(lastLine, { pitch: voiceP(), who: lastWho });
-$('dTr').onclick = () => $('dlg').classList.toggle('tr');
+let trManual = false;
+$('dTr').onclick = () => { trManual = true; $('dlg').classList.toggle('tr'); };
+/* débutant (A0/A1, ou version débutant de l'histoire) : traduction visible d'office ; A2 et plus : cachée, à la demande */
+function beginner() { const s = L && L.story; if (s && s.cefr) return s.cefr === 'A0' || s.cefr === 'A1'; if (s && s.reg) return s.reg !== 'conf'; return true; }
+function trDefault() { if (!trManual) $('dlg').classList.toggle('tr', beginner()); }
 $('dMic').onclick = () => { if (sess) { stopListen(); return; } micReady(dMicGo); };
 $('dNoMic').onclick = () => { setNoMic(true); toast(U.noMicOn); };
 $('dUseMic').onclick = () => { setNoMic(false); toast(U.noMicOff); };
@@ -747,7 +752,7 @@ function dMicGo() {
 function openNpc(id) {
   if (window.PVStory && PVStory.npc(id)) return;
   const n = PV.NPCS[id]; if (!n) return;
-  curNpc = id; curDlg = null; dlgMode = 'npc';
+  trDefault(); curNpc = id; curDlg = null; dlgMode = 'npc';
   const q = questToday();
   if (q && q.giver === id && !L.quest.told && !L.quest.done) { curDlg = questDlg(q); dlgMode = 'quest'; }
   else if ((L.friend[id] || 0) >= 1 && L.talked[id] !== today()) { const vs = [PV.FOLLOW[T]].concat((PV.FOLLOW2 || {})[T] || []); curDlg = vs[(dayNum() + Object.keys(PV.NPCS).indexOf(id)) % vs.length]; dlgMode = 'follow'; }
@@ -756,10 +761,55 @@ function openNpc(id) {
   if (town && town.talkTo) town.talkTo(id);
   show('dlg'); go('start');
 }
+/* ---------- révision du jour « Hier à Chatterville… » ----------
+   La recherche (docs/recherche-apprentissage.md) : revoir une phrase un autre jour aide beaucoup à la retenir, et retrouver la réponse
+   apprend plus que la reconnaître. On garde chaque question d'un personnage avec la bonne réponse ; le lendemain, on rejoue 3 à 4 de ces
+   questions (les plus ratées et les plus anciennes d'abord). Les autres choix sont d'autres bonnes répliques : toujours de l'anglais correct. */
+function revLog(o) {
+  L.rev = L.rev || [];
+  let r = L.rev.find(x => x.q === qLine);
+  if (!r) { r = { q: qLine, qt: qLineTr, w: whoNow(), miss: 0, seen: 0, d: today() }; L.rev.push(r); if (L.rev.length > 60) L.rev.shift(); }
+  if (o.tip) { r.miss++; return; }
+  if (r.a !== o.t) { r.a = o.t; r.at = (o.tr || {})[ui] || ''; }
+  r.d = today();
+}
+function maybeReview() {
+  if (!L || !L.rev || L.revDay === today() || place !== 'town' || tab !== 'town') return;
+  const busy = document.body.classList.contains('dlg-open') || !$('stCard').classList.contains('hidden') || !$('intro').classList.contains('hidden');
+  if (busy) { setTimeout(maybeReview, 8000); return; }
+  const pool = L.rev.filter(r => r.a && r.d !== today());
+  if (pool.length < 3) return;
+  const items = pool.slice().sort((a, b) => (b.miss - a.miss) || (a.seen - b.seen) || (a.d < b.d ? -1 : 1)).slice(0, 4);
+  appCard(U.revTitle || 'Hier à Chatterville…', fill(U.revText || '{n} répliques à retrouver, environ une minute. Revoir les phrases un autre jour aide vraiment à les retenir.', { n: items.length }),
+    [[U.revGo || 'C’est parti', () => startReview(items, pool)], [U.later || 'Plus tard', () => { L.revDay = today(); save(); }, 'btn ghost']]);
+}
+function appCard(title, text, buttons) {
+  const c = $('stCard'); c.innerHTML = '';
+  const box = el('div', 'stBox'); box.append(el('h2', null, title), el('p', null, text));
+  buttons.forEach(([label, fn, cls]) => { const b = el('button', cls || 'btn', label); b.type = 'button'; b.onclick = () => { c.classList.add('hidden'); fn(); }; box.appendChild(b); });
+  c.appendChild(box); c.classList.remove('hidden');
+}
+function startReview(items, pool) {
+  const nodes = {}, opts = {};
+  items.forEach((r, i) => {
+    const id = i ? 'q' + i : 'start', next = i < items.length - 1 ? 'q' + (i + 1) : 'END';
+    nodes[id] = [r.q, { [ui]: r.qt }, 'k' + i, undefined, r.w && r.w !== 'baker' ? r.w : null];
+    const others = pool.filter(x => x !== r && x.a !== r.a && !r.a.includes(x.a) && !x.a.includes(r.a)).sort(() => Math.random() - .5).slice(0, 2);
+    const list = [{ t: r.a, tr: { [ui]: r.at }, to: next }].concat(others.map(x => ({ t: x.a, tr: { [ui]: x.at }, to: id, reply: ['Sorry? ' + r.q, { [ui]: r.qt }], tip: { [ui]: U.revTry || 'Réécoute la question et réessaie.' } })));
+    opts['k' + i] = list.sort(() => Math.random() - .5);
+    r.seen = (r.seen || 0) + 1;
+  });
+  nodes.end = ['Well done! See you in Chatterville.', { [ui]: 'Bravo ! À tout de suite à Chatterville.' }];
+  nodes.huh = ['Sorry?', { [ui]: 'Pardon ?' }];
+  curNpc = 'review'; curDlg = { nodes, opts }; dlgMode = 'review'; trDefault();
+  $('dWho').textContent = U.revTitle || 'Hier à Chatterville…'; $('dMe').textContent = ''; $('dTip').classList.add('hidden');
+  show('dlg'); go('start');
+}
 function finishNpc(id) {
   const mode = dlgMode; curNpc = null; curDlg = null; dlgMode = null;
   document.body.classList.remove('storyDlg');
   if (mode === 'story') { if (window.PVStory) PVStory.dlgEnd(id); return; }
+  if (mode === 'review') { L.revDay = today(); addXP(10, U.revDone || 'Révision du jour faite'); save(); return; }
   if (mode === 'quest') { L.quest.told = true; refreshMarkers(); toast(U.questTitle + ' · ' + questHint()); save(); return; }
   if (mode === 'first') { if (town && town.marker) town.marker('rosa', 'heart', 4); setTimeout(announceQuest, 3500); return; }
   const first = !L.met[id];
@@ -1096,7 +1146,7 @@ boot().catch(err => { console.error(err); renderOnb(); $('onb').classList.remove
 /* accès pour l'histoire (story.js) */
 window.PVA = {
   L: () => L, P: () => P, save: () => save(), town: () => town,
-  openStory(who, label, dlg, pitch) { curNpc = who; curDlg = dlg; dlgMode = 'story'; storyPitch = pitch || 1; $('dWho').textContent = label; $('dMe').textContent = ''; $('dTip').classList.add('hidden'); document.body.classList.add('storyDlg'); if (place === 'town' && town && town.talkTo && PV.NPCS[who]) town.talkTo(who); show('dlg'); go('start'); },
+  openStory(who, label, dlg, pitch) { trDefault(); curNpc = who; curDlg = dlg; dlgMode = 'story'; storyPitch = pitch || 1; $('dWho').textContent = label; $('dMe').textContent = ''; $('dTip').classList.add('hidden'); document.body.classList.add('storyDlg'); if (place === 'town' && town && town.talkTo && PV.NPCS[who]) town.talkTo(who); show('dlg'); go('start'); },
   closeDlg() { const who = curNpc; show(null); finishNpc(who); },
   freeStart() { if (!L.found.some(id => TOWN.has(id))) showIntro('town'); },
   reward(n) { addXP(n); },
@@ -1112,5 +1162,5 @@ window.PVA = {
   }
 };
 /* tests automatiques seulement (?test) */
-if (/[?&]test\b/.test(location.search)) window.PVT = { openNpc, opts: () => curOpts, markMaybe, enterBakery, exitBakery, story: () => L && L.story, dlgOpen: () => !$('dlg').classList.contains('hidden') };
+if (/[?&]test\b/.test(location.search)) window.PVT = { review: rv => { L.rev = rv; L.revDay = null; maybeReview(); }, trOn: () => $('dlg').classList.contains('tr'), openNpc, opts: () => curOpts, markMaybe, enterBakery, exitBakery, story: () => L && L.story, dlgOpen: () => !$('dlg').classList.contains('hidden') };
 }
