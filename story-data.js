@@ -32,6 +32,7 @@ PV.STORY1 = {
   },
   endCard: { title: 'Chapitre 1 terminé !', text: "Tu n'as plus rien, mais tu as un toit, un travail, un premier ami, et une piste : un ciré jaune. La suite arrive bientôt : « Les garants ».", ok: 'Continuer à explorer' },
   skip: 'Passer le test',
+  level: { title: 'Ton niveau estimé : {c}', A0: 'Grand débutant : l’histoire commence en version débutant, avec l’aide en français.', A1: 'Tu connais les bases : l’histoire commence en version débutant.', A2: 'Tu te débrouilles : l’histoire passe en version confirmée.', B1: 'Tu parles déjà bien : version confirmée (B1 ou plus). Tu pourras couper l’aide en français.', note: 'Ton niveau se corrigera tout seul en jouant.' },
   who: { thief: 'Un jeune homme', tom: 'Tom · le boulanger', jack: 'Jack · un petit garçon', patel: 'Mrs Patel · une cliente', okafor: 'Mr Okafor · le pharmacien', jones: 'Agent Jones · la police', operator: "L'opératrice", maya: 'Maya · l’étudiante', pemberton: 'Mr Pemberton · le notaire' },
   pitch: { thief: 1.0, tom: .9, jack: 1.35, patel: 1.1, okafor: .85, jones: .8, operator: 1.15, maya: 1.15, pemberton: .82 },
   /* allure des clients de la boulangerie */
@@ -48,22 +49,25 @@ PV.STORY1 = {
       opts: { a: [{ t: "Sorry, I don't know.", tc: "Sorry, I'm not sure.", tr: { fr: 'Désolé, je ne sais pas.' }, to: 'END', reply: ['Never mind. Thanks!', { fr: 'Tant pis. Merci !' }, 'No worries. Cheers!'] },
                   { t: "Um… it's twelve o'clock?", tr: { fr: 'Euh… il est midi ?' }, to: 'END', reply: ['Thanks!', { fr: 'Merci !' }, 'Cheers!'] }] } },
     /* le petit test : Tom te trouve sur la place. On s'arrête après deux réponses ratées. */
-    test: { nodes: {
-      start: ["Hello! I'm Tom. What's your name?", { fr: 'Bonjour ! Je suis Tom. Comment tu t’appelles ?' }, 'q1'],
-      q2: ['Nice to meet you, {n}. Where are you from?', { fr: 'Enchanté, {n}. Tu viens d’où ?' }, 'q2'],
-      q3: ['I saw a man running. What happened?', { fr: 'J’ai vu un homme courir. Qu’est-ce qui s’est passé ?' }, 'q3'],
-      q4: ["That's terrible! Why are you in Chatterville?", { fr: 'C’est terrible ! Pourquoi tu es à Chatterville ?' }, 'q4'],
-      q5: ['And what are you going to do now?', { fr: 'Et qu’est-ce que tu vas faire maintenant ?' }, 'q5'],
-      q6: ['Do you think the police will help?', { fr: 'Tu crois que la police va t’aider ?' }, 'q6'],
+    /* le test de niveau : Tom te trouve sur la place. Deux questions par niveau (A1, A2, B1) ; un niveau n'est validé que si les deux réponses sont justes.
+       Toutes les réponses sont en anglais correct : les mauvaises diffèrent par le sens, jamais par une faute (une phrase fausse peut être retenue comme vraie).
+       Pas de traduction des réponses pendant le test. q5 est une question d'écoute : la phrase de Tom ne s'affiche pas. */
+    test: { listen: ['q5'], nodes: {
+      start: ["Hello! I'm Tom. What's your name?", { fr: '' }, 'q1'],
+      q2: ['Nice to meet you, {n}. Where are you from?', { fr: '' }, 'q2'],
+      q3: ['I saw a man running. What happened?', { fr: '' }, 'q3'],
+      q4: ["That's terrible! Why are you in Chatterville?", { fr: '' }, 'q4'],
+      q5: ['And what are you going to do now?', { fr: '' }, 'q5'],
+      q6: ['Do you think the police will help?', { fr: '' }, 'q6'],
       end: ['Right. Come with me.', { fr: 'Bon. Viens avec moi.' }],
       huh: ['Sorry?', { fr: 'Pardon ?' }] },
       opts: {
-        q1: [{ t: 'My name is {n}.', tr: { fr: 'Je m’appelle {n}.' }, to: 'q2', pl: 1 }, { t: "I'm fine, thanks.", tr: { fr: 'Ça va, merci.' }, to: 'q2', pl: 0 }, { t: 'Yes, please.', tr: { fr: 'Oui, s’il te plaît.' }, to: 'q2', pl: 0 }],
-        q2: [{ t: "I'm from France.", tr: { fr: 'Je viens de France.' }, to: 'q3', pl: 1 }, { t: "I'm France from.", tr: { fr: '(phrase incorrecte)' }, to: 'q3', pl: 0 }, { t: "It's ten o'clock.", tr: { fr: 'Il est dix heures.' }, to: 'q3', pl: 0 }],
-        q3: [{ t: 'He took my suitcase!', tr: { fr: 'Il a pris ma valise !' }, to: 'q4', pl: 1 }, { t: 'He takes my suitcase tomorrow.', tr: { fr: '(temps incorrect)' }, to: 'q4', pl: 0 }, { t: 'I took his suitcase.', tr: { fr: 'J’ai pris sa valise.' }, to: 'q4', pl: 0 }],
-        q4: [{ t: 'My grandfather lived here. He left me his house.', tr: { fr: 'Mon grand-père vivait ici. Il m’a laissé sa maison.' }, to: 'q5', pl: 1 }, { t: 'My grandfather live here. He leave me house.', tr: { fr: '(phrase incorrecte)' }, to: 'q5', pl: 0 }, { t: 'Because the bread is cheap.', tr: { fr: 'Parce que le pain n’est pas cher.' }, to: 'q5', pl: 0 }],
-        q5: [{ t: "I'm going to find that thief.", tr: { fr: 'Je vais retrouver ce voleur.' }, to: 'q6', pl: 1 }, { t: 'I went to find that thief yesterday.', tr: { fr: '(temps incorrect)' }, to: 'q6', pl: 0 }, { t: "I'm going to buy a thief.", tr: { fr: 'Je vais acheter un voleur.' }, to: 'q6', pl: 0 }],
-        q6: [{ t: "I hope so, but I'd rather look for him myself.", tr: { fr: 'J’espère, mais je préfère le chercher moi-même.' }, to: 'END', pl: 1 }, { t: 'I hope, but I rather look him myself.', tr: { fr: '(phrase incorrecte)' }, to: 'END', pl: 0 }, { t: 'The police is a good bread.', tr: { fr: 'La police est un bon pain.' }, to: 'END', pl: 0 }]
+        q1: [{ t: 'My name is {n}.', tr: { fr: '' }, to: 'q2', pl: 1, lv: 1 }, { t: "I'm fine, thanks.", tr: { fr: '' }, to: 'q2', pl: 0, lv: 1 }, { t: "I'm from France.", tr: { fr: '' }, to: 'q2', pl: 0, lv: 1 }, { t: "Sorry, I don't understand.", tr: { fr: 'Désolé, je ne comprends pas.' }, to: 'q2', pl: 0, dk: 1, lv: 1 }],
+        q2: [{ t: "I'm from France.", tr: { fr: '' }, to: 'q3', pl: 1, lv: 1 }, { t: "I'm twenty.", tr: { fr: '' }, to: 'q3', pl: 0, lv: 1 }, { t: "I'm a student.", tr: { fr: '' }, to: 'q3', pl: 0, lv: 1 }, { t: "Sorry, I don't understand.", tr: { fr: 'Désolé, je ne comprends pas.' }, to: 'q3', pl: 0, dk: 1, lv: 1 }],
+        q3: [{ t: 'He took my suitcase!', tr: { fr: '' }, to: 'q4', pl: 1, lv: 2 }, { t: 'He is bringing my suitcase.', tr: { fr: '' }, to: 'q4', pl: 0, lv: 2 }, { t: 'I took his suitcase.', tr: { fr: '' }, to: 'q4', pl: 0, lv: 2 }, { t: "Sorry, I don't understand.", tr: { fr: 'Désolé, je ne comprends pas.' }, to: 'q4', pl: 0, dk: 1, lv: 2 }],
+        q4: [{ t: 'My grandfather lived here. He left me his house.', tr: { fr: '' }, to: 'q5', pl: 1, lv: 2 }, { t: 'My grandfather lives here. I visit him every summer.', tr: { fr: '' }, to: 'q5', pl: 0, lv: 2 }, { t: "I'm on holiday. I love English bread.", tr: { fr: '' }, to: 'q5', pl: 0, lv: 2 }, { t: "Sorry, I don't understand.", tr: { fr: 'Désolé, je ne comprends pas.' }, to: 'q5', pl: 0, dk: 1, lv: 2 }],
+        q5: [{ t: "I'm going to find that thief.", tr: { fr: '' }, to: 'q6', pl: 1, lv: 3 }, { t: 'I found that thief yesterday.', tr: { fr: '' }, to: 'q6', pl: 0, lv: 3 }, { t: "I've already found that thief.", tr: { fr: '' }, to: 'q6', pl: 0, lv: 3 }, { t: "Sorry, I don't understand.", tr: { fr: 'Désolé, je ne comprends pas.' }, to: 'q6', pl: 0, dk: 1, lv: 3 }],
+        q6: [{ t: "I hope so, but I'd rather look for him myself.", tr: { fr: '' }, to: 'END', pl: 1, lv: 3 }, { t: 'Yes, they helped me yesterday.', tr: { fr: '' }, to: 'END', pl: 0, lv: 3 }, { t: "No, I'd rather they didn't look for him.", tr: { fr: '' }, to: 'END', pl: 0, lv: 3 }, { t: "Sorry, I don't understand.", tr: { fr: 'Désolé, je ne comprends pas.' }, to: 'END', pl: 0, dk: 1, lv: 3 }]
       } },
     tomHelp: { nodes: {
       start: ["Oh no! Are you OK? I'm Tom, the baker.", { fr: 'Oh non ! Ça va ? Je suis Tom, le boulanger.' }, 'a', "Oh dear, are you all right? I'm Tom — I run the bakery over there."],
@@ -72,7 +76,8 @@ PV.STORY1 = {
       end: ['Great! Come to the bakery.', { fr: 'Super ! Viens à la boulangerie.' }],
       huh: ['Sorry?', { fr: 'Pardon ?' }] },
       opts: {
-        a: [{ t: 'No! A man took my suitcase!', tc: 'Not really. Someone just stole my suitcase!', tr: { fr: 'Non ! Un homme a pris ma valise !' }, trc: { fr: 'Pas vraiment. Quelqu’un vient de voler ma valise !' }, to: 'j2' }],
+        a: [{ t: "Sorry, could you say that again?", tr: { fr: 'Pardon, vous pouvez répéter ?' }, to: 'start', again: 1 },
+            { t: 'No! A man took my suitcase!', tc: 'Not really. Someone just stole my suitcase!', tr: { fr: 'Non ! Un homme a pris ma valise !' }, trc: { fr: 'Pas vraiment. Quelqu’un vient de voler ma valise !' }, to: 'j2' }],
         b: [{ t: 'Really? Thank you!', tc: "Really? That's so kind of you!", tr: { fr: 'C’est vrai ? Merci !' }, trc: { fr: 'C’est vrai ? C’est très gentil !' }, to: 'j3' }],
         c: [{ t: 'OK! Thank you, Tom.', tc: 'Deal! When do I start?', tr: { fr: 'D’accord ! Merci, Tom.' }, trc: { fr: 'Marché conclu ! Je commence quand ?' }, to: 'END', reply: ['Great! Come to the bakery.', { fr: 'Super ! Viens à la boulangerie.' }, 'Right now! Come on, the bakery is just there.'] }]
       } },
@@ -94,7 +99,8 @@ PV.STORY1 = {
       p2: ['Lovely. How much is that?', { fr: 'Parfait. Ça fait combien ?' }, 'b'],
       end: ['Thank you, dear!', { fr: 'Merci, mon petit !' }], huh: ['Sorry, dear?', { fr: 'Pardon ?' }] },
       opts: {
-        a: [{ t: 'Two seeded loaves. Here you are.', tr: { fr: 'Deux pains aux graines. Voilà.' }, to: 'p2' },
+        a: [{ t: "Sorry, could you say that again?", tr: { fr: 'Pardon, vous pouvez répéter ?' }, to: 'start', again: 1 },
+            { t: 'Two seeded loaves. Here you are.', tr: { fr: 'Deux pains aux graines. Voilà.' }, to: 'p2' },
             { t: 'Two white loaves. Here you are.', tr: { fr: 'Deux pains blancs. Voilà.' }, to: 'start', reply: ['No, no! Not white bread!', { fr: 'Non, non ! Pas de pain blanc !' }], tip: { fr: 'Elle a dit « Not white bread » : pas de pain blanc.' } }],
         b: [{ t: 'Five pounds sixty, please.', tc: "That's five pounds sixty, please.", tr: { fr: 'Cinq livres soixante, s’il vous plaît.' }, to: 'END', reply: ['Here you are. Thank you, dear!', { fr: 'Tenez. Merci, mon petit !' }] },
             { t: 'Two pounds eighty, please.', tr: { fr: 'Deux livres quatre-vingts, s’il vous plaît.' }, to: 'p2', reply: ['For two loaves?', { fr: 'Pour deux pains ?' }], tip: { fr: 'Deux pains : 2 × 2,80 = 5,60 livres.' } }]
@@ -105,11 +111,13 @@ PV.STORY1 = {
       opts: { a: [{ t: 'Thank you, Tom!', tc: 'Cheers, Tom!', tr: { fr: 'Merci, Tom !' }, to: 'END', flag: 'paid', reply: ['Now go to the police. And buy a toothbrush!', { fr: 'Maintenant, va voir la police. Et achète une brosse à dents !' }, 'Now go and report that theft. And get yourself a toothbrush!'] }] } },
     okafor: { nodes: {
       start: ['Hello! Can I help you?', { fr: 'Bonjour ! Je peux vous aider ?' }, 'a', 'Hello there! What can I get you?'],
-      o2: ['Here you are. Two pounds, please.', { fr: 'Voilà. Deux livres, s’il vous plaît.' }, 'b', "Here we are. That's two pounds, please."],
+      o1: ['Of course. Here you are.', { fr: 'Bien sûr. Voilà.' }, 'p', 'Of course. Here we are.'],
+      o2: ['Two pounds, please.', { fr: 'Deux livres, s’il vous plaît.' }, 'b', "That's two pounds, please."],
       end: ['Goodbye!', { fr: 'Au revoir !' }], huh: ['Sorry?', { fr: 'Pardon ?' }] },
       opts: {
-        a: [{ t: 'A toothbrush, please.', tc: 'Have you got a toothbrush, please?', tr: { fr: 'Une brosse à dents, s’il vous plaît.' }, trc: { fr: 'Vous avez une brosse à dents, s’il vous plaît ?' }, to: 'o2' },
+        a: [{ t: 'Excuse me. A toothbrush, please.', tc: 'Excuse me, have you got a toothbrush, please?', tr: { fr: 'Excusez-moi. Une brosse à dents, s’il vous plaît.' }, trc: { fr: 'Excusez-moi, vous avez une brosse à dents, s’il vous plaît ?' }, to: 'o1' },
             { t: 'A croissant, please.', tr: { fr: 'Un croissant, s’il vous plaît.' }, to: 'start', reply: ['Ha ha! This is a pharmacy!', { fr: 'Ha ha ! Ici, c’est une pharmacie !' }], tip: { fr: 'Une brosse à dents se dit « a toothbrush ».' } }],
+        p: [{ t: 'How much is it?', tc: 'How much is that?', tr: { fr: 'C’est combien ?' }, to: 'o2' }, { t: 'How old is it?', tr: { fr: 'Elle a quel âge ?' }, to: 'o1', reply: ['Ha ha! It’s new! Do you mean: how much is it?', { fr: 'Ha ha ! Elle est neuve ! Tu veux dire : c’est combien ?' }], tip: { fr: 'Pour le prix : « How much is it? »' } }],
         b: [{ t: 'Here you are.', tr: { fr: 'Voilà.' }, need: 'coins2', flag: 'brush', to: 'END', reply: ['Thank you! Goodbye!', { fr: 'Merci ! Au revoir !' }] },
             { t: 'Sorry, I have no money.', tr: { fr: 'Désolé, je n’ai pas d’argent.' }, to: 'END', reply: ['No problem. Come back later!', { fr: 'Pas de souci. Revenez plus tard !' }] }]
       } },
@@ -122,7 +130,7 @@ PV.STORY1 = {
       j6: ['Thank you. Your number is two, four, seven.', { fr: 'Merci. Ton numéro de dossier est le 247.' }, 'f', "Thank you. Your crime number is two-four-seven. Don't lose it!"],
       end: ['Good luck!', { fr: 'Bonne chance !' }], huh: ['Sorry?', { fr: 'Pardon ?' }] },
       opts: {
-        a: [{ t: 'A man took my suitcase.', tc: 'Someone stole my suitcase by the fountain.', tr: { fr: 'Un homme a pris ma valise.' }, trc: { fr: 'Quelqu’un a volé ma valise près de la fontaine.' }, to: 'j2' },
+        a: [{ t: 'Excuse me. A man took my suitcase.', tc: 'Excuse me. Someone stole my suitcase by the fountain.', tr: { fr: 'Excusez-moi. Un homme a pris ma valise.' }, trc: { fr: 'Excusez-moi. Quelqu’un a volé ma valise près de la fontaine.' }, to: 'j2' },
             { t: "I'm hungry.", tr: { fr: 'J’ai faim.' }, to: 'start', reply: ['Sorry? What happened?', { fr: 'Pardon ? Qu’est-ce qui s’est passé ?' }] }],
         b: [{ t: "It's red.", tr: { fr: 'Elle est rouge.' }, to: 'j3' }, { t: "It's blue.", tr: { fr: 'Elle est bleue.' }, to: 'j2', reply: ['Blue? Are you sure?', { fr: 'Bleue ? Tu es sûr ?' }], tip: { fr: 'Ta valise est rouge : « It’s red ».' } }],
         c: [{ t: 'Big.', tc: "It's quite big.", tr: { fr: 'Grande.' }, to: 'j4' }, { t: 'Small.', tr: { fr: 'Petite.' }, to: 'j4' }],
@@ -132,12 +140,13 @@ PV.STORY1 = {
             { t: 'Two, seven, four?', tr: { fr: 'Deux, sept, quatre ?' }, to: 'j6', reply: ['No: two, four, seven.', { fr: 'Non : deux, quatre, sept.' }] }]
       } },
     operator: { nodes: {
-      start: ['Operator. Can I help you?', { fr: 'Standard. Je peux vous aider ?' }, 'a', 'Operator speaking. How can I help?'],
+      start: ['Hello. Operator. Do you want to call France?', { fr: 'Bonjour. Standard. Vous voulez appeler la France ?' }, 'a', 'Operator speaking. How can I help?'],
       o2: ['Your name, please?', { fr: 'Votre nom, s’il vous plaît ?' }, 'b'],
-      o3: ['Thank you. Hold the line, please.', { fr: 'Merci. Ne quittez pas.' }, 'c'],
+      o3: ['Thank you. Please wait.', { fr: 'Merci. Attendez, s’il vous plaît.' }, 'c', 'Thank you. Hold the line, please.'],
       end: ['Connecting you now.', { fr: 'Je vous mets en relation.' }], huh: ['Sorry, caller?', { fr: 'Pardon ?' }] },
       opts: {
-        a: [{ t: 'I want to call France, please.', tc: "I'd like to make a reverse-charge call to France, please.", tr: { fr: 'Je veux appeler la France, s’il vous plaît.' }, trc: { fr: 'Je voudrais appeler la France en PCV, s’il vous plaît.' }, to: 'o2' }],
+        a: [{ t: "Sorry, could you say that again?", tr: { fr: 'Pardon, vous pouvez répéter ?' }, to: 'start', again: 1 },
+            { t: 'Yes, please. France.', tc: "I'd like to make a reverse-charge call to France, please.", tr: { fr: 'Oui, s’il vous plaît. La France.' }, trc: { fr: 'Je voudrais appeler la France en PCV, s’il vous plaît.' }, to: 'o2' }],
         b: [{ t: 'My name is {n}.', tr: { fr: 'Je m’appelle {n}.' }, to: 'o3' }],
         c: [{ t: 'OK. Thank you.', tr: { fr: 'D’accord. Merci.' }, to: 'END', flag: 'call', reply: ['Connecting you now.', { fr: 'Je vous mets en relation.' }] }]
       } },
@@ -155,7 +164,8 @@ PV.STORY1 = {
       p3: ['Oh… Well… Yes, I talked at the café. A young man in a yellow coat listened.', { fr: 'Oh… Eh bien… Oui, j’ai parlé au café. Un jeune homme en ciré jaune écoutait.' }, 'c', 'Ah. Well… I may have mentioned it at the café. There was a young man in a yellow raincoat, hanging on every word.'],
       end: ['Good day!', { fr: 'Bonne journée !' }], huh: ['I beg your pardon?', { fr: 'Pardon ?' }] },
       opts: {
-        a: [{ t: 'Did you tell people I was coming?', tc: 'Did you tell anyone I was arriving today?', tr: { fr: 'Tu as dit aux gens que j’arrivais ?' }, trc: { fr: 'Vous avez dit à quelqu’un que j’arrivais aujourd’hui ?' }, to: 'p2' }],
+        a: [{ t: "Sorry, could you say that again?", tr: { fr: 'Pardon, vous pouvez répéter ?' }, to: 'start', again: 1 },
+            { t: 'Did you tell people I was coming?', tc: 'Did you tell anyone I was arriving today?', tr: { fr: 'Tu as dit aux gens que j’arrivais ?' }, trc: { fr: 'Vous avez dit à quelqu’un que j’arrivais aujourd’hui ?' }, to: 'p2' }],
         b: [{ t: 'Look at this photo.', tc: 'Then how do you explain this photo?', tr: { fr: '📷 Regarde cette photo.' }, trc: { fr: '📷 Alors comment expliquez-vous cette photo ?' }, need: 'photo', to: 'p3' },
             { t: 'OK, sorry.', tr: { fr: 'D’accord, pardon.' }, to: 'END', flag: 'lied', reply: ['Good day!', { fr: 'Bonne journée !' }] }],
         c: [{ t: "A yellow coat? That's the thief!", tc: "A yellow raincoat? That's the man who stole my suitcase!", tr: { fr: 'Un ciré jaune ? C’est le voleur !' }, trc: { fr: 'Un ciré jaune ? C’est l’homme qui a volé ma valise !' }, to: 'END', flag: 'truth', reply: ["Oh dear! I'm so sorry!", { fr: 'Oh là là ! Je suis vraiment désolé !' }, "Good heavens… I'm terribly sorry."] }]

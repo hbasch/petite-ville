@@ -55,7 +55,7 @@ function runVox(it) {
   if (!f) { viaTts(); return; }
   vox.onended = () => { if (g === voxGen && it.o.onend) it.o.onend(); next(); };
   vox.onerror = () => { if (g === voxGen && !done) viaTts(); };
-  vox.src = 'audio/' + T + '/' + f; vox.playbackRate = 1;
+  vox.src = 'audio/' + T + '/' + f; vox.playbackRate = it.o.slow ? .8 : 1;
   const p = vox.play(); if (p) p.catch(() => { if (g === voxGen && !done) viaTts(); });
 }
 function say(t, o) {
@@ -676,7 +676,8 @@ function render(line, tr, key) {
   $('dMic').disabled = !SR || !curOpts.length;
   $('dHeard').textContent = curOpts.length ? (SR ? U.speakNow : U.noMic) : '';
 }
-function go(id, line, queue) { const n = DD().nodes[id]; const l = fill(line ? line[0] : n[0], CV()); render(l, line ? line[1] : n[1], n[2]); lastWho = whoNow(); say(l, { queue, pitch: voiceP(), who: lastWho }); }
+/* slow : « Sorry, could you say that again? » → le personnage répète plus lentement ; une question d'écoute (n[3] = 'listen') ne s'affiche pas */
+function go(id, line, queue, slow) { const n = DD().nodes[id]; const l = fill(line ? line[0] : n[0], CV()); render(l, line ? line[1] : n[1], n[2]); if (!line && n[3] === 'listen') { $('dLine').textContent = '🔊 …'; $('dTrTxt').textContent = ''; } lastWho = whoNow(); say(l, { queue, pitch: voiceP(), who: lastWho, rate: slow ? .72 : undefined, slow: !!slow }); }
 function choose(o, spoken) {
   if (dlgMode === 'story' && window.PVStory) { const alt = PVStory.choose(o); if (alt) o = Object.assign({}, o, alt, { tip: null }); }
   /* une réponse touchée pendant que le micro écoute : on arrête l'écoute (sinon elle répondrait à la question suivante) */
@@ -695,7 +696,7 @@ function choose(o, spoken) {
     if (curNpc) { const who = curNpc; setTimeout(() => { if (curNpc === who) { show(null); finishNpc(who); } }, 3200); return; }
     setTimeout(() => { if (tasks.order && tasks.pay) win(); else show(null); }, 2400); return;
   }
-  go(o.to, (o.self && o.self[curNpc]) || o.reply, true);
+  go(o.to, (o.self && o.self[curNpc]) || o.reply, true, o.again);
 }
 function openDlg() { if (window.PVStory && PVStory.npc('baker')) return; curNpc = null; curDlg = null; dlgMode = null; $('dWho').textContent = S.baker; tasks.talk = true; discover('baker'); updMission(); $('dMe').textContent = ''; $('dTip').classList.add('hidden'); show('dlg'); go('start'); }
 $('dReplay').onclick = () => say(lastLine, { pitch: voiceP(), who: lastWho });

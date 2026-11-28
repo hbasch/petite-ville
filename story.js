@@ -52,7 +52,7 @@
     const sp = letters.join(' - '), w = letters.slice(); if (w.length > 1) { const t = w[0]; w[0] = w[1]; w[1] = t; } else w.push('E');
     const fillS = x => typeof x === 'string' ? x.replace(/\{n\}/g, n).replace(/\{sp\}/g, sp).replace(/\{sw\}/g, w.join(' - ')) : x;
     const nodes = {}, opts = {};
-    Object.keys(d.nodes).forEach(k => { const v = d.nodes[k]; nodes[k] = [fillS(conf && v[3] ? v[3] : v[0]), { fr: fillS(v[1].fr) }, v[2]]; });
+    Object.keys(d.nodes).forEach(k => { const v = d.nodes[k]; nodes[k] = [fillS(conf && v[3] ? v[3] : v[0]), { fr: fillS(v[1].fr) }, v[2], (d.listen || []).includes(k) ? 'listen' : undefined]; });
     Object.keys(d.opts).forEach(k => {
       opts[k] = d.opts[k].map(o => {
         const r = Object.assign({}, o);
@@ -60,21 +60,31 @@
         if (o.reply) r.reply = [fillS(conf && o.reply[2] ? o.reply[2] : o.reply[0]), { fr: fillS(o.reply[1].fr) }];
         return r;
       });
+      /* ordre mélangé : la bonne réponse n'est pas toujours la première ; « répéter » et « je ne comprends pas » restent en dernier */
+      const main = opts[k].filter(o => !o.again && !o.dk), tail = opts[k].filter(o => o.again || o.dk);
+      if (!TESTMODE) for (let i = main.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = main[i]; main[i] = main[j]; main[j] = t; }
+      opts[k] = main.concat(tail);
     });
     return { nodes, opts };
   }
+  /* ?test (tests automatiques) : pas de mélange, pour des parties reproductibles */
+  const TESTMODE = /[?&]test\b/.test(location.search);
   let after = null;
   function talk(who, key, cb) { after = cb || null; A().openStory(who, S1().who[who] || who, prep(S1().dlg[key]), S1().pitch[who] || 1); }
 
-  /* ---------- le petit test : on compte, on s'arrête après deux erreurs ---------- */
+  /* ---------- le test de niveau : deux questions par niveau (1 = A1, 2 = A2, 3 = B1) ;
+     un niveau n'est validé que si ses deux réponses sont justes ; on s'arrête gentiment après le premier niveau raté ---------- */
   let test = null;
   function choose(o) {
     if (o.flag) flag(o.flag);
     if (!test || o.pl == null) return null;
-    if (o.pl) test.ok++; else test.bad++;
-    if (test.bad >= 2 && o.to !== 'END') return { to: 'END', reply: ["Don't worry. Let's talk later!", { fr: 'Pas de souci. On parlera plus tard !' }] };
+    const lv = o.lv || 1; test.ans[lv] = (test.ans[lv] || 0) + 1; if (o.pl) test.ok[lv] = (test.ok[lv] || 0) + 1; else test.fail[lv] = 1;
+    if (test.fail[lv] && test.ans[lv] >= 2 && o.to !== 'END') return { to: 'END', reply: ["Don't worry. Let's talk later!", { fr: 'Pas de souci. On parlera plus tard !' }] };
     return null;
   }
+  /* niveau du cadre européen : le plus haut niveau dont tous les niveaux en dessous sont validés */
+  function cefr() { let L = 0; for (let k = 1; k <= 3; k++) { if ((test.ok[k] || 0) >= 2 && !test.fail[k]) L = k; else break; } return ['A0', 'A1', 'A2', 'B1'][L]; }
+  function levelCard(c, cb) { const m = S1().level; card(m.title.replace('{c}', c === 'B1' ? 'B1 ou plus' : c), m[c] + ' ' + m.note, [['OK', cb]]); }
   function flag(f) {
     const s = st(); s.has = s.has || {}; s.has[f] = 1;
     if (f === 'brush') s.coins = Math.max(0, (s.coins || 0) - 2);
@@ -123,7 +133,7 @@
       go();
     });
     function afterApproach() {
-      if (st().test) { test = { ok: 0, bad: 0 }; talk('tom', 'test', () => { const r = test.skip ? 'deb' : (test.ok >= 4 ? 'conf' : 'deb'); test = null; skipBtn(false); set('reg', r); talk('tom', 'tomHelp', toWork); }); setTimeout(() => skipBtn(true), 600); }
+      if (st().test) { test = { ok: {}, fail: {}, ans: {} }; talk('tom', 'test', () => { const c = test.skip ? 'A0' : cefr(), r = c === 'A2' || c === 'B1' ? 'conf' : 'deb'; test = null; skipBtn(false); set('reg', r); set('cefr', c); levelCard(c, () => talk('tom', 'tomHelp', toWork)); }); setTimeout(() => skipBtn(true), 600); }
       else talk('tom', 'tomHelp', toWork);
     }
   }
