@@ -7,6 +7,7 @@ const $ = id => document.getElementById(id);
 const T0 = performance.now(), TIMES = [], tmark = n => TIMES.push([n, Math.round(performance.now() - T0)]);
 const canvas = $('ct');
 const mobile = Math.min(innerWidth, innerHeight) < 700;
+let lowShadow = false; /* qualité réduite activée par la boucle si le téléphone rame */
 const R = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
 R.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.25 : 1.5)); R.setSize(innerWidth, innerHeight);
 R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = .86;
@@ -2027,8 +2028,14 @@ function loop() {
   perfT += dt; perfN++;
   /* qualité adaptative : on baisse la résolution si l'image rame ; en dernier recours (téléphone faible),
      on rend directement, sans étalonnage ni anticrénelage */
-  if (perfT > 2 && fp && pr <= 1) { if (perfT / perfN > 1 / 28) { if (++slowN > 1 && !/[?&]debug\b/.test(location.search)) { fp = null; fpFailed = true; } } else slowN = 0; }
+  if (perfT > 2 && fp && pr <= 1) { if (perfT / perfN > 1 / 34) { if (++slowN > 1 && !/[?&]debug\b/.test(location.search)) { fp = null; fpFailed = true; } } else slowN = 0; }
   if (perfT > 2) window.PVFPS = Math.round(perfN / perfT);
+  /* téléphone qui rame encore sans effets : ombres plus petites et recalculées une image sur trois, puis résolution sous 1 */
+  if (perfT > 2 && !fp && perfT / perfN > 1 / 34 && mobile) {
+    if (!lowShadow) { lowShadow = true; sun.shadow.mapSize.set(512, 512); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } R.shadowMap.autoUpdate = false; }
+    else if (pr > .75) { pr = Math.max(.75, pr - .125); R.setPixelRatio(pr); R.setSize(innerWidth, innerHeight); }
+  }
+  if (lowShadow && (perfN % 3 === 0)) R.shadowMap.needsUpdate = true;
   if (perfT > 2) { if (perfT / perfN > 1 / 40 && pr > 1) { pr = Math.max(1, pr - .25); R.setPixelRatio(pr); R.setSize(innerWidth, innerHeight); if (fp) { fp.setPixelRatio(pr); if (fxaa) { const s = R.getDrawingBufferSize(new THREE.Vector2()); fxaa.uniforms.resolution.value.set(1 / s.x, 1 / s.y); } } } perfT = 0; perfN = 0; }
   clayEnv();
   if (fp) fp.render(); else R.render(scene, cam);

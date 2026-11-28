@@ -573,6 +573,8 @@ function showTab(t) {
   $('pgWords').classList.toggle('hidden', t !== 'words');
   $('pgProgress').classList.toggle('hidden', t !== 'progress');
   $('hud').classList.toggle('hidden', t !== 'town');
+  /* « Sortir » seulement dans la boutique, sur l'onglet Ville (il restait visible dans « Tes progrès ») */
+  $('exitBtn').classList.toggle('hidden', !(t === 'town' && place === 'bakery'));
   if (t !== 'town') show(null);
   if (t !== 'stories') stopStory();
   if (t === 'stories') renderStories();

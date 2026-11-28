@@ -8,7 +8,7 @@
 <meta name="description" content="Apprends l'anglais ou le polonais en parlant aux habitants d'une petite ville en 3D.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=39">
+<link rel="stylesheet" href="style.css?v=41">
 <script>
 /* pas de zoom de la page entière (iPhone) : le pincement sert à zoomer dans la ville */
 document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
@@ -21,8 +21,23 @@ if (/[?&]debug\b/.test(location.search)) {
 </script>
 </head>
 <body>
-<div id="loader" aria-live="polite"><svg viewBox="0 0 120 120" width="96" height="96" aria-hidden="true"><path d="M60 10c27 0 48 18 48 41s-21 41-48 41c-5 0-10-1-15-2L24 104l5-19C17 77 12 65 12 51 12 28 33 10 60 10z" fill="#fff8e6"/><path d="M38 62l22-18 22 18v20H38z" fill="#f7e7c4"/><path d="M33 64l27-23 27 23" fill="none" stroke="#e2604e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="54" y="68" width="12" height="14" rx="5" fill="#22b2a0"/><circle cx="46" cy="66" r="3.4" fill="#f6cf6e"/><circle cx="74" cy="66" r="3.4" fill="#f6cf6e"/></svg><span id="loaderTxt">Chargement…</span></div>
+<div id="loader" aria-live="polite"><svg viewBox="0 0 120 120" width="96" height="96" aria-hidden="true"><path d="M60 10c27 0 48 18 48 41s-21 41-48 41c-5 0-10-1-15-2L24 104l5-19C17 77 12 65 12 51 12 28 33 10 60 10z" fill="#fff8e6"/><path d="M38 62l22-18 22 18v20H38z" fill="#f7e7c4"/><path d="M33 64l27-23 27 23" fill="none" stroke="#e2604e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="54" y="68" width="12" height="14" rx="5" fill="#22b2a0"/><circle cx="46" cy="66" r="3.4" fill="#f6cf6e"/><circle cx="74" cy="66" r="3.4" fill="#f6cf6e"/></svg><div id="loaderName">Chatterville</div><div id="loaderBar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i></i></div><span id="loaderTxt">Chargement…</span><p id="loaderTip">Tu hérites de la maison de ton grand-père Arthur, à Chatterville… mais ta valise disparaît dès ton arrivée.</p></div>
 <script>/* écran de chargement : disparaît dès que la ville est dessinée ou qu'un écran d'accueil s'affiche */
+/* barre de chargement : elle avance vers 90 % pendant le temps habituel (~3 s avec la fibre), saute à 70 % quand la page est chargée,
+   et à 100 % quand la ville est dessinée ; une astuce change toutes les 3 s */
+(function () { var TIPS = ['Tu hérites de la maison de ton grand-père Arthur, à Chatterville… mais ta valise disparaît dès ton arrivée.',
+  'Réponds à voix haute : dire une phrase la grave mieux en mémoire que la lire.',
+  'Tu n’as pas compris ? Dis « Sorry, could you say that again? » : on te répète plus lentement.',
+  'Touche « FR » pour voir la traduction. Plus tu progresses, moins tu en as besoin.',
+  'Reviens demain : « Hier à Chatterville… » te fait retrouver les phrases du jour.',
+  'Une réplique en pointillés : essaie de la retrouver en anglais avant de la voir.'], ti = 0, p = 0, loaded = false;
+  addEventListener('load', function () { loaded = true; });
+  var tipEl = function () { return document.getElementById('loaderTip'); };
+  var showTip = function () { var e = tipEl(); if (!e) return; e.style.opacity = 0; setTimeout(function () { e.textContent = TIPS[ti++ % TIPS.length]; e.style.opacity = 1; }, 200); };
+  showTip(); var tv = setInterval(function () { if (!tipEl()) return clearInterval(tv); showTip(); }, 3000);
+  var t1 = Date.now(), bv = setInterval(function () { var b = document.querySelector('#loaderBar i'); if (!b) return clearInterval(bv);
+    var goal = window.PVTownReady ? 100 : Math.max(loaded ? 70 : 0, 90 * (1 - Math.exp(-(Date.now() - t1) / 1600)));
+    p += (goal - p) * .25; b.style.width = p.toFixed(1) + '%'; b.parentNode.setAttribute('aria-valuenow', Math.round(p)); }, 60); })();
 (function () { var t0 = Date.now(), iv = setInterval(function () { var l = document.getElementById('loader'); if (!l) return clearInterval(iv);
   var vis = function (id) { var e = document.getElementById(id); return e && !e.classList.contains('hidden') && e.getClientRects().length > 0; }; /* offsetParent vaut toujours null pour un élément en position: fixed : le chargement restait 20 s de trop */
   if (window.PVTownReady || vis('onb') || vis('authOv') || vis('intro') || Date.now() - t0 > 20000) { l.classList.add('gone'); setTimeout(function () { l.remove(); }, 600); clearInterval(iv); } }, 150); })();</script>
@@ -180,7 +195,7 @@ if (/[?&]debug\b/.test(location.search)) {
 
 <nav id="nav" class="hidden" aria-label="Navigation">
  <button type="button" data-tab="town" class="on"><svg><use href="#i-town"/></svg><span data-i="navTown"></span></button>
- <button type="button" data-tab="stories"><svg><use href="#i-book"/></svg><span data-i="navStories"></span></button>
+ <!-- onglet « Histoires » retiré (28/11) : l'histoire se joue dans la ville --><button type="button" data-tab="stories" hidden><svg><use href="#i-book"/></svg><span data-i="navStories"></span></button>
  <button type="button" data-tab="words"><svg><use href="#i-cards"/></svg><span data-i="navWords"></span><span class="badge hidden" id="dueBadge"></span></button>
  <button type="button" data-tab="progress"><svg><use href="#i-star"/></svg><span data-i="navProgress"></span></button>
 </nav>
@@ -290,8 +305,8 @@ if (/[?&]debug\b/.test(location.search)) {
 <script src="story-data.js?v=6"></script>
 <script src="clay.js?v=21"></script>
 <script src="scene.js?v=28"></script>
-<script src="town.js?v=73"></script>
+<script src="town.js?v=74"></script>
 <script src="story.js?v=6"></script>
-<script src="app.js?v=46"></script>
+<script src="app.js?v=47"></script>
 </body>
 </html>
