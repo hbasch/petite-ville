@@ -242,7 +242,21 @@ float clayHeight(vec3 p, float fine) {
     list.forEach(c => {
       c.updateMatrix(); const M = c.matrix; _m3.getNormalMatrix(M); const flip = M.determinant() < 0;
       const g = c.geometry, p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv, cnt = p.count, col = c.material.color, gc = g.attributes.color;
-      for (let i = 0; i < cnt; i++) {
+      /* chemin rapide (calcul direct dans les tableaux) pour les géométries ordinaires faites en code ; sinon, chemin général plus bas */
+      const plain = a => a && !a.isInterleavedBufferAttribute && !a.normalized && a.array;
+      if (plain(p) && plain(n) && p.itemSize === 3 && n.itemSize === 3 && (!uv || (plain(uv) && uv.itemSize === 2)) && (!gc || (plain(gc) && gc.itemSize >= 3))) {
+        const e = M.elements, q = _m3.elements, pa = p.array, na = n.array, ua = uv ? uv.array : null, ca = gc ? gc.array : null, cs = gc ? gc.itemSize : 3;
+        for (let i = 0; i < cnt; i++) {
+          const o = (vo + i) * 3, x = pa[i * 3], y = pa[i * 3 + 1], z = pa[i * 3 + 2];
+          const w = 1 / (e[3] * x + e[7] * y + e[11] * z + e[15]);
+          P[o] = (e[0] * x + e[4] * y + e[8] * z + e[12]) * w; P[o + 1] = (e[1] * x + e[5] * y + e[9] * z + e[13]) * w; P[o + 2] = (e[2] * x + e[6] * y + e[10] * z + e[14]) * w;
+          const nx = na[i * 3], ny = na[i * 3 + 1], nz = na[i * 3 + 2];
+          let X = q[0] * nx + q[3] * ny + q[6] * nz, Y = q[1] * nx + q[4] * ny + q[7] * nz, Z = q[2] * nx + q[5] * ny + q[8] * nz; const L = Math.sqrt(X * X + Y * Y + Z * Z) || 1;
+          N[o] = X / L; N[o + 1] = Y / L; N[o + 2] = Z / L;
+          if (ua) { UV[(vo + i) * 2] = ua[i * 2]; UV[(vo + i) * 2 + 1] = ua[i * 2 + 1]; }
+          if (CO) { CO[o] = col.r * (ca ? ca[i * cs] : 1); CO[o + 1] = col.g * (ca ? ca[i * cs + 1] : 1); CO[o + 2] = col.b * (ca ? ca[i * cs + 2] : 1); }
+        }
+      } else for (let i = 0; i < cnt; i++) {
         _v.fromBufferAttribute(p, i).applyMatrix4(M); P[(vo + i) * 3] = _v.x; P[(vo + i) * 3 + 1] = _v.y; P[(vo + i) * 3 + 2] = _v.z;
         _v.fromBufferAttribute(n, i).applyMatrix3(_m3).normalize(); N[(vo + i) * 3] = _v.x; N[(vo + i) * 3 + 1] = _v.y; N[(vo + i) * 3 + 2] = _v.z;
         if (uv) { UV[(vo + i) * 2] = uv.getX(i); UV[(vo + i) * 2 + 1] = uv.getY(i); }
@@ -288,10 +302,109 @@ float clayHeight(vec3 p, float fine) {
     return saved;
   }
 
+  /* ---------- herbe façon pâte à modeler / jardin de jeu vidéo ----------
+     Tout est dessiné dans le shader, en coordonnées du monde (rien ne s'étire, aucun appel de dessin en plus) :
+     - marbrure fine (taches plus chaudes ou plus fraîches de 1 à 3 m, grain de 20 cm) ;
+     - petites touffes de trois brins, tracées comme à l'ébauchoir, toujours « debout » face à la caméra, avec un léger relief ;
+     - rares petites fleurs blanches ou jaunes ;
+     - une carte au sol (map.r, facultative) assombrit l'herbe le long du chemin et au pied des objets (ombre de contact).
+     Les détails s'effacent quand ils deviennent plus petits qu'un pixel ou deux (pas de scintillement au loin). */
+  const GRASS_FRAG = `
+varying vec3 vGrW;
+uniform sampler2D grassMap;
+uniform vec4 grassMapT;
+uniform float grassMapOn;
+float gHash(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+float gNoise(vec2 x) { vec2 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(gHash(i), gHash(i + vec2(1.0, 0.0)), f.x), mix(gHash(i + vec2(0.0, 1.0)), gHash(i + vec2(1.0, 1.0)), f.x), f.y); }
+/* distance à un brin (segment a→b), largeur qui s'affine vers la pointe ; renvoie [présence, position le long du brin] */
+vec2 gBlade(vec2 p, vec2 a, vec2 b, float w) { vec2 pa = p - a, ba = b - a; float t = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  float d = length(pa - ba * t), ww = w * (1.0 - 0.75 * t); return vec2(1.0 - smoothstep(ww * 0.55, ww, d), t); }
+float gH = 0.0;
+vec3 grassColor(vec3 col, vec2 gp, vec3 camP) {
+  float px = length(fwidth(gp));                      /* mètres par pixel à cet endroit */
+  float near = 1.0 - smoothstep(0.022, 0.055, px);    /* touffes et fleurs : seulement quand elles font plusieurs pixels */
+  /* marbrure : grandes taches chaudes/fraîches, puis grain fin */
+  float m1 = gNoise(gp * 0.45 + 3.7), m2 = gNoise(gp * 1.6 + 11.0), m3 = gNoise(gp * 5.2 + 1.3);
+  col *= mix(vec3(0.9, 0.98, 1.04), vec3(1.07, 1.04, 0.84), smoothstep(0.25, 0.8, m1));
+  col *= 0.9 + 0.13 * m2 + 0.07 * m3 * (1.0 - smoothstep(0.02, 0.06, px));
+  gH = m2 * 7.0 + m1 * 4.0;                           /* douces bosses de pâte, sous les brins */
+  /* carte au sol : bord du chemin et pied des objets plus sombres (un vert plus profond, pas un gris) */
+  if (grassMapOn > 0.5) { float k = texture2D(grassMap, gp * grassMapT.xy + grassMapT.zw).r; col *= mix(vec3(0.6, 0.7, 0.62), vec3(1.0), k); }
+  if (near > 0.0) {
+    /* touffes : une par case de 50 cm (deux cases sur trois), orientées « debout » vers le haut de l'écran */
+    vec2 up = normalize(gp - camP.xz + vec2(1e-4)), rt = vec2(up.y, -up.x);
+    vec2 cs = gp / 0.5, ci = floor(cs), cf = fract(cs) - 0.5;
+    float h1 = gHash(ci + 17.0), h2 = gHash(ci + 41.0), h3 = gHash(ci + 73.0);
+    float tuft = 0.0, tip = 0.0;
+    if (h1 > 0.33) {
+      vec2 lp = (cf - vec2(h2 - 0.5, h3 - 0.5) * 0.4) * 0.5;              /* en mètres, autour du pied de la touffe */
+      vec2 q = vec2(dot(lp, rt), dot(lp, up));
+      float sc = 0.75 + 0.5 * h2, L = 0.15 * sc, w = 0.042 * sc;
+      vec2 b1 = gBlade(q, vec2(-0.016, 0.0), vec2(-0.06, 0.85) * L * 1.15, w);
+      vec2 b2 = gBlade(q, vec2(0.0, 0.0), vec2(0.004, 1.0) * L * 1.3, w);
+      vec2 b3 = gBlade(q, vec2(0.016, 0.0), vec2(0.065, 0.8) * L * 1.1, w);
+      tuft = max(b1.x, max(b2.x, b3.x));
+      tip = max(b1.x * b1.y, max(b2.x * b2.y, b3.x * b3.y));
+    }
+    tuft *= near;
+    /* brin : pied plus foncé, pointe plus claire et plus jaune */
+    col *= mix(vec3(1.0), mix(vec3(0.74, 0.8, 0.7), vec3(1.16, 1.14, 0.86), tip), tuft);
+    gH += tuft * (0.4 + 0.6 * tip);
+    /* fleurs : rares, cinq pétales arrondis et un cœur jaune */
+    vec2 fs = gp / 1.6, fi = floor(fs), ff = fract(fs) - 0.5;
+    float f1 = gHash(fi + 5.0);
+    if (f1 > 0.84) {
+      vec2 fp = (ff - (vec2(gHash(fi + 9.0), gHash(fi + 13.0)) - 0.5) * 0.6) * 1.6;
+      vec2 fq = vec2(dot(fp, rt), dot(fp, up) * 1.15);
+      float r = length(fq), an = atan(fq.y, fq.x) + f1 * 40.0;
+      float R = 0.085 * (0.78 + 0.22 * cos(5.0 * an));
+      float fl = (1.0 - smoothstep(R - 0.012, R, r)) * (1.0 - smoothstep(0.035, 0.08, px));
+      float heart = 1.0 - smoothstep(0.02, 0.028, r);
+      vec3 petal = f1 > 0.94 ? vec3(1.0, 0.86, 0.36) : vec3(1.0, 0.98, 0.92);
+      col = mix(col, mix(petal, vec3(1.0, 0.72, 0.18), heart), fl);
+      gH += fl * 0.8;
+    }
+  }
+  return col;
+}
+`;
+  function grassPatch(sh) {
+    const u = this.userData.grassU;
+    sh.uniforms.clayBend = U.bend; sh.uniforms.clayBendK = U.bendK;
+    sh.uniforms.grassMap = u.map; sh.uniforms.grassMapT = u.mapT; sh.uniforms.grassMapOn = u.mapOn;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vGrW;\n' + BEND_DECL)
+      .replace('#include <project_vertex>', '#include <project_vertex>\n  vGrW = (modelMatrix * vec4(transformed, 1.0)).xyz;\n' + (SAFE || NOBEND ? '' : BEND_CODE));
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\n' + GRASS_FRAG)
+      .replace('#include <color_fragment>', '#include <color_fragment>\n  diffuseColor.rgb = grassColor(diffuseColor.rgb, vGrW.xz, cameraPosition);')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+  {
+    /* relief des brins et des fleurs (même calcul que les creux de la pâte) */
+    vec3 sx = dFdx(-vViewPosition), sy = dFdy(-vViewPosition);
+    vec3 r1 = cross(sy, normal), r2 = cross(normal, sx);
+    float det = dot(sx, r1);
+    vec3 grad = sign(det) * (dFdx(gH) * r1 + dFdy(gH) * r2) * 0.012;
+    normal = normalize(abs(det) * normal - grad);
+  }`);
+  }
+  /* m : matière standard de l'herbe ; la carte au sol se donne plus tard avec setMap(texture, x0, z0, taille) */
+  function grass(m) {
+    if (SAFE) return m; /* mode compatible : herbe simple (couleurs des sommets), sans shader à nous */
+    const u = { map: { value: null }, mapT: { value: new THREE.Vector4(1, 1, 0, 0) }, mapOn: { value: 0 } };
+    m.userData.grassU = u; m.userData.bent = true;
+    m.extensions = Object.assign(m.extensions || {}, { derivatives: true });
+    m.onBeforeCompile = grassPatch;
+    m.customProgramCacheKey = () => 'grass1' + (SAFE || NOBEND ? 's' : '');
+    m.setGrassMap = (t, x0, z0, size) => { u.map.value = t; u.mapT.value.set(1 / size, -1 / size, -x0 / size, 1 + z0 / size); u.mapOn.value = 1; };
+    return m;
+  }
+
   /* curseur : une main de dessin animé, bien visible (crème au repos, dorée sur ce qu'on peut toucher) */
   const handSvg = fill => "<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'><path d='M13 4c2 0 3.5 1.5 3.5 3.5v10l1-.3V15c0-1.8 1.4-3 3-3s3 1.2 3 3v2.5l.6-.1c0-1.7 1.4-2.9 3-2.9s3 1.3 3 3v1.3c.4-.9 1.3-1.5 2.4-1.5 1.5 0 2.7 1.2 2.7 2.7V26c0 6.6-5 11-11 11h-2.2c-3.5 0-6.6-1.8-8.6-4.7l-5.5-8c-.9-1.4-.5-3.2.9-4.1 1.3-.8 3-.5 3.9.7l2.3 3V7.5C9.5 5.5 11 4 13 4z' fill='" + fill + "' stroke='%234a3a2a' stroke-width='2.4' stroke-linejoin='round'/></svg>";
   const cursor = { hand: 'url("data:image/svg+xml;utf8,' + handSvg('%23fff8e6') + '") 13 4, pointer', hover: 'url("data:image/svg+xml;utf8,' + handSvg('%23f6cf6e') + '") 13 4, pointer' };
-  window.PVClay = { U, SAFE, cursor, apply, bake, bendify, walk, playerLook: { skin: '#eec2a2', hair: '#5a3a2a', style: 'short', fringe: true, eyes: '#3a2418', outfit: 'hoodie', shirt: '#ffb547', pants: '#3f5f9a', shoes: '#f4efe6' } };
+  window.PVClay = { U, SAFE, cursor, apply, bake, bendify, grass, walk, playerLook: { skin: '#eec2a2', hair: '#5a3a2a', style: 'short', fringe: true, eyes: '#3a2418', outfit: 'hoodie', shirt: '#ffb547', pants: '#3f5f9a', shoes: '#f4efe6' } };
 })();
 
 /* ---------- habitants en pâte : partagés par la place (town.js) et la boulangerie (scene.js) ----------

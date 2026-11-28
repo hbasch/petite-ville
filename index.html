@@ -24,7 +24,7 @@ if (/[?&]debug\b/.test(location.search)) {
 <div id="loader" aria-live="polite"><svg viewBox="0 0 120 120" width="96" height="96" aria-hidden="true"><path d="M60 10c27 0 48 18 48 41s-21 41-48 41c-5 0-10-1-15-2L24 104l5-19C17 77 12 65 12 51 12 28 33 10 60 10z" fill="#fff8e6"/><path d="M38 62l22-18 22 18v20H38z" fill="#f7e7c4"/><path d="M33 64l27-23 27 23" fill="none" stroke="#e2604e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="54" y="68" width="12" height="14" rx="5" fill="#22b2a0"/><circle cx="46" cy="66" r="3.4" fill="#f6cf6e"/><circle cx="74" cy="66" r="3.4" fill="#f6cf6e"/></svg><span id="loaderTxt">Chargement…</span></div>
 <script>/* écran de chargement : disparaît dès que la ville est dessinée ou qu'un écran d'accueil s'affiche */
 (function () { var t0 = Date.now(), iv = setInterval(function () { var l = document.getElementById('loader'); if (!l) return clearInterval(iv);
-  var vis = function (id) { var e = document.getElementById(id); return e && !e.classList.contains('hidden') && e.offsetParent !== null; };
+  var vis = function (id) { var e = document.getElementById(id); return e && !e.classList.contains('hidden') && e.getClientRects().length > 0; }; /* offsetParent vaut toujours null pour un élément en position: fixed : le chargement restait 20 s de trop */
   if (window.PVTownReady || vis('onb') || vis('authOv') || vis('intro') || Date.now() - t0 > 20000) { l.classList.add('gone'); setTimeout(function () { l.remove(); }, 600); clearInterval(iv); } }, 150); })();</script>
 <script>/* journal des erreurs, pour le rapport de bug */ window.PVLOG = []; addEventListener('error', e => PVLOG.push('error: ' + e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno)); addEventListener('unhandledrejection', e => PVLOG.push('promise: ' + (e.reason && e.reason.message || e.reason))); (function () { const ce = console.error; console.error = function () { try { PVLOG.push('console: ' + [].map.call(arguments, String).join(' ').slice(0, 300)); } catch (x) {} return ce.apply(console, arguments); }; })();</script>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -288,9 +288,9 @@ if (/[?&]debug\b/.test(location.search)) {
 <script src="config.js?v=10"></script>
 <script src="data.js?v=29"></script>
 <script src="story-data.js?v=5"></script>
-<script src="clay.js?v=20"></script>
+<script src="clay.js?v=21"></script>
 <script src="scene.js?v=27"></script>
-<script src="town.js?v=71"></script>
+<script src="town.js?v=72"></script>
 <script src="story.js?v=5"></script>
 <script src="app.js?v=45"></script>
 </body>

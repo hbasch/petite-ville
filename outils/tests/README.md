@@ -11,6 +11,7 @@ Scripts :
 - `dialogue_micro.py` : dialogue avec Rosa sur téléphone et ordinateur, micro simulé (relance, module figé).
 - `chapitre1.py` : joue tout le chapitre 1 en version débutant et prend des captures (`/tmp/t2/st_*.png`). Il lit les réglages de `dialogue_micro.py` : le copier dans /tmp/t2/dlg.py, ou adapter le chemin.
 - `rue.py` : captures de la rue de jour (centre, arrêt de bus, barrière du parc).
+- `chargement.py tel|pc|both` : temps de chargement (construction de la ville, première image, nombre de shaders, étapes de `PVDBG.times()`). `N=5` pour une médiane sur 5 essais (les mesures sans écran varient beaucoup d'un essai à l'autre).
 - `node comparaison.js ../../app.js` et `node comparaison_naturelles.js ../../app.js` : bancs de la comparaison des phrases dites (micro).
 
 Attention : en headless, le jeu tourne à environ 5 images par seconde, donc le temps du jeu passe environ 4 fois plus lentement. Les attentes des scripts en tiennent compte.

@@ -3,6 +3,8 @@
    pavés posés un à un, enseignes en pictogrammes pour que la ville soit la même dans toutes les langues. */
 window.buildTown = function (H) {
 const $ = id => document.getElementById(id);
+/* chronométrage du chargement, par étape (lu avec ?debug : PVDBG.times()) */
+const T0 = performance.now(), TIMES = [], tmark = n => TIMES.push([n, Math.round(performance.now() - T0)]);
 const canvas = $('ct');
 const mobile = Math.min(innerWidth, innerHeight) < 700;
 const R = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -84,6 +86,8 @@ const halos = [], winMats = [], lampMats = [], clockMats = [];
 /* ombres douces au sol sous les objets fixes : toutes regroupées en une seule instance
    (posées à 6,8 cm, au-dessus du plus haut pavé : sinon les pavés les percent un sur deux et cela fait un damier) */
 const sblobs = [];
+/* repères pour la carte de l'herbe : tracé du chemin, et taches d'ombre de contact [x, z, rayon, force] */
+const PATHLINE = [], groundAO = [];
 function sblob(x, z, sx, sz, yaw) { sblobs.push([x, z, sx, sz == null ? sx : sz, yaw || 0]); }
 function sblobAt(obj, lx, lz, sx, sz, yaw) { obj.updateMatrixWorld(true); const v = obj.localToWorld(new THREE.Vector3(lx, 0, lz)); sblob(v.x, v.z, sx, sz, (yaw || 0) + obj.rotation.y); }
 /* vitres : lisses et brillantes, elles reflètent le ciel (envMapIntensity sert de force du reflet dans le shader de pâte) */
@@ -91,6 +95,7 @@ const litGlass = C(GLASS, { unique: true, emissive: '#ffa548', emissiveIntensity
 const darkGlass = C(GLASS, { roughness: .12, envMapIntensity: 1.7, bumpScale: .008 });
 const shopGlass = C('#2e2832', { unique: true, emissive: '#ffbf6e', emissiveIntensity: 0, roughness: .16, envMapIntensity: 1.1, bumpScale: .008 }); winMats.push(shopGlass);
 
+tmark('outils');
 /* ---------- ciel : dôme dégradé + soleil/lune + étoiles ---------- */
 const skyU = { top: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, bot: { value: new THREE.Color() }, sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color() } };
 const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 32, 16), new THREE.ShaderMaterial({
@@ -125,13 +130,17 @@ Object.assign(sun.shadow.camera, { left: -17, right: 17, top: 17, bottom: -17, n
 const lampLights = [];
 const poolM = new THREE.MeshBasicMaterial({ map: null, color: '#ffc77a', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
 
+tmark('ciel, lumières');
 /* ---------- l'île en argile ---------- */
 const G = 0.7; /* direction de l'entrée */
-const grassTop = DA_AC ? C('#45a028', { roughness: 1, bumpScale: 0, vertexColors: true }) : C(shade(PAL.leaf, .12)); grassTop.metalness = 0; grassTop.envMapIntensity = .25;
+/* herbe : marbrure fine, petites touffes « debout », fleurs clairsemées et bord sombre le long du chemin, tout dans le shader (clay.js, PVClay.grass) */
+const grassTop = DA_AC ? PVClay.grass(new THREE.MeshStandardMaterial({ color: '#45a028', roughness: 1, vertexColors: true })) : C(shade(PAL.leaf, .12)); grassTop.metalness = 0; grassTop.envMapIntensity = .25;
 /* le dessus de l'herbe est maillé en anneaux serrés (et non un seul éventail centre-bord) : l'horizon arrondi plie les sommets,
    un grand triangle restait plat et passait sous les maisons (on voyait le ciel entre le sol et les boutiques) */
 mk(new THREE.CylinderGeometry(44, 44, .7, 96, 1, true), C(EARTH), 0, -.35, 0);
 const grass = mk(new THREE.RingGeometry(0, 44, 96, 30).rotateX(-Math.PI / 2), grassTop, 0, 0, 0); grass.receiveShadow = true;
+/* jamais fusionnée (elle garde son shader d'herbe), et le sol plat n'a pas à projeter d'ombre */
+if (DA_AC) { grass.userData.keep = true; grass.userData.noCast = true; }
 /* larges taches d'herbe un peu plus jaunes ou plus sombres, peintes dans les sommets : le sol n'est plus un aplat uniforme */
 { const p = grass.geometry.attributes.position, cl = [];
   for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), n = Math.sin(x * .31 + 1.3) * Math.cos(z * .27 - .4) + .6 * Math.sin(x * .73 - z * .58 + 2.1);
@@ -246,6 +255,7 @@ function signPost(type, parent, x, y, z) {
   return s;
 }
 
+tmark('sol, pavés');
 /* ---------- maisons en pâte ---------- */
 function gableShape(type, w, rh) {
   const s = new THREE.Shape(), hw = w / 2;
@@ -324,6 +334,8 @@ function windowAt(g, x, y, z, sp, lit) {
 }
 /* boutiques où l'on peut entrer : enseigne et pastille au-dessus de la porte */
 const ENTER = new Set(['bakeryShop']);
+/* essai : boulangerie modelée dans Meshy (?meshy), chargée après la première image ; la façade en code reste jusque-là */
+const MESHY = /[?&]meshy\b/.test(location.search);
 function building(sp, ang, rad) {
   const g = item(sp.id); const d = 3.4, wall = C(sp.color, { bumpScale: .026, stone: STONE });
   g.position.set(Math.sin(ang) * rad, 0, Math.cos(ang) * rad); g.rotation.y = ang + Math.PI;
@@ -543,8 +555,8 @@ B.forEach((sp, i) => { if (OPEN(i)) return; const ang = a0 + span * i / (B.lengt
 let signMat = null;
 /* appelée après le déroulage de la rue (plus bas) : la géométrie est posée en coordonnées du monde,
    construite avant elle restait sur l'ancien cercle et flottait au milieu de la place */
-function buildSigns() {
-  const list = signBoards.filter(b => CITY.signs && CITY.signs[b.id]); if (!list.length) return;
+function buildSigns(only, local) {
+  const list = only || signBoards.filter(b => CITY.signs && CITY.signs[b.id] && !(MESHY && b.id === 'bakeryShop')); if (!list.length) return;
   const RW = 1024, RH = 128, N = list.length, cv = document.createElement('canvas'); cv.width = RW; cv.height = RH * N;
   const g2 = cv.getContext('2d'), S = CITY.sign, P = [], Nn = [], U = [], I = []; let vo = 0;
   list.forEach((b, i) => {
@@ -558,15 +570,17 @@ function buildSigns() {
     g2.fillStyle = 'rgba(0,0,0,.25)'; g2.textAlign = 'center'; g2.textBaseline = 'middle'; g2.fillText(txt, 2 / kx, y0 + RH / 2 + 5);
     g2.fillStyle = S.fg; g2.fillText(txt, 0, y0 + RH / 2 + 3); g2.restore();
     const geo = new THREE.PlaneGeometry(b.w, b.h); b.g.updateMatrixWorld(true);
-    geo.applyMatrix4(new THREE.Matrix4().multiplyMatrices(b.g.matrixWorld, new THREE.Matrix4().makeTranslation(b.x, b.y, b.z)));
+    /* local : l'enseigne reste dans le repère de sa maison (enseigne seule, qu'on peut déplacer ensuite) */
+    geo.applyMatrix4(local ? new THREE.Matrix4().makeTranslation(b.x, b.y, b.z) : new THREE.Matrix4().multiplyMatrices(b.g.matrixWorld, new THREE.Matrix4().makeTranslation(b.x, b.y, b.z)));
     const pa = geo.attributes.position, na = geo.attributes.normal, ua = geo.attributes.uv;
     for (let k = 0; k < pa.count; k++) { P.push(pa.getX(k), pa.getY(k), pa.getZ(k)); Nn.push(na.getX(k), na.getY(k), na.getZ(k)); U.push(ua.getX(k), 1 - (i + 1 - ua.getY(k)) / N); }
     for (let k = 0; k < geo.index.count; k++) I.push(vo + geo.index.getX(k)); vo += pa.count;
   });
   const out = new THREE.BufferGeometry(); out.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); out.setAttribute('normal', new THREE.Float32BufferAttribute(Nn, 3)); out.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); out.setIndex(I);
   const tx = new THREE.CanvasTexture(cv); tx.encoding = THREE.sRGBEncoding; tx.anisotropy = 8;
-  signMat = new THREE.MeshStandardMaterial({ map: tx, roughness: .65, emissive: '#ffffff', emissiveMap: tx, emissiveIntensity: .05 });
-  const m = new THREE.Mesh(out, signMat); m.userData.keep = true; m.userData.noCast = true; m.receiveShadow = true; scene.add(m);
+  const sm = new THREE.MeshStandardMaterial({ map: tx, roughness: .65, emissive: '#ffffff', emissiveMap: tx, emissiveIntensity: .05 }); if (!only) signMat = sm;
+  const m = new THREE.Mesh(out, sm); m.userData.keep = true; m.userData.noCast = true; m.receiveShadow = true; (local ? list[0].g : scene).add(m);
+  return m;
 }
 
 /* beffroi avec horloge qui donne l'heure */
@@ -607,6 +621,7 @@ const clock = item('clock', hall);
   hands.push([hh, mh]);
 });
 
+tmark('maisons');
 /* ---------- fontaine, bancs, réverbères ---------- */
 const stone = C(shade(PAL.ground, -.05));
 const fountain = item('fountain');
@@ -925,6 +940,7 @@ for (let i = 0; i < (COUNTRY === 'pl' ? 11 : 6); i++) {
   p.userData.dyn = true; pigeons.push({ p, head, ph: rnd(0, 10) });
 }
 
+tmark('décor de la place');
 /* ---------- habitants en pâte (modelés dans clay.js, partagés avec la boulangerie) ---------- */
 const makeChar = lk => PVClay.char(Object.assign({ leaf: PAL.leaf }, lk), { blob });
 const bubbleT = tex(128, 128, (g) => { g.fillStyle = '#fff8ee'; g.beginPath(); g.arc(64, 56, 46, 0, TAU); g.fill(); g.beginPath(); g.moveTo(48, 92); g.lineTo(60, 122); g.lineTo(74, 94); g.fill(); g.fillStyle = '#2a2233'; [40, 64, 88].forEach(x => { g.beginPath(); g.arc(x, 56, 8, 0, TAU); g.fill(); }); });
@@ -1041,6 +1057,11 @@ function rigGlb(mesh, cfg) {
 /* ---------- habitants modelés (images Gemini puis Meshy) : remplacent la version en code quand le fichier est là ----------
    noseY / chinY (fraction de la hauteur) seulement si la détection automatique se trompe ; arms : épaule en fraction de la hauteur */
 const GLB_CHARS = { rosa: { url: 'assets/rosa.glb?v=1', h: 1.42 } };
+/* chargés juste après la première image (la version en code s'affiche d'abord) : le décodage et le « squelette »
+   automatique (~0,1 à 0,3 s) ne retardent plus l'apparition de la ville */
+let glbAsked = false;
+function loadGlbChars() {
+if (glbAsked) return; glbAsked = true;
 if (THREE.GLTFLoader && !/[?&]glb=0/.test(location.search)) {
   const ld = new THREE.GLTFLoader();
   Object.entries(GLB_CHARS).forEach(([id, cfg]) => {
@@ -1059,6 +1080,7 @@ if (THREE.GLTFLoader && !/[?&]glb=0/.test(location.search)) {
       if (R.shadowMap.autoUpdate === false) R.shadowMap.needsUpdate = true;
     }, undefined, () => { /* fichier absent ou illisible : on garde la version en code */ });
   });
+}
 }
 /* animation « image par image » : 12 poses par seconde comme en stop-motion ; respiration, balancement,
    petits sauts quand on parle ou qu'on est content, dandinement quand on marche */
@@ -1129,6 +1151,7 @@ const leash = mk(new THREE.CylinderGeometry(.008, .008, 1, 4, 1).translate(0, .5
   var catObj = cat;
 }
 
+tmark('habitants');
 /* ---------- nuages et petites îles ---------- */
 const clouds = [];
 for (let i = 0; i < 6; i++) {
@@ -1164,6 +1187,37 @@ const chimney = new THREE.Group(); bld.bakery.g.add(chimney); chimney.position.s
 mk(rbox(.55, 1.4, .55, .12, 3), C(PAL.roofs[0]), 0, 0, 0, chimney); mk(rbox(.7, .18, .7, .08, 2), C(TRIM), 0, .72, 0, chimney);
 const smokeM = [], puffs = [];
 for (let i = 0; i < 7; i++) { const m = C('#f4f1ec', { unique: true, transparent: true, opacity: .0, roughness: 1, bumpScale: .02, depthWrite: false }); smokeM.push(m); const p = mk(G_('puff', () => lump(sph(.22, 12), .03)), m, 0, 0, 0, chimney); puffs.push({ p, t: i / 7 }); }
+/* ---------- ?meshy : la boulangerie modelée dans Meshy remplace la façade en code, une fois chargée ----------
+   Fichier préparé par outils/meshy/optimise-batiment.mjs (couleur seule en WebP 1024, géométrie quantifiée : ~320 Ko).
+   Le modèle (1,70 × 1,90 × 1,40, porte à gauche, face +z) est agrandi à l'échelle de la rue et retourné en miroir :
+   sa porte tombe à droite, là où est celle de la façade en code (Tom, l'entrée, l'étiquette et la pastille restent justes).
+   Matière : la pâte du jeu (clay.js) sur la texture de couleur ; pas de carte de normales ni de rugosité (inutiles ici). */
+function loadMeshyBakery() {
+  if (!MESHY || !THREE.GLTFLoader || bld.bakery.meshy) return; bld.bakery.meshy = 'loading';
+  const g = bld.bakery.g, S = 3.5, SINK = .03 * S, BACK = -.145; /* échelle, enfoncement du socle, recul (avant du socle sur le bord du chemin) */
+  new THREE.GLTFLoader().load('assets/bakery.glb?v=1', gl => {
+    const m = gl.scene; m.scale.set(-S, S, S); m.position.set(0, .953 * S - SINK, BACK);
+    m.traverse(c => { if (!c.isMesh) return; c.castShadow = true; c.receiveShadow = true;
+      const old = c.material, mt = new THREE.MeshStandardMaterial({ map: old.map, roughness: .62, metalness: 0, envMapIntensity: .45 });
+      if (mt.map) mt.map.anisotropy = 4; PVClay.apply(mt, .02); c.material = mt; old.dispose(); });
+    /* on cache la façade en code (et sa cheminée), on garde la pastille, la fumée et l'enseigne */
+    const keep = new Set(puffs.map(q => q.p)); if (bakerySign) keep.add(bakerySign);
+    g.traverse(c => { if (c.isMesh && !keep.has(c)) c.visible = false; });
+    g.add(m);
+    /* repères du modèle (en mètres, repère de la maison) : porte x 1,15 ; panneau suspendu au-dessus ; cheminée à gauche */
+    const DX = .33 * S, Y = v => (v + .953) * S - SINK, Z = v => BACK + v * S;
+    const sb = signBoards.find(b => b.id === 'bakeryShop');
+    if (bakerySign && sb) { /* l'enseigne repeinte à la taille du panneau de bois du modèle */
+      g.remove(bakerySign); bakerySign.geometry.dispose(); bakerySign.material.map.dispose(); bakerySign.material.dispose();
+      Object.assign(sb, { x: .317 * S, y: Y(-.325), z: Z(.49) + .012, w: .3 * S, h: .1 * S });
+      bakerySign = buildSigns([sb], true); if (ACCAM) PVClay.bendify(bakerySign.material); bakerySign.material.emissiveIntensity = signMat ? signMat.emissiveIntensity : .05; }
+    g.userData.tagAt = new THREE.Vector3(DX, 2.0, Z(.42) + .3);
+    const bd = badges.find(b => b.id === 'bakeryShop'); if (bd) bd.spr.position.x = DX;
+    chimney.position.set(-.45 * S, Y(.94) - .81, Z(-.04));
+    bld.bakery.meshy = m;
+    if (R.shadowMap.autoUpdate === false) R.shadowMap.needsUpdate = true;
+  }, undefined, () => { bld.bakery.meshy = null; /* fichier absent : on garde la façade en code */ });
+}
 /* oiseaux */
 const birds = [];
 for (let i = 0; i < 5; i++) { const b = new THREE.Group(); scene.add(b); const body = mk(G_('bird', () => sph(.12, 10)), C('#3a3a48'), 0, 0, 0, b); body.scale.set(.8, .7, 1.6); const wings = [-1, 1].map(sg => { const w = new THREE.Group(); w.position.x = sg * .06; b.add(w); mk(G_('wing', () => rbox(.42, .03, .16, .015, 1)), C('#4a4a5a'), sg * .21, 0, 0, w); return w; }); b.userData.dyn = true; birds.push({ b, wings, a: rnd(0, TAU), r: rnd(15, 22), y: rnd(11, 16), sp: rnd(.12, .2), ph: rnd(0, 10) }); }
@@ -1172,8 +1226,9 @@ const DROPS = 50, dropP = new Float32Array(DROPS * 3), drops = [];
 for (let i = 0; i < DROPS; i++) drops.push({ a: rnd(0, TAU), t: rnd(0, 1), v: rnd(.8, 1.2) });
 const dropGeo = new THREE.BufferGeometry(); dropGeo.setAttribute('position', new THREE.BufferAttribute(dropP, 3));
 const dropsPts = new THREE.Points(dropGeo, new THREE.PointsMaterial({ map: dotT, size: .07, transparent: true, opacity: .8, depthWrite: false, color: '#dff4ff' })); scene.add(dropsPts);
-colliders.push(...people.filter(p => p.mode !== 'walk').map(p => ({ x: p.grp.position.x, z: p.grp.position.z, r: .45 })));
+colliders.push(...people.filter(p => p.mode !== 'walk').map(p => ({ x: p.grp.position.x, z: p.grp.position.z, r: .45, npc: 1 })));
 
+tmark('ambiance');
 /* ---------- la rue : on déroule tout ce qui est posé sur l'anneau des façades ---------- */
 {
   const inBand = (x, z) => { const r = Math.hypot(x, z); return r > 8.15 && r < 13.4; };
@@ -1205,9 +1260,11 @@ colliders.push(...people.filter(p => p.mode !== 'walk').map(p => ({ x: p.grp.pos
     const m = mk(g, mat, 0, 0, 0); m.receiveShadow = true; m.userData.noCast = true; return m;
   };
   ribbon(1.42, .012, C('#b8935a', { roughness: .95, bumpScale: .01 }), U_BUS, U_PARK);
+  /* tracé du chemin pour la carte de l'herbe (bord plus sombre) */
+  for (let i = 0; i <= 120; i++) { const u = U_BUS + (U_PARK - U_BUS) * i / 120; PATHLINE.push(S2W(u, pathV(u))); }
   ribbon(1.27, .026, C('#e0c48c', { roughness: .9, bumpScale: .012 }), U_BUS, U_PARK);
   /* haie basse au bord, côté caméra */
-  for (let k = -14; k <= 14; k++) { const u = k * 1.55, [x, z] = S2W(u, -7.8); mk(lump(sph(rnd(.28, .38), 12), .04, 2), C(shade(PAL.leaf, rnd(-.1, .04))), x, .26, z); }
+  for (let k = -14; k <= 14; k++) { const u = k * 1.55, [x, z] = S2W(u, -7.8); groundAO.push([x, z, .5, .5]); mk(lump(sph(rnd(.28, .38), 12), .04, 2), C(shade(PAL.leaf, rnd(-.1, .04))), x, .26, z); }
   /* la route du bus, au-delà du bout droit de la rue (maillée en long pour l'horizon arrondi), et l'arrêt de bus face à la caméra */
   { const RU = U_BUS - 3.6, rg = new THREE.PlaneGeometry(3.4, 34, 1, 34).rotateX(-Math.PI / 2), [x, z] = S2W(RU, 2);
     const road = mk(rg, C('#8d8a92', { roughness: .85, bumpScale: .01 }), x, .02, z); road.rotation.y = G; road.receiveShadow = true; road.userData.noCast = true;
@@ -1229,7 +1286,7 @@ colliders.push(...people.filter(p => p.mode !== 'walk').map(p => ({ x: p.grp.pos
       [-1.6, 1.6].forEach(dx => { mk(rbox(.26, 1.5, .26, .07, 2), woodD, dx, .75, 0, g); mk(sph(.17, 10), wood, dx, 1.55, 0, g); });
       [.45, .9].forEach(y => mk(rbox(3.2, .12, .1, .04, 2), wood, 0, y, 0, g)); mk(rbox(.1, .6, .08, .03, 1), wood, -.8, .68, 0, g).rotation.z = .9; mk(rbox(.1, .6, .08, .03, 1), wood, .8, .68, 0, g).rotation.z = -.9;
       colliders.push({ x, z, r: 1.0 }); }
-    for (let v = -6.6; v <= 11; v += 1.6) { if (Math.abs(v - V_PARK) < 2.2) continue; const g = new THREE.Group(), [x, z] = S2W(U_PARK, v); scene.add(g); g.position.set(x, 0, z); g.rotation.y = G + Math.PI / 2;
+    for (let v = -6.6; v <= 11; v += 1.6) { if (Math.abs(v - V_PARK) < 2.2) continue; [-.8, 0, .8].forEach(dv => { const [ax, az] = S2W(U_PARK, v + dv); groundAO.push([ax, az, .32, .4]); }); const g = new THREE.Group(), [x, z] = S2W(U_PARK, v); scene.add(g); g.position.set(x, 0, z); g.rotation.y = G + Math.PI / 2;
       mk(G_('fpost', () => rbox(.16, .9, .16, .05, 2)), woodD, -.8, .45, 0, g); mk(G_('frail', () => rbox(1.6, .1, .08, .03, 1)), wood, 0, .62, 0, g); mk(G_('frail2', () => rbox(1.6, .1, .08, .03, 1)), wood, 0, .32, 0, g); } }
   /* les deux bouts de la rue : arbres (le parc derrière la barrière), buissons et massifs de fleurs, un banc et un réverbère près de l'arrêt */
   const ENDS_T = [[-18.5, 8.2, 1.1], [-17, -5.6, .95], [-23.5, -5, 1.0], [-30, 7, 1.2], [-30.5, -2, 1.05], [-27, 12, 1.0],
@@ -1266,11 +1323,31 @@ colliders.push(...people.filter(p => p.mode !== 'walk').map(p => ({ x: p.grp.pos
     [-1.3, 1.3].forEach(dx => mk(rbox(.7, .7, .1, .05, 2), C('#9fcbef', { roughness: .2 }), dx, 1.6, 1.72, g)); }
 }
 buildSigns();
+/* ?meshy : l'enseigne de la boulangerie est un objet à part, accroché à la maison (elle passera sur le panneau du modèle) */
+let bakerySign = MESHY ? buildSigns(signBoards.filter(b => b.id === 'bakeryShop' && CITY.signs && CITY.signs[b.id]), true) : null;
 leaves.forEach(L => { respawnLeaf(L); L.y = rnd(0, 3); });
 { const im = new THREE.InstancedMesh(G_('blobG', () => new THREE.CircleGeometry(1, 24)), BLOB, sblobs.length), o = new THREE.Object3D();
   sblobs.forEach(([x, z, sx, sz, yw], i) => { o.position.set(x, .068, z); o.rotation.set(-Math.PI / 2, yw, 0, 'YXZ'); o.scale.set(sx, sz, 1); o.updateMatrix(); im.setMatrixAt(i, o.matrix); });
   im.renderOrder = 1; im.frustumCulled = false; scene.add(im); }
+/* carte au sol de l'herbe (72 m × 72 m, 512 px) : bord du chemin et pied des objets un peu plus sombres.
+   Dessinée une fois dans un canevas ; seule l'ombre portée du tracé (décalé hors du canevas) est gardée : un flou qui marche partout, Safari compris. */
+if (grassTop.setGrassMap) {
+  const S = 72, W = 512, k = W / S, cv = document.createElement('canvas'); cv.width = cv.height = W;
+  const g = cv.getContext('2d'), X = x => (x + S / 2) * k, Z = z => (z + S / 2) * k, OFF = W * 2;
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, W);
+  g.shadowOffsetX = OFF;
+  /* le long du chemin : bande sombre qui dépasse d'environ 40 cm du bord brun */
+  g.shadowColor = 'rgba(0,0,0,.75)'; g.shadowBlur = .55 * k; g.lineWidth = 2 * 1.5 * k; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#000';
+  g.beginPath(); PATHLINE.forEach(([x, z], i) => i ? g.lineTo(X(x) - OFF, Z(z)) : g.moveTo(X(x) - OFF, Z(z))); g.stroke();
+  /* pied des objets : arbres, massifs, bancs, haie, clôture… (pas les habitants, qui bougent) */
+  const spot = (x, z, r, a) => { g.shadowColor = 'rgba(0,0,0,' + a + ')'; g.shadowBlur = Math.max(2, r * .9 * k); g.fillStyle = '#000'; g.beginPath(); g.arc(X(x) - OFF, Z(z), Math.max(1, r * .75 * k), 0, TAU); g.fill(); };
+  colliders.forEach(c => { if (!c.npc && c.r < 2) spot(c.x, c.z, c.r * 1.15, .45); });
+  groundAO.forEach(([x, z, r, a]) => spot(x, z, r, a));
+  const t = new THREE.CanvasTexture(cv); t.minFilter = THREE.LinearMipmapLinearFilter; t.anisotropy = 4;
+  grassTop.setGrassMap(t, -S / 2, -S / 2, S);
+}
 
+tmark('rue, herbe');
 /* regroupement des objets immobiles : beaucoup moins d'appels de dessin */
 PVClay.bake(scene);
 /* mode léger : les décors fixes (façades, étals, lampadaires, cabine, château) de toutes les maisons sont fusionnés
@@ -1278,7 +1355,7 @@ PVClay.bake(scene);
    Les objets ne se touchent plus : on garde seulement leur boîte, pour l'étiquette du mot. ?nobigbake pour comparer. */
 (function bigBake() {
   if (/[?&]nobigbake\b/.test(location.search)) return;
-  const ids = new Set(B.filter((b, i) => !OPEN(i)).map(b => b.id).concat(['stall', 'streetlamp', 'phonebox', 'castle']));
+  const ids = new Set(B.filter((b, i) => !OPEN(i) && !(MESHY && b.id === 'bakeryShop')).map(b => b.id).concat(['stall', 'streetlamp', 'phonebox', 'castle']));
   const root = new THREE.Group(); scene.add(root); scene.updateMatrixWorld(true);
   hits.forEach(o => {
     if (!ids.has(o.userData.id)) return;
@@ -1290,6 +1367,7 @@ PVClay.bake(scene);
   PVClay.bake(root);
 })();
 
+tmark('regroupement');
 /* ombres : sur téléphone, la carte d'ombre n'est recalculée que quand le soleil bouge (toutes les 5 s),
    et les personnages, oiseaux et feuilles n'en projettent pas (ils ont une ombre douce peinte au sol) */
 const castOK = o => { if (o.userData.noCast) return false; if (mobile) for (let q = o; q; q = q.parent) if (q.userData.dyn) return false; return true; };
@@ -1300,6 +1378,7 @@ scene.updateMatrixWorld(true);
 grass.receiveShadow = true;
 if (mobile) { R.shadowMap.autoUpdate = false; R.shadowMap.needsUpdate = true; }
 
+tmark('ombres');
 /* ---------- lumière qui suit l'heure ---------- */
 const KF = [
   [0, '#0b1033', '#1f2a5a', '#0e1228', '#9fb2ff', .28, '#3a4680', '#1a1630', .38, '#1a2350', 1, 1],
@@ -1340,7 +1419,7 @@ function applyHour(h) {
   winMats.forEach(m => { m.emissiveIntensity = lightsOn * .95; }); shopGlass.emissiveIntensity = .1 + lightsOn * 1.15; clockMats.forEach(m => { m.emissiveIntensity = lightsOn * .28; });
   lampMats.forEach(m => { m.emissiveIntensity = .15 + lightsOn * 2.2; });
   halos.forEach(s => { s.material.opacity = lightsOn * .85; });
-  lampLights.forEach(p => { p.intensity = lightsOn * 1.4; }); poolM.opacity = lightsOn * .5; if (signMat) signMat.emissiveIntensity = .05 + lightsOn * .3;
+  lampLights.forEach(p => { p.intensity = lightsOn * 1.4; }); poolM.opacity = lightsOn * .5; if (signMat) signMat.emissiveIntensity = .05 + lightsOn * .3; if (bakerySign) bakerySign.material.emissiveIntensity = .05 + lightsOn * .3;
   R.shadowMap.needsUpdate = true;
   R.toneMappingExposure = .86 + lightsOn * .14;
   /* reflets de la pâte : ciel, horizon et sol chaud du moment */
@@ -1762,6 +1841,7 @@ function updateFx(dt, t) {
 }
 
 /* ---------- boucle ---------- */
+let frameN = 0;
 addEventListener('resize', () => { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); R.setSize(innerWidth, innerHeight); if (composer) composer.setSize(innerWidth, innerHeight); });
 const clockT = new THREE.Clock(); let lastHourCheck = 0, lastBadgeCheck = 0;
 /* ?debug : panneau de mesures à l'écran (images par seconde, résolution, appels de dessin, triangles, qualité) */
@@ -1891,6 +1971,7 @@ function updateTPS(dt, t, spd) {
 }
 function loop() {
   requestAnimationFrame(loop);
+  const f0 = frameN < 5 ? performance.now() : 0;
   const dt = Math.min(clockT.getDelta(), .05), t = clockT.elapsedTime;
   if (!H.active()) { hideTag(); return; }
   if (t - lastHourCheck > 5) { lastHourCheck = t; if (hourOverride == null) applyHour(realHour()); }
@@ -1936,8 +2017,9 @@ function loop() {
   zoomV += (zoomT - zoomV) * (1 - Math.exp(-dt * 12)); { const f = (mobile ? 70 : 62) * zoomV; if (Math.abs(cam.fov - f) > .01) { cam.fov = f; cam.updateProjectionMatrix(); } }
   }
   if (ACCAM) updWordTag(t, spd, dt);
-  if (!window.PVTownReady) requestAnimationFrame(() => { window.PVTownReady = true; });
+  if (!window.PVTownReady) requestAnimationFrame(() => { window.PVTownReady = true; setTimeout(loadGlbChars, 30); if (MESHY) setTimeout(loadMeshyBakery, 60); });
   sky.position.copy(cam.position); stars.position.copy(cam.position);
+  /* effets dès la première image : rendre d'abord sans eux recompilerait tous les shaders (sortie sRGB puis linéaire) */
   if (!fp && !fpFailed) { try { fp = makeFP(); } catch (e) { fpFailed = true; console.warn(e); } }
   perfT += dt; perfN++;
   /* qualité adaptative : on baisse la résolution si l'image rame ; en dernier recours (téléphone faible),
@@ -1949,16 +2031,19 @@ function loop() {
   if (fp) fp.render(); else R.render(scene, cam);
   if (glCheck >= 0 && ++glCheck > 8) checkGL();
   if (DBG) dbgFrame();
+  if (frameN < 5) { frameN++; tmark('image ' + frameN + ' : ' + Math.round(performance.now() - f0) + ' ms, ' + R.info.programs.length + ' shaders'); }
 }
+/* horizon arrondi aussi pour les matières qui ne sont pas en pâte : AVANT la première image
+   (fait après, chaque matière concernée était compilée deux fois : 8 shaders de trop au démarrage) */
+if (ACCAM) scene.traverse(o => { if (o === stars || o === sky) return; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => PVClay.bendify(m)); });
+tmark('fin de construction');
 loop();
 
 /* sortir de la boulangerie : devant sa porte, face à la place */
 /* outil de test : ?debug dans l'adresse donne window.PVDBG pour placer la caméra (captures de vérification) */
-if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, camYaw: a => { camYaw = a; }, colliders, W2S, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges, tag: () => ({ on: tagFor && tagFor.userData.id, x: +pos.x.toFixed(2), z: +pos.z.toFixed(2), n: hits.length, t: tagT, near: hits.filter(o => o.userData.box).map(o => [o.userData.id, +o.userData.box.distanceToPoint(new THREE.Vector3(pos.x, (o.userData.box.min.y + o.userData.box.max.y) / 2, pos.z)).toFixed(2)]).sort((a, b) => a[1] - b[1]).slice(0, 4), talking: !!talking }) };
+if (/[?&]debug\b/.test(location.search)) window.PVDBG = { R, scene, cam, snapshot, times: () => TIMES, photo: on => setPhoto(on), setHour: h => { hourOverride = h; applyHour(h); }, camYaw: a => { camYaw = a; }, colliders, W2S, go(x, z, yw, pt, y) { pos.set(x, y || 1.45, z); yaw = tYaw = yw; pitch = tPitch = pt || 0; target = null; vel.set(0, 0, 0); }, people, bld, badges, tag: () => ({ on: tagFor && tagFor.userData.id, x: +pos.x.toFixed(2), z: +pos.z.toFixed(2), n: hits.length, t: tagT, near: hits.filter(o => o.userData.box).map(o => [o.userData.id, +o.userData.box.distanceToPoint(new THREE.Vector3(pos.x, (o.userData.box.min.y + o.userData.box.max.y) / 2, pos.z)).toFixed(2)]).sort((a, b) => a[1] - b[1]).slice(0, 4), talking: !!talking }) };
 function placeAtBakery() { const g = bld.bakery.g, [bu] = W2S(g.position.x, g.position.z), [bx, bz] = S2W(bu - 1.2, frontV(bu) - .4), a = G + Math.PI; pos.set(bx, 1.45, bz); yaw = tYaw = a; pitch = tPitch = -.05; target = null; vel.set(0, 0, 0); camYaw = Math.atan2(-pos.x, -pos.z); camInit = false; if (me) me.yaw = a; }
 
-/* horizon arrondi aussi pour les matières qui ne sont pas en pâte */
-if (ACCAM) scene.traverse(o => { if (o === stars || o === sky) return; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => PVClay.bendify(m)); });
 return {
   setPhoto, snapshot, placeAtBakery, talkTo, endTalk, greet,
   /* histoire : montrer ou cacher un personnage, le faire marcher, la valise, bloquer les commandes pendant une scène */
