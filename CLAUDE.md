@@ -9,6 +9,16 @@ Avant toute action qui coûte (crédits ElevenLabs, Meshy ou autre service payan
 
 Exemple : les voix ElevenLabs ne se génèrent qu'une fois l'histoire et ses répliques validées, car toute réplique modifiée après coup est à refaire.
 
+## Continuité d'une conversation à l'autre (obligatoire)
+
+Trois repères, toujours les mêmes, que Claude met à jour **à la fin de chaque séance** (et dès qu'une décision importante est prise) :
+1. **La fiche de reprise** `FICHE-REPRISE.md` : dans le dépôt **et** copiée dans `Documents\Chatterville - reprise\FICHE-REPRISE.md` sur le PC.
+2. **Le tableau des chantiers** `CHANTIERS.md` dans le dépôt.
+3. **Le tableau blanc « Carte de Chatterville »** (vue d'ensemble) : https://claude.ai/artifact/9FS4Z8vL2jR8aTfANnF1iB — déplacer les étiquettes des chantiers, mettre à jour le tableau de bord et les personnages.
+
+Au début de chaque conversation : lire la fiche, `CHANTIERS.md` et le tableau blanc avant de commencer. Un chantier par conversation.
+Rien d'important ne reste seulement dans l'espace de travail d'une session.
+
 ## Façon de travailler
 
 - Répondre en français.

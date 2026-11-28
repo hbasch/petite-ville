@@ -1347,7 +1347,7 @@ applyHour(realHour());
 /* ---------- déplacement à la première personne ---------- */
 const pos = new THREE.Vector3(...(() => { const [x, z] = S2W(-UMAX + 2.5, 1); return [x, 1.45, z]; })());
 let yaw = G, pitch = -.06, tYaw = G, tPitch = -.06, target = null, bob = 0;
-let camYaw = G, camPitch = .5, camInit = false; const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), _cw = new THREE.Vector3(), _cl = new THREE.Vector3();
+let camYaw = G, camPitch = .66, camInit = false; const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), _cw = new THREE.Vector3(), _cl = new THREE.Vector3();
 const vel = new THREE.Vector3(), wish = new THREE.Vector3();
 let stuckT = 0;
 const keys = {}, fwd = new THREE.Vector3(), right = new THREE.Vector3();
@@ -1398,14 +1398,14 @@ canvas.addEventListener('pointercancel', e => { lift(e); down = null; });
 /* glisser le doigt ou la souris = un joystick : on marche dans cette direction tant qu'on reste appuyé */
 const joyEl = $('joy'); let joy = null;
 function joyMove(dx, dy) {
-  if (locked) return;
+  if (locked || talking) return;
   const L = Math.hypot(dx, dy), k = Math.min(1, L / 70), ux = L ? dx / L : 0, uy = L ? dy / L : 0; joy = { x: ux * k, y: uy * k }; target = null;
   if (joyEl && down) { joyEl.style.left = down.x + 'px'; joyEl.style.top = down.y + 'px'; joyEl.classList.remove('hidden'); joyEl.firstElementChild.style.transform = 'translate(' + (ux * k * 34) + 'px,' + (uy * k * 34) + 'px)'; }
 }
 function joyEnd() { joy = null; if (joyEl) joyEl.classList.add('hidden'); }
 canvas.addEventListener('pointerup', e => {
   if (lift(e)) return;
-  if (locked) { down = null; return; }
+  if (locked || talking) { down = null; return; }
   if (photo || !down || down.id !== e.pointerId) { down = null; return; }
   const moved = down.moved; down = null; if (moved > 8) return;
   let p = pick(e);
@@ -1771,6 +1771,8 @@ function clearAngle(n, ux, uz, back) {
   return best;
 }
 let camDS = 1;
+/* ?camold : ancienne caméra qui évitait les façades, pour comparer */
+const FIXCAM = !/[?&]camold\b/.test(location.search);
 function updateTPS(dt, t, spd) {
   zoomV += (zoomT - zoomV) * (1 - Math.exp(-dt * 12));
   const asp = innerWidth / innerHeight, port = asp < 1;
@@ -1794,7 +1796,8 @@ function updateTPS(dt, t, spd) {
     fov = port ? 44 : 30;
     const Wv = Math.min(13, Math.max(6.5, asp * 8)), Hv = Wv / asp, dist = Hv / (2 * Math.tan(fov * Math.PI / 360)) * zoomV;
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
-    _cl.set(pos.x + fx * (port ? 1.1 : .7), .95, pos.z + fz * (port ? 1.1 : .7));
+    /* façon Animal Crossing : angle et distance fixes, la caméra ne tourne ni ne plonge jamais ; ton personnage reste un peu sous le centre */
+    _cl.set(pos.x + fx * (port ? .6 : .4), .9, pos.z + fz * (port ? .6 : .4));
     /* la caméra ne passe jamais derrière les façades : si elle sortirait de la place, elle se rapproche et monte */
     /* distance permise calculée en continu (plus de marches d'escalier), puis lissée : la caméra ne fait plus d'à-coups près des bords
        et ne se colle jamais contre une maison */
@@ -1802,13 +1805,14 @@ function updateTPS(dt, t, spd) {
       const pp = camPitch + (1 - dd / dist) * .65, cx = _cl.x - fx * dd * Math.cos(pp), cz = _cl.z - fz * dd * Math.cos(pp);
       return !BLDC.some(b => Math.hypot(cx - b.x, cz - b.z) < b.r);
     };
-    let lo = .38 * dist, hi = dist;
-    if (okAt(hi)) lo = hi; else for (let it = 0; it < 8; it++) { const mid = (lo + hi) / 2; if (okAt(mid)) lo = mid; else hi = mid; }
-    camDS = camInit ? camDS + (lo / dist - camDS) * (1 - Math.exp(-dt * 3)) : lo / dist;
+    /* plus d'évitement des façades (il faisait monter et plonger la caméra) : ce qui passe devant s'ajoure */
+    if (FIXCAM) camDS = 1; else { let lo = .38 * dist, hi = dist;
+      if (okAt(hi)) lo = hi; else for (let it = 0; it < 8; it++) { const mid = (lo + hi) / 2; if (okAt(mid)) lo = mid; else hi = mid; }
+      camDS = camInit ? camDS + (lo / dist - camDS) * (1 - Math.exp(-dt * 3)) : lo / dist; }
     const d = dist * camDS, p = camPitch + (1 - camDS) * .65;
     _cw.set(_cl.x - fx * d * Math.cos(p), .95 + d * Math.sin(p), _cl.z - fz * d * Math.cos(p));
   }
-  const k = camInit ? 1 - Math.exp(-dt * (talking ? 4 : 8)) : 1; camInit = true;
+  const k = camInit ? 1 - Math.exp(-dt * (talking ? 4 : 5)) : 1; camInit = true;
   camPos.lerp(_cw, k); camLook.lerp(_cl, k);
   cam.position.copy(camPos); cam.lookAt(camLook);
   if (Math.abs(cam.fov - fov) > .05) { cam.fov += (fov - cam.fov) * k; cam.updateProjectionMatrix(); }
@@ -1855,7 +1859,7 @@ function loop() {
   if (!ACCAM && keys.arrowleft) tYaw += 1.6 * dt;
   if (!ACCAM && keys.arrowright) tYaw -= 1.6 * dt;
   if (joy) { wish.set(0, 0, 0).addScaledVector(right, joy.x).addScaledVector(fwd, -joy.y); }
-  if (locked) wish.set(0, 0, 0);
+  if (locked || talking) wish.set(0, 0, 0);
   const SPEED = 2.6;
   if (wish.lengthSq() > 0) { target = null; const wl = Math.min(1, wish.length()); wish.normalize().multiplyScalar(SPEED * (joy ? Math.max(.35, wl) : 1)); }
   else if (target) { const ddx = target.x - pos.x, ddz = target.z - pos.z, L = Math.hypot(ddx, ddz); if (L < .08) target = null; else { const sp = Math.min(SPEED, L * 2.2); wish.set(ddx / L * sp, 0, ddz / L * sp); } }

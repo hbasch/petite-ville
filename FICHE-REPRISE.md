@@ -1,4 +1,4 @@
-# Chatterville : fiche de reprise (à jour au 28 novembre 2026, 10 h 30)
+# Chatterville : fiche de reprise (à jour au 28 novembre 2026, 11 h)
 
 À lire au début de chaque conversation, avec `CLAUDE.md` (règles de travail) et `CHANTIERS.md` (le chantier en cours).
 Claude est garant de cette fiche : il la met à jour à la fin de chaque séance, dans le dépôt **et** dans `Documents\Chatterville - reprise\FICHE-REPRISE.md`.
@@ -10,6 +10,7 @@ Nom de code dans l'appli : « Petite Ville ». Nom recommandé : **Chatterville*
 
 - **Code (source de vérité)** : https://github.com/hbasch/petite-ville, branche `main`, publié par GitHub Pages sur https://hbasch.github.io/petite-ville/ (`?local` sans compte, `?debug` compteurs, `?test` expose `window.PVT`).
   - La copie dans `Documents\Chatterville - reprise\sources` est ancienne.
+- **Vue d'ensemble (tableau blanc)** : « Carte de Chatterville » https://claude.ai/artifact/9FS4Z8vL2jR8aTfANnF1iB (chantiers, tableau de bord, histoire, personnages, décisions).
 - **Histoire et missions** : Doc « Chatterville — les scènes des missions » https://claude.ai/artifact/TwXzEiacf8UC5SQWs4ogH6 (l'arc complet, les règles des missions, les niveaux).
 - **Concept, décisions, modèle économique** : `Documents\Chatterville - reprise\LISEZ-MOI-REPRISE.md` (sections 5 et suivantes). Les anciens `claude/concept.md` et `claude/missions.md` n'existent plus (ils étaient dans l'espace d'une ancienne session).
 - **Règles des personnages Meshy** : `outils/meshy/REGLES.md`.
@@ -28,9 +29,10 @@ Nom de code dans l'appli : « Petite Ville ». Nom recommandé : **Chatterville*
 
 - Chapitre 1 « Sans rien » jouable de bout en bout (test automatique `outils/tests/chapitre1.py`, sans erreur).
 - Corrections de texte du 28/11 : « by the fountain », Pemberton « solicitor » en anglais, Tom « And you help me in the mornings », salutations neutres (« Hello there », « How do you do? »).
-- Un agent a critiqué et corrigé la place (sol jusqu'aux boutiques, herbe délavée, chemin, touffes, objets mal placés) : résultat à relire et pousser.
+- Place corrigée par un agent et en ligne (sol jusqu'aux boutiques, herbe, chemin, arrêt de bus, parc). Restent : ombres trop dures, Pemberton dans les tables du café, une seule guirlande, château coupé.
 - Écarts entre le Doc et le chapitre 1 à trancher : la fin (maison vue de près, Marmalade), Pemberton au pub ou au café, la cassette d'Arthur absente.
-- **Pousser sur GitHub est bloqué** depuis la session (le mode d'approbation automatique refuse le rattachement du dépôt) : passer en mode « me demander » pour valider d'un clic.
+- Caméra façon Animal Crossing en ligne : angle et distance fixes, plus d'évitement des façades, suivi doux ; joueur immobile pendant les dialogues (`?camold` pour comparer). À valider.
+- Pousser sur GitHub fonctionne depuis la session (dépôt rattaché le 28/11) ; si c'est refusé, le redemander explicitement.
 
 ## Prochaines étapes
 
